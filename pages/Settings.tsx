@@ -1,0 +1,109 @@
+import React from 'react';
+import { Theme } from '../App';
+import { SunIcon } from '../components/icons/SunIcon';
+import { MoonIcon } from '../components/icons/MoonIcon';
+
+interface SettingsProps {
+    theme: Theme;
+    setTheme: (theme: Theme) => void;
+}
+
+const ThemeToggle: React.FC<SettingsProps> = ({ theme, setTheme }) => {
+    const isDark = theme === 'dark';
+
+    const toggleTheme = () => {
+        setTheme(isDark ? 'light' : 'dark');
+    };
+
+    return (
+        <button
+            onClick={toggleTheme}
+            className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 ${
+                isDark ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+        >
+            <span className="sr-only">Alternar tema</span>
+            <span
+                className={`inline-block h-6 w-6 transform bg-white rounded-full transition-transform duration-300 ease-in-out flex items-center justify-center ${
+                    isDark ? 'translate-x-7' : 'translate-x-1'
+                }`}
+            >
+                {isDark ? <MoonIcon className="h-4 w-4 text-blue-600" /> : <SunIcon className="h-4 w-4 text-yellow-500" />}
+            </span>
+        </button>
+    );
+};
+
+
+const Settings: React.FC<SettingsProps> = ({ theme, setTheme }) => {
+
+  const handleExport = () => {
+    alert("Funcionalidade de exportação de dados a ser implementada. Seus dados seriam exportados como um arquivo CSV.");
+  };
+
+  const handleDeleteAccount = () => {
+    if (window.confirm("ATENÇÃO: Esta ação é irreversível e apagará todos os seus dados. Deseja continuar?")) {
+      alert("Sua conta e todos os dados foram apagados. Você será desconectado.");
+      // In a real app, you would call an API here and then log the user out.
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Configurações</h3>
+      
+      <div className="space-y-8 max-w-4xl mx-auto">
+        {/* Profile Section */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+          <h4 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">Perfil</h4>
+          <div className="space-y-4">
+            <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+                <input type="text" id="name" value="Usuário" disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+            </div>
+            <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                <input type="email" id="email" value="usuario@email.com" disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+            </div>
+             <button onClick={() => alert('Funcionalidade "Alterar Senha" a ser implementada.')} className="text-sm font-medium text-blue-600 dark:text-blue-500 hover:underline">Alterar Senha</button>
+          </div>
+        </div>
+
+        {/* Appearance Section */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+            <h4 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">Aparência</h4>
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300">Modo Escuro</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Personalize a aparência da interface.</p>
+                </div>
+                <ThemeToggle theme={theme} setTheme={setTheme} />
+            </div>
+        </div>
+
+        {/* Data Management Section */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+            <h4 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">Gerenciamento de Dados</h4>
+            <div className="space-y-4">
+                 <div className="flex items-center justify-between">
+                    <div>
+                        <p className="font-medium text-gray-700 dark:text-gray-300">Exportar Dados</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Faça um backup de suas transações e investimentos.</p>
+                    </div>
+                    <button onClick={handleExport} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium">Exportar</button>
+                 </div>
+                 <div className="flex items-center justify-between border-t pt-4 border-red-200 dark:border-red-900/50">
+                    <div>
+                        <p className="font-medium text-red-600 dark:text-red-400">Apagar Conta</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Esta ação é irreversível e excluirá todos os seus dados.</p>
+                    </div>
+                    <button onClick={handleDeleteAccount} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">Apagar</button>
+                 </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
