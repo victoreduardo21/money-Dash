@@ -7,7 +7,6 @@ import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { PersonalTransaction, TransactionType, Investment } from '../types';
-import { MOCK_CHART_DATA } from '../constants';
 import { Page } from '../App';
 import WelcomeBanner from '../components/WelcomeBanner';
 
@@ -36,6 +35,23 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   const totalInvestido = useMemo(() => {
       return investments.reduce((acc, inv) => acc + inv.currentValue, 0);
   }, [investments]);
+
+  const monthlyChartData = useMemo(() => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const data = months.map(month => ({ name: month, Receitas: 0, Despesas: 0 }));
+
+    transactions.forEach(transaction => {
+      // Adding 'T00:00:00' ensures the date is parsed in the local timezone, avoiding off-by-one day errors.
+      const monthIndex = new Date(transaction.date + 'T00:00:00').getMonth();
+      if (transaction.type === TransactionType.Receita) {
+        data[monthIndex].Receitas += transaction.amount;
+      } else {
+        data[monthIndex].Despesas += transaction.amount;
+      }
+    });
+
+    return data;
+  }, [transactions]);
     
   return (
     <div>
@@ -74,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
             <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                 <h4 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">Visão Geral Mensal</h4>
                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={MOCK_CHART_DATA}>
+                    <BarChart data={monthlyChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
                         <XAxis dataKey="name" stroke="#9CA3AF" />
                         <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#9CA3AF" />
