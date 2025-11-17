@@ -1,4 +1,3 @@
-
 export enum TransactionType {
   Receita = 'Receita',
   Despesa = 'Despesa',
@@ -19,4 +18,11 @@ export interface Investment {
     initialAmount: number;
     currentValue: number;
     yieldRate: number; // Percentage
+}
+
+export interface User {
+  name: string;
+  email: string;
+  password: string;
+  avatar?: string; // base64 encoded image
 }

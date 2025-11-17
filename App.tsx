@@ -8,7 +8,7 @@ import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment } from './types';
+import { PersonalTransaction, Investment, User } from './types';
 
 export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Configurações';
 export type Theme = 'light' | 'dark';
@@ -21,7 +21,7 @@ const App: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [cdiRate, setCdiRate] = useState(0);
 
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -44,10 +44,10 @@ const App: React.FC = () => {
         setCdiRate(10.50); // Fallback on error
       }
     };
-    if (isAuthenticated) {
+    if (currentUser) {
         fetchCdiRate();
     }
-  }, [isAuthenticated]);
+  }, [currentUser]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -58,18 +58,64 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
   
-  const handleLogin = (success: boolean) => {
-      if (success) {
-          setIsAuthenticated(true);
-      }
+  const handleLogin = (user: User) => {
+      setCurrentUser(user);
   };
 
   const handleLogout = () => {
-      setIsAuthenticated(false);
+      setCurrentUser(null);
       // Clean up state on logout
       setTransactions([]);
       setInvestments([]);
       setActivePage('Dashboard');
+  };
+
+  const handlePasswordUpdate = (newPassword: string) => {
+    if (!currentUser) return;
+    
+    const usersJson = localStorage.getItem('fin-dash-users');
+    if (usersJson) {
+      const users: User[] = JSON.parse(usersJson);
+      const userIndex = users.findIndex(u => u.email === currentUser.email);
+      if (userIndex !== -1) {
+        users[userIndex].password = newPassword;
+        localStorage.setItem('fin-dash-users', JSON.stringify(users));
+        setCurrentUser(users[userIndex]);
+        alert("Senha alterada com sucesso!");
+      }
+    }
+  };
+
+  const handleAvatarUpdate = (avatar: string) => {
+    if (!currentUser) return;
+
+    const updatedUser = { ...currentUser, avatar };
+    setCurrentUser(updatedUser);
+
+    const usersJson = localStorage.getItem('fin-dash-users');
+    if (usersJson) {
+        const users: User[] = JSON.parse(usersJson);
+        const userIndex = users.findIndex(u => u.email === currentUser.email);
+        if (userIndex !== -1) {
+            users[userIndex] = updatedUser;
+            localStorage.setItem('fin-dash-users', JSON.stringify(users));
+        }
+    }
+  };
+
+  const handleCreateUser = async (newUser: Omit<User, 'id'>): Promise<{success: boolean, message: string}> => {
+    const usersJson = localStorage.getItem('fin-dash-users');
+    const users: User[] = usersJson ? JSON.parse(usersJson) : [];
+
+    const userExists = users.some(user => user.email === newUser.email);
+
+    if (userExists) {
+      return { success: false, message: 'Este email já está em uso.' };
+    }
+
+    users.push(newUser);
+    localStorage.setItem('fin-dash-users', JSON.stringify(users));
+    return { success: true, message: 'Usuário criado com sucesso!' };
   };
 
   const handleOpenTransactionModal = (transaction: PersonalTransaction | null) => {
@@ -98,7 +144,7 @@ const App: React.FC = () => {
       }
   };
 
-  if (!isAuthenticated) {
+  if (!currentUser) {
       return <LoginPage onLogin={handleLogin} />;
   }
 
@@ -126,7 +172,14 @@ const App: React.FC = () => {
                     cdiRate={cdiRate}
                 />;
       case 'Configurações':
-        return <Settings theme={theme} setTheme={setTheme} />;
+        return <Settings 
+                    theme={theme} 
+                    setTheme={setTheme} 
+                    currentUser={currentUser}
+                    onUpdatePassword={handlePasswordUpdate}
+                    onUpdateAvatar={handleAvatarUpdate}
+                    onCreateUser={handleCreateUser}
+                />;
       default:
         return <Dashboard 
                     transactions={transactions} 
@@ -156,7 +209,12 @@ const App: React.FC = () => {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={handleLogout} onNewTransaction={() => handleOpenTransactionModal(null)}>
+        <Header 
+            onLogout={handleLogout} 
+            onNewTransaction={() => handleOpenTransactionModal(null)} 
+            currentUser={currentUser}
+            setActivePage={setActivePage}
+        >
             <button
                 onClick={() => setIsSidebarOpen(true)}
                 className="md:hidden text-gray-500 dark:text-gray-300 focus:outline-none"
