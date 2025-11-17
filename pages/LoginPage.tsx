@@ -22,13 +22,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     // Simulate API call
     setTimeout(() => {
       let usersJson = localStorage.getItem('fin-dash-users');
-      // For the first run, let's create a default user if none exist.
-      if (!usersJson) {
-          localStorage.setItem('fin-dash-users', JSON.stringify([testUser]));
-          usersJson = localStorage.getItem('fin-dash-users');
+      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
+      
+      // Ensure test user always exists
+      const testUserExists = users.some(user => user.email === testUser.email);
+      if (!testUserExists) {
+          users.push(testUser);
+          localStorage.setItem('fin-dash-users', JSON.stringify(users));
       }
 
-      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
       const foundUser = users.find(user => user.email === loginEmail && user.password === loginPass);
 
       if (foundUser) {
