@@ -6,8 +6,7 @@ import { DollarSignIcon } from '../components/icons/DollarSignIcon';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
-import { PersonalTransaction, TransactionType, Investment } from '../types';
-import { Page } from '../App';
+import { PersonalTransaction, TransactionType, Investment, Page } from '../types';
 import WelcomeBanner from '../components/WelcomeBanner';
 
 interface DashboardProps {

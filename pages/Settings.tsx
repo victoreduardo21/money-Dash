@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Theme } from '../App';
+import { Theme, User } from '../types';
 import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
 import { CameraIcon } from '../components/icons/CameraIcon';
-import { User } from '../types';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import CreateUserModal from '../components/CreateUserModal';
 

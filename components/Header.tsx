@@ -3,7 +3,7 @@ import { SearchIcon } from './icons/SearchIcon';
 import { BellIcon } from './icons/BellIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import { User } from '../types';
-import { Page } from '../App';
+import { Page } from '../types';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { CreditCardIcon } from './icons/CreditCardIcon';
 import { ClockIcon } from './icons/ClockIcon';

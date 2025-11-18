@@ -1,3 +1,6 @@
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Configurações';
+export type Theme = 'light' | 'dark';
+
 export enum TransactionType {
   Receita = 'Receita',
   Despesa = 'Despesa',

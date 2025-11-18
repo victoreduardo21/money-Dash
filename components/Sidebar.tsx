@@ -5,7 +5,7 @@ import { SettingsIcon } from './icons/SettingsIcon';
 import { XIcon } from './icons/XIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
-import { Page } from '../App';
+import { Page } from '../types';
 
 
 interface SidebarProps {

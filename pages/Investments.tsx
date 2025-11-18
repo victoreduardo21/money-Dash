@@ -10,12 +10,13 @@ import InvestmentModal from '../components/InvestmentModal';
 interface InvestmentsProps {
     investments: Investment[];
     setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
-    cdiRate: number; // Keep for reference if needed
+    cdiRate: number; 
+    onSaveInvestment: (investment: Omit<Investment, 'id'> & { id?: string }) => void;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
-const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }) => {
+const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, onSaveInvestment }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
 
@@ -36,17 +37,7 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments }
     };
 
     const handleSaveInvestment = (investment: Omit<Investment, 'id'> & { id?: string }) => {
-        if (investment.id) {
-            // Edit
-            setInvestments(investments.map(inv => inv.id === investment.id ? { ...inv, ...investment } as Investment : inv));
-        } else {
-            // Add
-            const newInvestment: Investment = {
-                ...investment,
-                id: `INV${new Date().getTime()}`,
-            };
-            setInvestments([...investments, newInvestment]);
-        }
+        onSaveInvestment(investment);
         setIsModalOpen(false);
     };
 

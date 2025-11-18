@@ -8,10 +8,7 @@ import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User } from './types';
-
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Configurações';
-export type Theme = 'light' | 'dark';
+import { PersonalTransaction, Investment, User, Page, Theme, TransactionType } from './types';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -144,6 +141,32 @@ const App: React.FC = () => {
       }
   };
 
+  const handleSaveInvestment = (investment: Omit<Investment, 'id'> & { id?: string }) => {
+    if (investment.id) {
+        // Edit existing investment
+        setInvestments(investments.map(inv => inv.id === investment.id ? { ...inv, ...investment } as Investment : inv));
+    } else {
+        // Add new investment
+        const newId = `INV${new Date().getTime()}`;
+        const newInvestment: Investment = {
+            ...investment,
+            id: newId,
+        };
+        setInvestments([...investments, newInvestment]);
+
+        // Create corresponding Expense Transaction to deduct from balance
+        const newTransaction: PersonalTransaction = {
+            id: `TRX-INV-${newId}`,
+            description: `Aplicação: ${investment.name}`,
+            amount: investment.initialAmount,
+            date: new Date().toISOString().split('T')[0],
+            type: TransactionType.Despesa,
+            category: 'Investimentos'
+        };
+        setTransactions([newTransaction, ...transactions]);
+    }
+  };
+
   if (!currentUser) {
       return <LoginPage onLogin={handleLogin} />;
   }
@@ -170,6 +193,7 @@ const App: React.FC = () => {
                     investments={investments} 
                     setInvestments={setInvestments}
                     cdiRate={cdiRate}
+                    onSaveInvestment={handleSaveInvestment}
                 />;
       case 'Configurações':
         return <Settings 
