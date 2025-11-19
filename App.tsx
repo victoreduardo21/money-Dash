@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -247,10 +248,14 @@ const App: React.FC = () => {
             </button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-800">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-800 flex flex-col">
           <div className="container mx-auto px-6 py-8">
             {renderContent()}
           </div>
+          <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            <p>&copy; 2024 GTS - Global Tech Software</p>
+            <p>Todos os direitos reservados</p>
+          </footer>
         </main>
       </div>
     </div>
