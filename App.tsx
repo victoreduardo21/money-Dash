@@ -44,11 +44,20 @@ const App: React.FC = () => {
   useEffect(() => {
     if (token) {
         const fetchData = async () => {
+             // 1. Atualiza Transações
              const txs = await api.getTransactions(token);
              if (Array.isArray(txs)) setTransactions(txs);
              
+             // 2. Atualiza Investimentos
              const invs = await api.getInvestments(token);
              if (Array.isArray(invs)) setInvestments(invs);
+
+             // 3. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF e Tel estejam sincronizados)
+             const userProfile = await api.getMe(token);
+             if (userProfile && !userProfile.error) {
+                 setCurrentUser(userProfile);
+                 localStorage.setItem('user_data', JSON.stringify(userProfile));
+             }
         };
         fetchData();
     }

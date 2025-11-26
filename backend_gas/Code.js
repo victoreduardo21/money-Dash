@@ -36,6 +36,9 @@ function doGet(e) {
     } else if (route === 'users') {
       // Rota para listar usuários (Painel Admin - SaaS)
       data = getAllUsers();
+    } else if (route === 'users/me') {
+      // Rota para pegar perfil atualizado do usuário logado
+      data = getUserProfile(token);
     } else {
       return responseJSON([]); 
     }
@@ -117,14 +120,34 @@ function loginUser(body) {
         user: {
           name: row[1],
           email: row[2],
-          avatar: row[4],
-          phone: row[5], // Coluna F
-          cpf: row[6]    // Coluna G
+          avatar: row[4], // Coluna E
+          phone: row[5],  // Coluna F
+          cpf: row[6]     // Coluna G
         }
       };
     }
   }
   throw new Error("Email ou senha inválidos.");
+}
+
+function getUserProfile(encodedEmail) {
+  const userEmail = decodeToken(encodedEmail);
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  const rows = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[2]).trim() == String(userEmail).trim()) {
+      return {
+          name: row[1],
+          email: row[2],
+          avatar: row[4], // Coluna E
+          phone: row[5],  // Coluna F
+          cpf: row[6]     // Coluna G
+      };
+    }
+  }
+  throw new Error("Usuário não encontrado.");
 }
 
 function createUser(body) {

@@ -50,6 +50,21 @@ export const api = {
         return postData('users', user);
     },
 
+    // Buscar Perfil Atualizado (Novo)
+    getMe: async (token: string) => {
+        try {
+            const response = await fetch(getUrl('users/me', token));
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch {
+                return null;
+            }
+        } catch (e) {
+            return null;
+        }
+    },
+
     // Admin - Listar todos usuários
     getAllUsers: async (token: string) => {
         try {
