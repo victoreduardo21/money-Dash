@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { PersonalTransaction, Investment, User, Page, Theme, TransactionType } from './types';
+import { api } from './services/api';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -19,11 +20,43 @@ const App: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
 
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Load user and token from localStorage if available to persist session on refresh
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+      const savedUser = localStorage.getItem('user_data');
+      return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
+
   const [cdiRate, setCdiRate] = useState(0);
 
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<PersonalTransaction | null>(null);
+
+  // Fetch initial data when user logs in (has token)
+  useEffect(() => {
+    if (token) {
+        const loadData = async () => {
+            try {
+                const txs = await api.getTransactions(token);
+                if (txs && !txs.error) {
+                    setTransactions(txs);
+                } else {
+                    console.error("Erro ao carregar transações", txs);
+                }
+
+                const invs = await api.getInvestments(token);
+                if (invs && !invs.error) {
+                    setInvestments(invs);
+                } else {
+                    console.error("Erro ao carregar investimentos", invs);
+                }
+            } catch (error) {
+                console.error("Erro de conexão ao carregar dados", error);
+            }
+        };
+        loadData();
+    }
+  }, [token]);
 
   useEffect(() => {
     // Fetch real-time CDI rate
@@ -56,64 +89,64 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
   
-  const handleLogin = (user: User) => {
+  const handleLogin = (user: User, authToken: string) => {
       setCurrentUser(user);
+      setToken(authToken);
+      localStorage.setItem('auth_token', authToken);
+      localStorage.setItem('user_data', JSON.stringify(user));
   };
 
   const handleLogout = () => {
       setCurrentUser(null);
-      // Clean up state on logout
+      setToken(null);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_data');
       setTransactions([]);
       setInvestments([]);
       setActivePage('Dashboard');
   };
 
-  const handlePasswordUpdate = (newPassword: string) => {
-    if (!currentUser) return;
-    
-    const usersJson = localStorage.getItem('fin-dash-users');
-    if (usersJson) {
-      const users: User[] = JSON.parse(usersJson);
-      const userIndex = users.findIndex(u => u.email === currentUser.email);
-      if (userIndex !== -1) {
-        users[userIndex].password = newPassword;
-        localStorage.setItem('fin-dash-users', JSON.stringify(users));
-        setCurrentUser(users[userIndex]);
-        alert("Senha alterada com sucesso!");
-      }
+  const handlePasswordUpdate = async (currentPassword: string, newPassword: string) => {
+    if (!token) return;
+    try {
+        const result = await api.updatePassword({ currentPassword, newPassword }, token);
+        if (result.error) {
+            alert(result.message || "Erro ao atualizar senha.");
+        } else {
+            alert("Senha alterada com sucesso!");
+        }
+    } catch (e) {
+        alert("Erro de conexão.");
     }
   };
 
-  const handleAvatarUpdate = (avatar: string) => {
-    if (!currentUser) return;
+  const handleAvatarUpdate = async (avatar: string) => {
+    if (!currentUser || !token) return;
 
-    const updatedUser = { ...currentUser, avatar };
-    setCurrentUser(updatedUser);
-
-    const usersJson = localStorage.getItem('fin-dash-users');
-    if (usersJson) {
-        const users: User[] = JSON.parse(usersJson);
-        const userIndex = users.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            users[userIndex] = updatedUser;
-            localStorage.setItem('fin-dash-users', JSON.stringify(users));
+    try {
+        const result = await api.updateAvatar({ avatar }, token);
+        if (result.error) {
+            alert(result.message || "Erro ao atualizar avatar.");
+        } else {
+            const updatedUser = { ...currentUser, avatar };
+            setCurrentUser(updatedUser);
+            localStorage.setItem('user_data', JSON.stringify(updatedUser));
         }
+    } catch (e) {
+        alert("Erro de conexão ao atualizar avatar.");
     }
   };
 
   const handleCreateUser = async (newUser: Omit<User, 'id'>): Promise<{success: boolean, message: string}> => {
-    const usersJson = localStorage.getItem('fin-dash-users');
-    const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-
-    const userExists = users.some(user => user.email === newUser.email);
-
-    if (userExists) {
-      return { success: false, message: 'Este email já está em uso.' };
+    try {
+        const result = await api.createUser(newUser);
+        if (result.error) {
+            return { success: false, message: result.message || 'Erro ao criar usuário.' };
+        }
+        return { success: true, message: 'Usuário criado com sucesso!' };
+    } catch (e) {
+        return { success: false, message: 'Erro de conexão.' };
     }
-
-    users.push(newUser);
-    localStorage.setItem('fin-dash-users', JSON.stringify(users));
-    return { success: true, message: 'Usuário criado com sucesso!' };
   };
 
   const handleOpenTransactionModal = (transaction: PersonalTransaction | null) => {
@@ -121,50 +154,56 @@ const App: React.FC = () => {
     setIsTransactionModalOpen(true);
   };
 
-  const handleSaveTransaction = (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
+  const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
     if (transaction.id) {
-        // Edit
+        // Edit (Not fully supported by backend MVP yet, updating locally)
         setTransactions(transactions.map(t => t.id === transaction.id ? { ...t, ...transaction } as PersonalTransaction : t));
+        alert("Nota: A edição está salva apenas localmente nesta versão.");
     } else {
         // Add
-        const newTransaction: PersonalTransaction = {
-            ...transaction,
-            id: `TRX${new Date().getTime()}`,
-        };
-        setTransactions([newTransaction, ...transactions]);
+        if (token) {
+            try {
+                await api.createTransaction(transaction as PersonalTransaction, token);
+                // Refresh list
+                const txs = await api.getTransactions(token);
+                if (!txs.error) setTransactions(txs);
+            } catch (e) {
+                alert("Erro ao salvar transação no servidor.");
+            }
+        }
     }
     setIsTransactionModalOpen(false);
   };
 
   const handleDeleteTransaction = (id: string) => {
-      if(window.confirm("Tem certeza que deseja excluir esta transação?")) {
+      if(window.confirm("Tem certeza que deseja excluir esta transação? (Apenas localmente nesta versão)")) {
           setTransactions(transactions.filter(t => t.id !== id));
       }
   };
 
-  const handleSaveInvestment = (investment: Omit<Investment, 'id'> & { id?: string }) => {
+  const handleSaveInvestment = async (investment: Omit<Investment, 'id'> & { id?: string }) => {
     if (investment.id) {
-        // Edit existing investment
+        // Edit
         setInvestments(investments.map(inv => inv.id === investment.id ? { ...inv, ...investment } as Investment : inv));
+        alert("Nota: A edição está salva apenas localmente nesta versão.");
     } else {
-        // Add new investment
-        const newId = `INV${new Date().getTime()}`;
-        const newInvestment: Investment = {
-            ...investment,
-            id: newId,
-        };
-        setInvestments([...investments, newInvestment]);
+        // Add
+        if (token) {
+             try {
+                // The backend automatically creates the expense transaction when creating an investment
+                await api.createInvestment(investment as Investment, token);
+                
+                // Refresh both lists
+                const invs = await api.getInvestments(token);
+                if (!invs.error) setInvestments(invs);
 
-        // Create corresponding Expense Transaction to deduct from balance
-        const newTransaction: PersonalTransaction = {
-            id: `TRX-INV-${newId}`,
-            description: `Aplicação: ${investment.name}`,
-            amount: investment.initialAmount,
-            date: new Date().toISOString().split('T')[0],
-            type: TransactionType.Despesa,
-            category: 'Investimentos'
-        };
-        setTransactions([newTransaction, ...transactions]);
+                const txs = await api.getTransactions(token);
+                if (!txs.error) setTransactions(txs);
+
+            } catch (e) {
+                alert("Erro ao salvar investimento no servidor.");
+            }
+        }
     }
   };
 

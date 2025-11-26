@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Theme, User } from '../types';
 import { SunIcon } from '../components/icons/SunIcon';
@@ -10,7 +11,7 @@ interface SettingsProps {
     theme: Theme;
     setTheme: (theme: Theme) => void;
     currentUser: User;
-    onUpdatePassword: (newPassword: string) => void;
+    onUpdatePassword: (currentPassword: string, newPassword: string) => void;
     onUpdateAvatar: (avatar: string) => void;
     onCreateUser: (newUser: Omit<User, 'id'>) => Promise<{success: boolean, message: string}>;
 }
@@ -79,7 +80,6 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
         onSave={onUpdatePassword}
-        currentUser={currentUser}
       />
       <CreateUserModal
         isOpen={isCreateUserModalOpen}

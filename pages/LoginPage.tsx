@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User } from '../types';
+import { api } from '../services/api';
 
 interface LoginPageProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: User, token: string) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -13,38 +14,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const usersJson = localStorage.getItem('fin-dash-users');
-    if (!usersJson || JSON.parse(usersJson).length === 0) {
-        const defaultUser: User = {
-            name: 'Usuário Padrão',
-            email: 'usuario@email.com',
-            password: 'password123',
-        };
-        localStorage.setItem('fin-dash-users', JSON.stringify([defaultUser]));
-        alert('Nenhum usuário encontrado. Um usuário padrão foi criado.\nEmail: usuario@email.com\nSenha: password123');
-    }
-  }, []);
-
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simulate API call
-    setTimeout(() => {
-      const usersJson = localStorage.getItem('fin-dash-users');
-      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-      
-      const foundUser = users.find(user => user.email === email && user.password === password);
-
-      if (foundUser) {
-        onLogin(foundUser);
-      } else {
-        setError('Email ou senha inválidos.');
+    try {
+        const response = await api.login({ email, password });
+        
+        if (response.error) {
+            setError(response.message || 'Falha na autenticação.');
+        } else if (response.token && response.user) {
+            // Sucesso
+            onLogin(response.user, response.token);
+        } else {
+            setError('Resposta inválida do servidor.');
+        }
+    } catch (e) {
+        setError('Erro de conexão com o servidor. Verifique sua internet.');
+        console.error(e);
+    } finally {
         setIsLoading(false);
-      }
-    }, 500);
+    }
   };
   
   return (
@@ -88,7 +79,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             
             <button type="submit" disabled={isLoading}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-slate-800 disabled:bg-blue-500 disabled:cursor-not-allowed">
-                {isLoading ? 'Aguarde...' : 'Entrar'}
+                {isLoading ? 'Conectando...' : 'Entrar'}
             </button>
             </form>
         </div>

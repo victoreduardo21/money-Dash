@@ -1,15 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
 import { XIcon } from './icons/XIcon';
 
 interface ChangePasswordModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (newPassword: string) => void;
-    currentUser: User;
+    onSave: (currentPassword: string, newPassword: string) => void;
 }
 
-const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose, onSave, currentUser }) => {
+const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose, onSave }) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,10 +27,6 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
         e.preventDefault();
         setError('');
 
-        if (currentPassword !== currentUser.password) {
-            setError('A senha atual está incorreta.');
-            return;
-        }
         if (newPassword.length < 6) {
             setError('A nova senha deve ter pelo menos 6 caracteres.');
             return;
@@ -41,7 +36,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
             return;
         }
 
-        onSave(newPassword);
+        onSave(currentPassword, newPassword);
         onClose();
     };
 
