@@ -31,4 +31,5 @@ export interface User {
   avatar?: string; // base64 encoded image
   phone?: string;
   cpf?: string;
+  subscriptionStatus?: 'ACTIVE' | 'PENDING' | 'OVERDUE';
 }

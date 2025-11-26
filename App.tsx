@@ -52,7 +52,7 @@ const App: React.FC = () => {
              const invs = await api.getInvestments(token);
              if (Array.isArray(invs)) setInvestments(invs);
 
-             // 3. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF e Tel estejam sincronizados)
+             // 3. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF, Tel e Status estejam sincronizados)
              const userProfile = await api.getMe(token);
              if (userProfile && !userProfile.error) {
                  setCurrentUser(userProfile);
@@ -88,7 +88,7 @@ const App: React.FC = () => {
     } else {
         await api.createTransaction(transaction, token);
         const txs = await api.getTransactions(token);
-        setTransactions(txs);
+        if (Array.isArray(txs)) setTransactions(txs);
     }
     setIsTransactionModalOpen(false);
     setEditingTransaction(null);
@@ -106,7 +106,7 @@ const App: React.FC = () => {
              alert(result.message);
              // Reverte se der erro (opcional, aqui estamos apenas recarregando)
              const txs = await api.getTransactions(token);
-             setTransactions(txs);
+             if (Array.isArray(txs)) setTransactions(txs);
          }
      }
   };
@@ -119,7 +119,7 @@ const App: React.FC = () => {
       } else {
           await api.createInvestment(investment, token);
           const invs = await api.getInvestments(token);
-          setInvestments(invs);
+          if (Array.isArray(invs)) setInvestments(invs);
       }
   };
 
@@ -132,7 +132,7 @@ const App: React.FC = () => {
           if (result.error) {
               alert(result.message);
               const invs = await api.getInvestments(token);
-              setInvestments(invs);
+              if (Array.isArray(invs)) setInvestments(invs);
           }
       }
   }
@@ -163,6 +163,19 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans`}>
+       {/* WARNING BANNER FOR PENDING SUBSCRIPTION */}
+       {currentUser?.subscriptionStatus === 'PENDING' && (
+           <div className="fixed top-0 left-0 right-0 bg-red-600 text-white z-50 px-4 py-2 text-center text-sm font-bold shadow-lg flex justify-center items-center">
+               <span>⚠️ Sua assinatura está pendente. O acesso pode ser bloqueado em breve.</span>
+               <button 
+                  onClick={() => setActivePage('Configurações')}
+                  className="ml-4 bg-white text-red-600 px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition-colors"
+               >
+                   Regularizar (R$ 50,00)
+               </button>
+           </div>
+       )}
+
        {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
@@ -177,7 +190,7 @@ const App: React.FC = () => {
         setActivePage={setActivePage} 
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col overflow-hidden ${currentUser?.subscriptionStatus === 'PENDING' ? 'pt-10' : ''}`}>
         <Header 
             onLogout={handleLogout} 
             onNewTransaction={() => {

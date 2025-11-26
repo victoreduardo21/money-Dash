@@ -5,6 +5,7 @@ import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
 import { CameraIcon } from '../components/icons/CameraIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
+import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import CreateUserModal from '../components/CreateUserModal';
 import { api } from '../services/api';
@@ -54,6 +55,7 @@ const ThemeToggle: React.FC<{ theme: Theme; setTheme: (theme: Theme) => void; }>
 const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpdatePassword, onUpdateAvatar, onCreateUser }) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State para lista de clientes (apenas Admin)
@@ -135,6 +137,28 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
     }
   };
 
+  const handleGeneratePayment = async () => {
+    if (!currentUser.cpf || !currentUser.phone) {
+        alert("Para gerar a cobrança, precisamos do seu CPF e Telefone. Por favor, atualize o Admin.");
+        return;
+    }
+
+    setIsPaymentLoading(true);
+    const token = btoa(currentUser.email);
+    const response = await api.createSubscriptionCharge(token);
+    setIsPaymentLoading(false);
+
+    if (response.success) {
+        if (window.confirm("Link de pagamento gerado! Deseja abrir agora?")) {
+            window.open(response.paymentUrl, '_blank');
+        } else {
+            alert(`Link para pagamento: ${response.paymentUrl}`);
+        }
+    } else {
+        alert("Erro ao gerar pagamento: " + (response.message || "Tente novamente."));
+    }
+  };
+
   const handleExport = () => {
     alert("Funcionalidade de exportação de dados a ser implementada. Seus dados seriam exportados como um arquivo CSV.");
   };
@@ -213,6 +237,47 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
             </div>
           </div>
 
+          {/* SUBSCRIPTION SECTION */}
+          {!isAdmin && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-green-500 dark:border-green-600">
+                <div className="flex justify-between items-center mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+                        <CreditCardIcon className="h-6 w-6 mr-2" />
+                        Minha Assinatura
+                    </h4>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        currentUser.subscriptionStatus === 'ACTIVE' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                    }`}>
+                        {currentUser.subscriptionStatus === 'ACTIVE' ? 'ATIVA' : 'PENDENTE'}
+                    </span>
+                </div>
+                <div className="flex flex-col md:flex-row justify-between items-center">
+                    <div className="mb-4 md:mb-0">
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">Plano Mensal</p>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">R$ 50,00<span className="text-sm font-normal text-gray-500">/mês</span></p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Acesso completo ao Dashboard, Gráficos e Gestão de Carteira.</p>
+                    </div>
+                    <div>
+                        {currentUser.subscriptionStatus !== 'ACTIVE' ? (
+                            <button 
+                                onClick={handleGeneratePayment}
+                                disabled={isPaymentLoading}
+                                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-bold shadow-md disabled:bg-gray-400"
+                            >
+                                {isPaymentLoading ? 'Gerando...' : 'Pagar Agora (Pix/Boleto)'}
+                            </button>
+                        ) : (
+                            <button disabled className="bg-gray-100 text-green-600 px-6 py-3 rounded-lg font-bold border border-green-200 cursor-default">
+                                Assinatura em dia
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+          )}
+
           {/* User Management Section - ONLY VISIBLE TO ADMIN */}
           {isAdmin && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-blue-500 dark:border-blue-700">
@@ -240,7 +305,6 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Telefone</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">CPF</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
@@ -250,9 +314,14 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{client.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.email}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.phone || '-'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.cpf || '-'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-semibold">
-                                        Ativo
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            client.subscriptionStatus === 'ACTIVE' 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                        }`}>
+                                            {client.subscriptionStatus === 'ACTIVE' ? 'Ativo' : 'Pendente'}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}

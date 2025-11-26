@@ -5,7 +5,7 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 
 ### 1. Aba: `Users`
 **Atenção:** A ordem das colunas deve ser exata.
-**Formatação:** Selecione as colunas `phone` (F) e `cpf` (G) e vá em **Formatar > Número > Texto Simples** para preservar zeros à esquerda.
+**Formatação:** Selecione as colunas `phone` (F), `cpf` (G) e `status` (H) e vá em **Formatar > Número > Texto Simples**.
 
 | Coluna | Nome (Cabeçalho) | Descrição |
 | :--- | :--- | :--- |
@@ -16,6 +16,7 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | **E** | `avatar` | Foto (Base64) |
 | **F** | `phone` | Telefone |
 | **G** | `cpf` | CPF |
+| **H** | `status` | Status Assinatura (`PENDING` ou `ACTIVE`) |
 
 ---
 

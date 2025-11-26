@@ -80,6 +80,12 @@ export const api = {
         }
     },
 
+    // ASSINATURA / PAGAMENTOS
+    createSubscriptionCharge: async (token: string) => {
+        const payload = { token };
+        return postData('subscription/pay', payload);
+    },
+
     // Transações
     getTransactions: async (token: string) => {
         try {

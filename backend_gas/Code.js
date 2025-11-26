@@ -5,6 +5,13 @@
 // IMPORTANTE: Ao salvar, vá em Implantar > Gerenciar Implantações > EDITAR > NOVA VERSÃO > Implantar.
 // ============================================================================
 
+// ============================================================================
+// CONFIGURAÇÃO DO ASAAS
+// Coloque sua API Key do Asaas aqui (Produção ou Sandbox)
+// ============================================================================
+const ASAAS_API_KEY = '$aact_...'; // <--- COLE SUA CHAVE DO ASAAS AQUI
+const ASAAS_URL = 'https://www.asaas.com/api/v3'; // Use 'sandbox.asaas.com/api/v3' para testes
+
 function getSpreadsheet() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
@@ -90,6 +97,9 @@ function doPost(e) {
     } else if (route === 'users/me/avatar') {
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateAvatar(requestBody, userEmail);
+    } else if (route === 'subscription/pay') {
+       const userEmail = getUserEmailFromToken(e, requestBody);
+       data = createAsaasCharge(userEmail);
     } else {
       return responseError('Rota não encontrada (POST).', 404);
     }
@@ -122,7 +132,8 @@ function loginUser(body) {
           email: row[2],
           avatar: row[4], // Coluna E
           phone: row[5],  // Coluna F
-          cpf: row[6]     // Coluna G
+          cpf: row[6],    // Coluna G
+          subscriptionStatus: row[7] || 'PENDING' // Coluna H
         }
       };
     }
@@ -141,9 +152,10 @@ function getUserProfile(encodedEmail) {
       return {
           name: row[1],
           email: row[2],
-          avatar: row[4], // Coluna E
-          phone: row[5],  // Coluna F
-          cpf: row[6]     // Coluna G
+          avatar: row[4], 
+          phone: row[5],  
+          cpf: row[6],
+          subscriptionStatus: row[7] || 'PENDING'
       };
     }
   }
@@ -164,21 +176,26 @@ function createUser(body) {
   }
   
   const newId = Utilities.getUuid();
-  // ORDEM DAS COLUNAS: id, name, email, password, avatar, phone, cpf
+  // Status padrão para novos usuários: PENDING
+  const initialStatus = 'PENDING';
+
+  // ORDEM DAS COLUNAS: id, name, email, password, avatar, phone, cpf, status
   sheet.appendRow([
     newId, 
     body.name, 
     body.email, 
     body.password, 
-    "", // Avatar inicia vazio
-    body.phone || "", // Garante string vazia se não vier
-    body.cpf || ""    // Garante string vazia se não vier
+    "", // Avatar
+    body.phone || "", 
+    body.cpf || "",
+    initialStatus
   ]);
   
   return { 
     id: newId, 
     name: body.name, 
-    email: body.email 
+    email: body.email,
+    subscriptionStatus: initialStatus
   };
 }
 
@@ -189,21 +206,21 @@ function getAllUsers() {
   const rows = sheet.getDataRange().getValues();
   let users = [];
   
-  // Pula cabeçalho
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     users.push({
       id: row[0],
       name: row[1],
       email: row[2],
-      // Não enviamos senha nem avatar para a lista leve
       phone: row[5],
-      cpf: row[6]
+      cpf: row[6],
+      subscriptionStatus: row[7] || 'PENDING'
     });
   }
   return users;
 }
 
+// ... (Funções getTransactions, createTransaction, deleteTransaction permanecem iguais)
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Transactions');
@@ -266,6 +283,7 @@ function deleteTransaction(id, userEmail) {
   throw new Error("Transação não encontrada ou sem permissão.");
 }
 
+// ... (Funções getInvestments, createInvestment, deleteInvestment permanecem iguais)
 function getInvestments(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Investments');
@@ -355,7 +373,6 @@ function updateAvatar(body, userEmail) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][2] == userEmail) {
        try {
-         // Atualiza avatar (Coluna index 5 na função getRange = Coluna E)
          sheet.getRange(i + 1, 5).setValue(body.avatar);
        } catch(e) {
          throw new Error("Imagem muito grande para a planilha.");
@@ -365,6 +382,88 @@ function updateAvatar(body, userEmail) {
   }
   throw new Error("Usuário não encontrado.");
 }
+
+// ============================================================================
+// INTEGRAÇÃO COM ASAAS
+// ============================================================================
+
+function createAsaasCharge(userEmail) {
+  if (ASAAS_API_KEY.includes('$aact_') === false) {
+    throw new Error("API Key do Asaas não configurada no script.");
+  }
+
+  // 1. Busca dados do usuário na planilha para criar cliente no Asaas
+  const userProfile = getUserProfile(Utilities.base64Encode(userEmail));
+  
+  if (!userProfile.cpf) throw new Error("CPF é obrigatório para gerar cobrança.");
+  if (!userProfile.phone) throw new Error("Telefone é obrigatório para gerar cobrança.");
+
+  // 2. Criar ou Buscar Cliente no Asaas
+  // Para simplificar, vamos criar direto. Se já existir com o mesmo CPF, o Asaas costuma lidar ou duplicar,
+  // O ideal seria buscar primeiro, mas vamos ao MVP.
+  const customerPayload = {
+    name: userProfile.name,
+    cpfCnpj: userProfile.cpf.replace(/\D/g, ''),
+    email: userProfile.email,
+    mobilePhone: userProfile.phone.replace(/\D/g, '')
+  };
+
+  const customerOptions = {
+    method: 'post',
+    headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+    payload: JSON.stringify(customerPayload)
+  };
+  
+  let customerId = '';
+  try {
+     // Primeiro tentamos buscar pelo email
+     const searchRes = UrlFetchApp.fetch(ASAAS_URL + '/customers?email=' + userProfile.email, {
+       method: 'get',
+       headers: { 'access_token': ASAAS_API_KEY }
+     });
+     const searchData = JSON.parse(searchRes.getContentText());
+     
+     if (searchData.data && searchData.data.length > 0) {
+       customerId = searchData.data[0].id;
+     } else {
+       // Cria novo
+       const createRes = UrlFetchApp.fetch(ASAAS_URL + '/customers', customerOptions);
+       const createData = JSON.parse(createRes.getContentText());
+       customerId = createData.id;
+     }
+  } catch (e) {
+     throw new Error("Erro ao criar cliente no Asaas: " + e.toString());
+  }
+
+  // 3. Criar Cobrança de R$ 50,00
+  const paymentPayload = {
+    customer: customerId,
+    billingType: "UNDEFINED", // Permite cliente escolher PIX ou Boleto
+    value: 50.00,
+    dueDate: new Date().toISOString().split('T')[0], // Vence hoje
+    description: "Mensalidade FinDash - Acesso ao Sistema"
+  };
+
+  const paymentOptions = {
+    method: 'post',
+    headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+    payload: JSON.stringify(paymentPayload)
+  };
+
+  try {
+    const paymentRes = UrlFetchApp.fetch(ASAAS_URL + '/payments', paymentOptions);
+    const paymentData = JSON.parse(paymentRes.getContentText());
+    
+    return {
+      success: true,
+      paymentUrl: paymentData.invoiceUrl || paymentData.bankSlipUrl || "Erro ao gerar link",
+      message: "Cobrança gerada com sucesso!"
+    };
+  } catch(e) {
+    throw new Error("Erro ao gerar cobrança no Asaas: " + e.toString());
+  }
+}
+
 
 // ============================================================================
 // UTILITÁRIOS
