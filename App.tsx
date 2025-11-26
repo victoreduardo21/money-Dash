@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -9,7 +8,7 @@ import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User, Page, Theme, TransactionType } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme } from './types';
 import { api } from './services/api';
 
 const App: React.FC = () => {
@@ -30,55 +29,7 @@ const App: React.FC = () => {
   const [cdiRate, setCdiRate] = useState(0);
 
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<PersonalTransaction | null>(null);
-
-  // Fetch initial data when user logs in (has token)
-  useEffect(() => {
-    if (token) {
-        const loadData = async () => {
-            try {
-                const txs = await api.getTransactions(token);
-                if (txs && !txs.error) {
-                    setTransactions(txs);
-                } else {
-                    console.error("Erro ao carregar transações", txs);
-                }
-
-                const invs = await api.getInvestments(token);
-                if (invs && !invs.error) {
-                    setInvestments(invs);
-                } else {
-                    console.error("Erro ao carregar investimentos", invs);
-                }
-            } catch (error) {
-                console.error("Erro de conexão ao carregar dados", error);
-            }
-        };
-        loadData();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    // Fetch real-time CDI rate
-    const fetchCdiRate = async () => {
-      try {
-        const response = await fetch('https://brasilapi.com.br/api/taxas/v1/cdi');
-        const data = await response.json();
-        if (data && data.valor) {
-            setCdiRate(data.valor);
-        } else {
-            console.error("Failed to fetch CDI rate, using fallback.");
-            setCdiRate(10.50); // Fallback
-        }
-      } catch (error) {
-        console.error("Error fetching CDI rate:", error);
-        setCdiRate(10.50); // Fallback on error
-      }
-    };
-    if (currentUser) {
-        fetchCdiRate();
-    }
-  }, [currentUser]);
+  const [editingTransaction, setEditingTransaction] = useState<PersonalTransaction | null>(null);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -88,217 +39,182 @@ const App: React.FC = () => {
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
-  
+
+  useEffect(() => {
+    if (token) {
+        const fetchData = async () => {
+             const txs = await api.getTransactions(token);
+             if (Array.isArray(txs)) setTransactions(txs);
+             
+             const invs = await api.getInvestments(token);
+             if (Array.isArray(invs)) setInvestments(invs);
+        };
+        fetchData();
+    }
+  }, [token]);
+
   const handleLogin = (user: User, authToken: string) => {
-      setCurrentUser(user);
-      setToken(authToken);
-      localStorage.setItem('auth_token', authToken);
-      localStorage.setItem('user_data', JSON.stringify(user));
+    setCurrentUser(user);
+    setToken(authToken);
+    localStorage.setItem('user_data', JSON.stringify(user));
+    localStorage.setItem('auth_token', authToken);
   };
 
   const handleLogout = () => {
-      setCurrentUser(null);
-      setToken(null);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
-      setTransactions([]);
-      setInvestments([]);
-      setActivePage('Dashboard');
-  };
-
-  const handlePasswordUpdate = async (currentPassword: string, newPassword: string) => {
-    if (!token) return;
-    try {
-        const result = await api.updatePassword({ currentPassword, newPassword }, token);
-        if (result.error) {
-            alert(result.message || "Erro ao atualizar senha.");
-        } else {
-            alert("Senha alterada com sucesso!");
-        }
-    } catch (e) {
-        alert("Erro de conexão.");
-    }
-  };
-
-  const handleAvatarUpdate = async (avatar: string) => {
-    if (!currentUser || !token) return;
-
-    try {
-        const result = await api.updateAvatar({ avatar }, token);
-        if (result.error) {
-            alert(result.message || "Erro ao atualizar avatar.");
-        } else {
-            const updatedUser = { ...currentUser, avatar };
-            setCurrentUser(updatedUser);
-            localStorage.setItem('user_data', JSON.stringify(updatedUser));
-        }
-    } catch (e) {
-        alert("Erro de conexão ao atualizar avatar.");
-    }
-  };
-
-  const handleCreateUser = async (newUser: Omit<User, 'id'>): Promise<{success: boolean, message: string}> => {
-    try {
-        const result = await api.createUser(newUser);
-        if (result.error) {
-            return { success: false, message: result.message || 'Erro ao criar usuário.' };
-        }
-        return { success: true, message: 'Usuário criado com sucesso!' };
-    } catch (e) {
-        return { success: false, message: 'Erro de conexão.' };
-    }
-  };
-
-  const handleOpenTransactionModal = (transaction: PersonalTransaction | null) => {
-    setSelectedTransaction(transaction);
-    setIsTransactionModalOpen(true);
+    setCurrentUser(null);
+    setToken(null);
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('auth_token');
+    setTransactions([]);
+    setInvestments([]);
   };
 
   const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
+    if (!token) return;
+    
     if (transaction.id) {
-        // Edit (Not fully supported by backend MVP yet, updating locally)
-        setTransactions(transactions.map(t => t.id === transaction.id ? { ...t, ...transaction } as PersonalTransaction : t));
-        alert("Nota: A edição está salva apenas localmente nesta versão.");
+         const txId = transaction.id;
+         setTransactions(prev => prev.map(t => t.id === txId ? { ...transaction, id: txId } as PersonalTransaction : t));
     } else {
-        // Add
-        if (token) {
-            try {
-                await api.createTransaction(transaction as PersonalTransaction, token);
-                // Refresh list
-                const txs = await api.getTransactions(token);
-                if (!txs.error) setTransactions(txs);
-            } catch (e) {
-                alert("Erro ao salvar transação no servidor.");
-            }
-        }
+        await api.createTransaction(transaction, token);
+        const txs = await api.getTransactions(token);
+        setTransactions(txs);
     }
     setIsTransactionModalOpen(false);
+    setEditingTransaction(null);
   };
 
   const handleDeleteTransaction = (id: string) => {
-      if(window.confirm("Tem certeza que deseja excluir esta transação? (Apenas localmente nesta versão)")) {
-          setTransactions(transactions.filter(t => t.id !== id));
-      }
+     if (window.confirm("A exclusão não está implementada no backend (Google Sheets) neste exemplo. Remover apenas visualmente?")) {
+         setTransactions(prev => prev.filter(t => t.id !== id));
+     }
   };
 
   const handleSaveInvestment = async (investment: Omit<Investment, 'id'> & { id?: string }) => {
-    if (investment.id) {
-        // Edit
-        setInvestments(investments.map(inv => inv.id === investment.id ? { ...inv, ...investment } as Investment : inv));
-        alert("Nota: A edição está salva apenas localmente nesta versão.");
-    } else {
-        // Add
-        if (token) {
-             try {
-                // The backend automatically creates the expense transaction when creating an investment
-                await api.createInvestment(investment as Investment, token);
-                
-                // Refresh both lists
-                const invs = await api.getInvestments(token);
-                if (!invs.error) setInvestments(invs);
-
-                const txs = await api.getTransactions(token);
-                if (!txs.error) setTransactions(txs);
-
-            } catch (e) {
-                alert("Erro ao salvar investimento no servidor.");
-            }
-        }
-    }
+      if (!token) return;
+      if (investment.id) {
+          const invId = investment.id;
+          setInvestments(prev => prev.map(i => i.id === invId ? { ...investment, id: invId } as Investment : i));
+      } else {
+          await api.createInvestment(investment, token);
+          const invs = await api.getInvestments(token);
+          setInvestments(invs);
+      }
+  };
+  
+  const handleUpdatePassword = async (current: string, newPass: string) => {
+      if(token) await api.updatePassword({currentPassword: current, newPassword: newPass}, token);
+      alert("Senha atualizada (se as credenciais estavam corretas).");
   };
 
-  if (!currentUser) {
+  const handleUpdateAvatar = async (avatar: string) => {
+      if (token) {
+          await api.updateAvatar({avatar}, token);
+          if (currentUser) {
+              const updatedUser = { ...currentUser, avatar };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('user_data', JSON.stringify(updatedUser));
+          }
+      }
+  };
+
+  const handleCreateUser = async (newUser: Omit<User, 'id'>) => {
+     return await api.createUser(newUser);
+  };
+
+  if (!token) {
       return <LoginPage onLogin={handleLogin} />;
   }
 
-  const renderContent = () => {
-    switch (activePage) {
-      case 'Dashboard':
-        return <Dashboard 
-                    transactions={transactions} 
-                    investments={investments} 
-                    setActivePage={setActivePage}
-                    onEditTransaction={handleOpenTransactionModal}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    onNewTransaction={() => handleOpenTransactionModal(null)}
-                />;
-      case 'Transações':
-        return <Transactions 
-                    transactions={transactions} 
-                    onOpenModal={handleOpenTransactionModal}
-                    onDeleteTransaction={handleDeleteTransaction}
-                />;
-      case 'Investimentos':
-        return <Investments 
-                    investments={investments} 
-                    setInvestments={setInvestments}
-                    cdiRate={cdiRate}
-                    onSaveInvestment={handleSaveInvestment}
-                />;
-      case 'Configurações':
-        return <Settings 
-                    theme={theme} 
-                    setTheme={setTheme} 
-                    currentUser={currentUser}
-                    onUpdatePassword={handlePasswordUpdate}
-                    onUpdateAvatar={handleAvatarUpdate}
-                    onCreateUser={handleCreateUser}
-                />;
-      default:
-        return <Dashboard 
-                    transactions={transactions} 
-                    investments={investments} 
-                    setActivePage={setActivePage}
-                    onEditTransaction={handleOpenTransactionModal}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    onNewTransaction={() => handleOpenTransactionModal(null)}
-                />;
-    }
-  };
-
   return (
-    <>
-    <TransactionModal 
-        isOpen={isTransactionModalOpen}
-        onClose={() => setIsTransactionModalOpen(false)}
-        onSave={handleSaveTransaction}
-        transaction={selectedTransaction}
-    />
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans`}>
+       {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       <Sidebar 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
-        activePage={activePage}
-        setActivePage={setActivePage}
+        activePage={activePage} 
+        setActivePage={setActivePage} 
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
             onLogout={handleLogout} 
-            onNewTransaction={() => handleOpenTransactionModal(null)} 
+            onNewTransaction={() => {
+                setEditingTransaction(null);
+                setIsTransactionModalOpen(true);
+            }}
             currentUser={currentUser}
             setActivePage={setActivePage}
         >
-            <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden text-gray-500 dark:text-gray-300 focus:outline-none"
+             <button
+              className="md:hidden mr-4 text-gray-500 focus:outline-none"
+              onClick={() => setIsSidebarOpen(true)}
             >
-                <MenuIcon className="h-6 w-6" />
+              <MenuIcon className="h-6 w-6" />
             </button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-800 flex flex-col">
-          <div className="container mx-auto px-6 py-8">
-            {renderContent()}
-          </div>
-          <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-            <p>&copy; 2024 GTS - Global Tech Software</p>
-            <p>Todos os direitos reservados</p>
-          </footer>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+            {activePage === 'Dashboard' && (
+                <Dashboard 
+                    transactions={transactions} 
+                    investments={investments}
+                    setActivePage={setActivePage}
+                    onEditTransaction={(t) => {
+                        setEditingTransaction(t);
+                        setIsTransactionModalOpen(true);
+                    }}
+                    onDeleteTransaction={handleDeleteTransaction}
+                    onNewTransaction={() => {
+                        setEditingTransaction(null);
+                        setIsTransactionModalOpen(true);
+                    }}
+                />
+            )}
+            {activePage === 'Transações' && (
+                <Transactions 
+                    transactions={transactions}
+                    onOpenModal={(t) => {
+                        setEditingTransaction(t);
+                        setIsTransactionModalOpen(true);
+                    }}
+                    onDeleteTransaction={handleDeleteTransaction}
+                />
+            )}
+            {activePage === 'Investimentos' && (
+                <Investments 
+                    investments={investments}
+                    setInvestments={setInvestments}
+                    cdiRate={cdiRate}
+                    onSaveInvestment={handleSaveInvestment}
+                />
+            )}
+            {activePage === 'Configurações' && currentUser && (
+                <Settings 
+                    theme={theme} 
+                    setTheme={setTheme}
+                    currentUser={currentUser}
+                    onUpdatePassword={handleUpdatePassword}
+                    onUpdateAvatar={handleUpdateAvatar}
+                    onCreateUser={handleCreateUser}
+                />
+            )}
         </main>
       </div>
+
+      <TransactionModal
+        isOpen={isTransactionModalOpen}
+        onClose={() => setIsTransactionModalOpen(false)}
+        onSave={handleSaveTransaction}
+        transaction={editingTransaction}
+      />
     </div>
-    </>
   );
 };
 

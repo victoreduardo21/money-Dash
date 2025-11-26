@@ -52,14 +52,58 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Função para redimensionar e comprimir a imagem
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 200; // Reduz para 200px para caber na planilha
+                const MAX_HEIGHT = 200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Converte para JPEG com qualidade 0.7 para reduzir o tamanho da string Base64
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            onUpdateAvatar(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+        try {
+            const compressedBase64 = await compressImage(file);
+            onUpdateAvatar(compressedBase64);
+        } catch (error) {
+            console.error("Erro ao processar imagem", error);
+            alert("Erro ao processar a imagem. Tente uma imagem menor.");
+        }
     }
   };
 
@@ -98,7 +142,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                     <img 
                         src={currentUser.avatar || `https://i.pravatar.cc/150?u=${currentUser.email}`} 
                         alt="Avatar"
-                        className="h-24 w-24 rounded-full object-cover"
+                        className="h-24 w-24 rounded-full object-cover bg-gray-200"
                     />
                     <button 
                         onClick={handleAvatarClick}
