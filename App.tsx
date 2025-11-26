@@ -11,6 +11,7 @@ import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { PersonalTransaction, Investment, User, Page, Theme } from './types';
 import { api } from './services/api';
+import WhatsAppButton from './components/WhatsAppButton';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -31,6 +32,9 @@ const App: React.FC = () => {
 
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<PersonalTransaction | null>(null);
+
+  // Email do Admin para isenção de regras
+  const ADMIN_EMAIL = 'eduardopontesdias@outlook.com';
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -158,13 +162,20 @@ const App: React.FC = () => {
   };
 
   if (!token) {
-      return <LoginPage onLogin={handleLogin} />;
+      return (
+          <>
+            <LoginPage onLogin={handleLogin} />
+            <WhatsAppButton />
+          </>
+      );
   }
+
+  const showSubscriptionBanner = currentUser?.subscriptionStatus === 'PENDING' && currentUser?.email !== ADMIN_EMAIL;
 
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans`}>
-       {/* WARNING BANNER FOR PENDING SUBSCRIPTION */}
-       {currentUser?.subscriptionStatus === 'PENDING' && (
+       {/* WARNING BANNER FOR PENDING SUBSCRIPTION - HIDDEN FOR ADMIN */}
+       {showSubscriptionBanner && (
            <div className="fixed top-0 left-0 right-0 bg-red-600 text-white z-50 px-4 py-2 text-center text-sm font-bold shadow-lg flex justify-center items-center">
                <span>⚠️ Sua assinatura está pendente. O acesso pode ser bloqueado em breve.</span>
                <button 
@@ -190,7 +201,7 @@ const App: React.FC = () => {
         setActivePage={setActivePage} 
       />
 
-      <div className={`flex-1 flex flex-col overflow-hidden ${currentUser?.subscriptionStatus === 'PENDING' ? 'pt-10' : ''}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden ${showSubscriptionBanner ? 'pt-10' : ''}`}>
         <Header 
             onLogout={handleLogout} 
             onNewTransaction={() => {
@@ -208,7 +219,7 @@ const App: React.FC = () => {
             </button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6 relative">
             {activePage === 'Dashboard' && (
                 <Dashboard 
                     transactions={transactions} 
@@ -263,6 +274,9 @@ const App: React.FC = () => {
         onSave={handleSaveTransaction}
         transaction={editingTransaction}
       />
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppButton />
     </div>
   );
 };

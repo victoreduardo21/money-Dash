@@ -9,6 +9,7 @@ import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import CreateUserModal from '../components/CreateUserModal';
 import { api } from '../services/api';
+import { WhatsAppIcon } from '../components/icons/WhatsAppIcon';
 
 // ============================================================================
 // CONFIGURAÇÃO DE ADMIN
@@ -55,7 +56,6 @@ const ThemeToggle: React.FC<{ theme: Theme; setTheme: (theme: Theme) => void; }>
 const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpdatePassword, onUpdateAvatar, onCreateUser }) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
-  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State para lista de clientes (apenas Admin)
@@ -137,26 +137,11 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
     }
   };
 
-  const handleGeneratePayment = async () => {
-    if (!currentUser.cpf || !currentUser.phone) {
-        alert("Para gerar a cobrança, precisamos do seu CPF e Telefone. Por favor, atualize o Admin.");
-        return;
-    }
-
-    setIsPaymentLoading(true);
-    const token = btoa(currentUser.email);
-    const response = await api.createSubscriptionCharge(token);
-    setIsPaymentLoading(false);
-
-    if (response.success) {
-        if (window.confirm("Link de pagamento gerado! Deseja abrir agora?")) {
-            window.open(response.paymentUrl, '_blank');
-        } else {
-            alert(`Link para pagamento: ${response.paymentUrl}`);
-        }
-    } else {
-        alert("Erro ao gerar pagamento: " + (response.message || "Tente novamente."));
-    }
+  const handleRequestPaymentLink = () => {
+      // Redireciona para o WhatsApp
+      const message = `Olá, gostaria de realizar o pagamento da mensalidade do FinDash. Meu email é: ${currentUser.email}`;
+      const url = `https://wa.me/5513996104848?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
   };
 
   const handleExport = () => {
@@ -262,11 +247,11 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                     <div>
                         {currentUser.subscriptionStatus !== 'ACTIVE' ? (
                             <button 
-                                onClick={handleGeneratePayment}
-                                disabled={isPaymentLoading}
-                                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-bold shadow-md disabled:bg-gray-400"
+                                onClick={handleRequestPaymentLink}
+                                className="bg-[#25D366] text-white px-6 py-3 rounded-lg hover:bg-[#128C7E] transition-colors font-bold shadow-md flex items-center"
                             >
-                                {isPaymentLoading ? 'Gerando...' : 'Pagar Agora (Pix/Boleto)'}
+                                <WhatsAppIcon className="h-5 w-5 mr-2 text-white" />
+                                Solicitar Link de Pagamento
                             </button>
                         ) : (
                             <button disabled className="bg-gray-100 text-green-600 px-6 py-3 rounded-lg font-bold border border-green-200 cursor-default">
