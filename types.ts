@@ -29,4 +29,6 @@ export interface User {
   email: string;
   password?: string;
   avatar?: string; // base64 encoded image
+  phone?: string;
+  cpf?: string;
 }

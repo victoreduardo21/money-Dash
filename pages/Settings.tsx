@@ -1,11 +1,19 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Theme, User } from '../types';
 import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
 import { CameraIcon } from '../components/icons/CameraIcon';
+import { UsersIcon } from '../components/icons/UsersIcon';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import CreateUserModal from '../components/CreateUserModal';
+import { api } from '../services/api';
+
+// ============================================================================
+// CONFIGURAÇÃO DE ADMIN
+// Substitua pelo seu email real de login para ter acesso ao painel de gerenciamento
+// ============================================================================
+const ADMIN_EMAIL = 'eduardopontesdias@outlook.com'; 
 
 interface SettingsProps {
     theme: Theme;
@@ -47,6 +55,26 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // State para lista de clientes (apenas Admin)
+  const [clients, setClients] = useState<User[]>([]);
+  const isAdmin = currentUser.email === ADMIN_EMAIL;
+
+  useEffect(() => {
+      // Se for admin, busca a lista de todos os usuários
+      if (isAdmin) {
+          const fetchUsers = async () => {
+              // Como a API espera um token, passamos um token fake ou o email base64 se já tivermos
+              // No setup atual, o token é o email base64. 
+              const token = btoa(currentUser.email);
+              const users = await api.getAllUsers(token);
+              if (Array.isArray(users)) {
+                  setClients(users);
+              }
+          };
+          fetchUsers();
+      }
+  }, [isAdmin, currentUser.email]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -162,12 +190,22 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                 <div className="flex-grow w-full">
                     <div className="space-y-4">
                       <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
-                          <input type="text" id="name" value={currentUser.name} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome</label>
+                          <input type="text" value={currentUser.name} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                              <input type="email" value={currentUser.email} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                          </div>
+                          <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
+                              <input type="text" value={currentUser.cpf || 'Não informado'} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                          </div>
                       </div>
                       <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                          <input type="email" id="email" value={currentUser.email} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                          <input type="text" value={currentUser.phone || 'Não informado'} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                       </div>
                       <button onClick={() => setIsPasswordModalOpen(true)} className="text-sm font-medium text-blue-600 dark:text-blue-500 hover:underline">Alterar Senha</button>
                     </div>
@@ -175,17 +213,59 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
             </div>
           </div>
 
-          {/* User Management Section */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h4 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">Gerenciamento de Usuários</h4>
-              <div className="flex items-center justify-between">
-                  <div>
-                      <p className="font-medium text-gray-700 dark:text-gray-300">Adicionar Usuário</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Crie novas contas de usuário para o sistema.</p>
-                  </div>
-                  <button onClick={() => setIsCreateUserModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Criar Novo Usuário</button>
-              </div>
-          </div>
+          {/* User Management Section - ONLY VISIBLE TO ADMIN */}
+          {isAdmin && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-2 border-blue-500 dark:border-blue-700">
+                <div className="flex justify-between items-center mb-4 border-b pb-2 border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
+                        <UsersIcon className="h-6 w-6 mr-2" />
+                        Painel Administrativo (SaaS)
+                    </h4>
+                </div>
+                
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <p className="font-medium text-gray-700 dark:text-gray-300">Gerenciar Assinantes</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Controle manual de usuários para cobrança (R$ 50/mês).</p>
+                    </div>
+                    <button onClick={() => setIsCreateUserModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                        Adicionar Admin/Teste
+                    </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">CPF</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {clients.map((client, index) => (
+                                <tr key={index}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{client.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.phone || '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{client.cpf || '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-semibold">
+                                        Ativo
+                                    </td>
+                                </tr>
+                            ))}
+                            {clients.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+          )}
 
           {/* Appearance Section */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">

@@ -13,6 +13,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [cpf, setCpf] = useState('');
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,8 +43,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 setIsLoading(false);
                 return;
             }
+            if (!name || !email || !password || !phone || !cpf) {
+                setError("Por favor, preencha todos os campos.");
+                setIsLoading(false);
+                return;
+            }
 
-            const createResponse = await api.createUser({ name, email, password });
+            const createResponse = await api.createUser({ name, email, password, phone, cpf });
             
             if (createResponse.error) {
                 setError(createResponse.message || 'Erro ao criar conta.');
@@ -87,14 +94,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             
             <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
-                {/* Campo Nome (Apenas no Cadastro) */}
+                {/* Campos de Cadastro */}
                 {!isLoginMode && (
+                    <>
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
                         <input id="name" name="name" type="text" required={!isLoginMode}
                             className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                             placeholder="Seu Nome" value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
+                    <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
+                        <input id="phone" name="phone" type="text" required={!isLoginMode}
+                            className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                    <div>
+                         <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF</label>
+                         <input id="cpf" name="cpf" type="text" required={!isLoginMode}
+                             className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                             placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(e.target.value)} />
+                    </div>
+                    </>
                 )}
 
                 <div>

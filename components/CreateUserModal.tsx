@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { XIcon } from './icons/XIcon';
@@ -12,6 +13,9 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCr
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [phone, setPhone] = useState('');
+    const [cpf, setCpf] = useState('');
+    
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -20,6 +24,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCr
             setName('');
             setEmail('');
             setPassword('');
+            setPhone('');
+            setCpf('');
             setError('');
             setIsLoading(false);
         }
@@ -35,7 +41,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCr
         }
 
         setIsLoading(true);
-        const result = await onCreate({ name, email, password });
+        const result = await onCreate({ name, email, password, phone, cpf });
         setIsLoading(false);
 
         if (result.success) {
@@ -66,6 +72,20 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCr
                                 className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
                             <input type="text" id="create-name" value={name}
                                 onChange={e => setName(e.target.value)} required
+                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
+                        </div>
+                        <div>
+                            <label htmlFor="create-phone"
+                                className="block text-sm font-medium text-gray-700 dark:text-gray-300">Telefone</label>
+                            <input type="text" id="create-phone" value={phone}
+                                onChange={e => setPhone(e.target.value)} required placeholder="(00) 00000-0000"
+                                className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
+                        </div>
+                        <div>
+                            <label htmlFor="create-cpf"
+                                className="block text-sm font-medium text-gray-700 dark:text-gray-300">CPF</label>
+                            <input type="text" id="create-cpf" value={cpf}
+                                onChange={e => setCpf(e.target.value)} required placeholder="000.000.000-00"
                                 className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
                         </div>
                         <div>

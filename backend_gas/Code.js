@@ -33,8 +33,11 @@ function doGet(e) {
       data = getTransactions(token);
     } else if (route === 'investments') {
       data = getInvestments(token);
+    } else if (route === 'users') {
+      // Rota para listar usuários (Painel Admin - SaaS)
+      data = getAllUsers();
     } else {
-      return responseJSON([]); // Retorna array vazio em vez de erro para não quebrar o front
+      return responseJSON([]); 
     }
     
     return responseJSON(data);
@@ -48,14 +51,13 @@ function doPost(e) {
   let requestBody = {};
   
   try {
-    // Tentativa robusta de ler o JSON, venha ele como stream ou parameter
+    // Leitura robusta do corpo da requisição
     if (e.postData && e.postData.contents) {
       requestBody = JSON.parse(e.postData.contents);
     } else if (e.postData && e.postData.type === "application/json") {
        requestBody = JSON.parse(e.postData.getDataAsString());
     }
   } catch (err) {
-    // Se falhar o parse, tenta assumir que é texto simples
     requestBody = {};
   }
 
@@ -108,14 +110,16 @@ function loginUser(body) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Comparação frouxa (==) para evitar erros de tipo
+    // Validação de email e senha
     if (String(row[2]).trim() == String(body.email).trim() && String(row[3]).trim() == String(body.password).trim()) { 
       return {
         token: Utilities.base64Encode(body.email),
         user: {
           name: row[1],
           email: row[2],
-          avatar: row[4]
+          avatar: row[4],
+          phone: row[5], // Coluna F
+          cpf: row[6]    // Coluna G
         }
       };
     }
@@ -129,6 +133,7 @@ function createUser(body) {
   
   const rows = sheet.getDataRange().getValues();
   
+  // Verifica se email já existe
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][2]).trim() == String(body.email).trim()) {
       throw new Error("Email já cadastrado.");
@@ -136,14 +141,44 @@ function createUser(body) {
   }
   
   const newId = Utilities.getUuid();
-  // id, name, email, password, avatar
-  sheet.appendRow([newId, body.name, body.email, body.password, ""]);
+  // ORDEM DAS COLUNAS: id, name, email, password, avatar, phone, cpf
+  sheet.appendRow([
+    newId, 
+    body.name, 
+    body.email, 
+    body.password, 
+    "", // Avatar inicia vazio
+    body.phone || "", // Garante string vazia se não vier
+    body.cpf || ""    // Garante string vazia se não vier
+  ]);
   
   return { 
     id: newId, 
     name: body.name, 
     email: body.email 
   };
+}
+
+function getAllUsers() {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  if (!sheet) return [];
+  
+  const rows = sheet.getDataRange().getValues();
+  let users = [];
+  
+  // Pula cabeçalho
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    users.push({
+      id: row[0],
+      name: row[1],
+      email: row[2],
+      // Não enviamos senha nem avatar para a lista leve
+      phone: row[5],
+      cpf: row[6]
+    });
+  }
+  return users;
 }
 
 function getTransactions(encodedEmail) {
@@ -156,7 +191,6 @@ function getTransactions(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Coluna G (index 6) é o email
     if (row[6] === userEmail) {
       transactions.push({
         id: row[0],
@@ -177,7 +211,6 @@ function createTransaction(body, userEmail) {
 
   const newId = "TRX" + new Date().getTime();
   
-  // Limpeza da data
   let dateStr = body.date;
   if(dateStr && dateStr.includes('T')) dateStr = dateStr.split('T')[0];
 
@@ -200,12 +233,10 @@ function deleteTransaction(id, userEmail) {
   
   const rows = sheet.getDataRange().getValues();
   
-  // Começa do 1 para pular cabeçalho
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Verifica ID (col 0) e Email (col 6) para segurança
     if (String(row[0]) == String(id) && row[6] == userEmail) {
-      sheet.deleteRow(i + 1); // deleteRow usa índice baseado em 1
+      sheet.deleteRow(i + 1); 
       return { success: true, message: "Transação excluída." };
     }
   }
@@ -222,7 +253,6 @@ function getInvestments(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Coluna F (index 5) é o email
     if (row[5] === userEmail) {
       investments.push({
         id: row[0],
@@ -251,7 +281,6 @@ function createInvestment(body, userEmail) {
     userEmail
   ]);
   
-  // Cria transação de despesa associada
   createTransaction({
     description: `Aplicação: ${body.name}`,
     amount: body.initialAmount,
@@ -271,7 +300,6 @@ function deleteInvestment(id, userEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Verifica ID (col 0) e Email (col 5)
     if (String(row[0]) == String(id) && row[5] == userEmail) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Investimento excluído." };
@@ -289,7 +317,7 @@ function updatePassword(body, userEmail) {
        if (data[i][3] != body.currentPassword) {
          throw new Error("Senha atual incorreta.");
        }
-       // Coluna D (index 4 na lógica de getRange, mas index 3 no array base-0)
+       // Atualiza a senha (Coluna index 4 na função getRange = Coluna D)
        sheet.getRange(i + 1, 4).setValue(body.newPassword);
        return { message: "Senha alterada com sucesso." };
     }
@@ -303,11 +331,11 @@ function updateAvatar(body, userEmail) {
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][2] == userEmail) {
-       // Coluna E (index 5 no getRange)
        try {
+         // Atualiza avatar (Coluna index 5 na função getRange = Coluna E)
          sheet.getRange(i + 1, 5).setValue(body.avatar);
        } catch(e) {
-         throw new Error("A imagem é muito grande para a planilha. Tente uma menor.");
+         throw new Error("Imagem muito grande para a planilha.");
        }
        return { avatar: body.avatar };
     }
@@ -339,12 +367,9 @@ function getUserEmailFromToken(e, body) {
 
 function decodeToken(token) {
   try {
-    const decodedBytes = Utilities.base64Encode(token); // Errata: na vdd base64Decode. Mas o token já vem encoded do front.
-    // O token é apenas o email em base64.
     const decoded = Utilities.base64Decode(token);
     return Utilities.newBlob(decoded).getDataAsString();
   } catch (e) {
-    // Se der erro no decode, assume que o token já é o email (legado) ou tenta prosseguir
     return token;
   }
 }

@@ -50,6 +50,21 @@ export const api = {
         return postData('users', user);
     },
 
+    // Admin - Listar todos usuários
+    getAllUsers: async (token: string) => {
+        try {
+            const response = await fetch(getUrl('users', token));
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch {
+                return [];
+            }
+        } catch (e) {
+            return [];
+        }
+    },
+
     // Transações
     getTransactions: async (token: string) => {
         try {
