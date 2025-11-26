@@ -70,6 +70,11 @@ export const api = {
         return postData('transactions', payload);
     },
 
+    deleteTransaction: async (id: string, token: string) => {
+        const payload = { id, token };
+        return postData('transactions/delete', payload);
+    },
+
     // Investimentos
     getInvestments: async (token: string) => {
         try {
@@ -88,6 +93,11 @@ export const api = {
     createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => {
         const payload = { ...investment, token };
         return postData('investments', payload);
+    },
+
+    deleteInvestment: async (id: string, token: string) => {
+        const payload = { id, token };
+        return postData('investments/delete', payload);
     },
 
     // Usuário

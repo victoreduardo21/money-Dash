@@ -70,9 +70,15 @@ function doPost(e) {
     } else if (route === 'transactions') {
       const userEmail = getUserEmailFromToken(e, requestBody); 
       data = createTransaction(requestBody, userEmail);
+    } else if (route === 'transactions/delete') {
+      const userEmail = getUserEmailFromToken(e, requestBody);
+      data = deleteTransaction(requestBody.id, userEmail);
     } else if (route === 'investments') {
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = createInvestment(requestBody, userEmail);
+    } else if (route === 'investments/delete') {
+      const userEmail = getUserEmailFromToken(e, requestBody);
+      data = deleteInvestment(requestBody.id, userEmail);
     } else if (route === 'users/me/password') {
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = updatePassword(requestBody, userEmail);
@@ -188,6 +194,24 @@ function createTransaction(body, userEmail) {
   return body;
 }
 
+function deleteTransaction(id, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Transactions');
+  if (!sheet) throw new Error("Aba 'Transactions' não encontrada.");
+  
+  const rows = sheet.getDataRange().getValues();
+  
+  // Começa do 1 para pular cabeçalho
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    // Verifica ID (col 0) e Email (col 6) para segurança
+    if (String(row[0]) == String(id) && row[6] == userEmail) {
+      sheet.deleteRow(i + 1); // deleteRow usa índice baseado em 1
+      return { success: true, message: "Transação excluída." };
+    }
+  }
+  throw new Error("Transação não encontrada ou sem permissão.");
+}
+
 function getInvestments(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Investments');
@@ -237,6 +261,23 @@ function createInvestment(body, userEmail) {
   }, userEmail);
   
   return body;
+}
+
+function deleteInvestment(id, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Investments');
+  if (!sheet) throw new Error("Aba 'Investments' não encontrada.");
+  
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    // Verifica ID (col 0) e Email (col 5)
+    if (String(row[0]) == String(id) && row[5] == userEmail) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: "Investimento excluído." };
+    }
+  }
+  throw new Error("Investimento não encontrado ou sem permissão.");
 }
 
 function updatePassword(body, userEmail) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -84,9 +85,20 @@ const App: React.FC = () => {
     setEditingTransaction(null);
   };
 
-  const handleDeleteTransaction = (id: string) => {
-     if (window.confirm("A exclusão não está implementada no backend (Google Sheets) neste exemplo. Remover apenas visualmente?")) {
+  const handleDeleteTransaction = async (id: string) => {
+     if (!token) return;
+     if (window.confirm("Tem certeza que deseja excluir esta transação permanentemente?")) {
+         // Atualiza UI otimista
          setTransactions(prev => prev.filter(t => t.id !== id));
+         
+         // Chama API
+         const result = await api.deleteTransaction(id, token);
+         if (result.error) {
+             alert(result.message);
+             // Reverte se der erro (opcional, aqui estamos apenas recarregando)
+             const txs = await api.getTransactions(token);
+             setTransactions(txs);
+         }
      }
   };
 
@@ -101,6 +113,20 @@ const App: React.FC = () => {
           setInvestments(invs);
       }
   };
+
+  const handleDeleteInvestment = async (id: string) => {
+      if (!token) return;
+      if (window.confirm("Tem certeza que deseja excluir este investimento permanentemente?")) {
+          setInvestments(prev => prev.filter(i => i.id !== id));
+          
+          const result = await api.deleteInvestment(id, token);
+          if (result.error) {
+              alert(result.message);
+              const invs = await api.getInvestments(token);
+              setInvestments(invs);
+          }
+      }
+  }
   
   const handleUpdatePassword = async (current: string, newPass: string) => {
       if(token) await api.updatePassword({currentPassword: current, newPassword: newPass}, token);
@@ -193,6 +219,7 @@ const App: React.FC = () => {
                     setInvestments={setInvestments}
                     cdiRate={cdiRate}
                     onSaveInvestment={handleSaveInvestment}
+                    onDeleteInvestment={handleDeleteInvestment}
                 />
             )}
             {activePage === 'Configurações' && currentUser && (

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Investment } from '../types';
@@ -12,11 +13,12 @@ interface InvestmentsProps {
     setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
     cdiRate: number; 
     onSaveInvestment: (investment: Omit<Investment, 'id'> & { id?: string }) => void;
+    onDeleteInvestment: (id: string) => void;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
-const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, onSaveInvestment }) => {
+const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, onSaveInvestment, onDeleteInvestment }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
 
@@ -39,12 +41,6 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, 
     const handleSaveInvestment = (investment: Omit<Investment, 'id'> & { id?: string }) => {
         onSaveInvestment(investment);
         setIsModalOpen(false);
-    };
-
-    const handleDeleteInvestment = (id: string) => {
-        if (window.confirm("Tem certeza que deseja excluir este investimento?")) {
-            setInvestments(investments.filter(inv => inv.id !== id));
-        }
     };
     
   return (
@@ -132,7 +128,7 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, 
                             <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                 <EditIcon className="h-5 w-5" />
                             </button>
-                             <button onClick={() => handleDeleteInvestment(inv.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                             <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                 <TrashIcon className="h-5 w-5" />
                             </button>
                         </div>
