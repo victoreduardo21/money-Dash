@@ -33,9 +33,6 @@ const App: React.FC = () => {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<PersonalTransaction | null>(null);
 
-  // Email do Admin para isenção de regras
-  const ADMIN_EMAIL = 'eduardopontesdias@outlook.com';
-
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -170,23 +167,8 @@ const App: React.FC = () => {
       );
   }
 
-  const showSubscriptionBanner = currentUser?.subscriptionStatus === 'PENDING' && currentUser?.email !== ADMIN_EMAIL;
-
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans`}>
-       {/* WARNING BANNER FOR PENDING SUBSCRIPTION - HIDDEN FOR ADMIN */}
-       {showSubscriptionBanner && (
-           <div className="fixed top-0 left-0 right-0 bg-red-600 text-white z-50 px-4 py-2 text-center text-sm font-bold shadow-lg flex justify-center items-center">
-               <span>⚠️ Sua assinatura está pendente. O acesso pode ser bloqueado em breve.</span>
-               <button 
-                  onClick={() => setActivePage('Configurações')}
-                  className="ml-4 bg-white text-red-600 px-3 py-1 rounded-full text-xs hover:bg-gray-100 transition-colors"
-               >
-                   Regularizar (R$ 50,00)
-               </button>
-           </div>
-       )}
-
        {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
@@ -201,7 +183,7 @@ const App: React.FC = () => {
         setActivePage={setActivePage} 
       />
 
-      <div className={`flex-1 flex flex-col overflow-hidden ${showSubscriptionBanner ? 'pt-10' : ''}`}>
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
             onLogout={handleLogout} 
             onNewTransaction={() => {
