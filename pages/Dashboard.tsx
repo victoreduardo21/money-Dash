@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import MetricCard from '../components/MetricCard';
 import TransactionsTable from '../components/TransactionsTable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -20,41 +21,84 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction }) => {
     
+  // Estado para o filtro de mês (Padrão: Mês atual no formato YYYY-MM)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+
   const formatCurrency = (value: number) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
-  const { receitas, despesas, saldo } = useMemo(() => {
+  // 1. SALDO GLOBAL (Sempre considera todo o histórico - Dinheiro em conta)
+  const saldoGlobal = useMemo(() => {
     const receitas = transactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
     const despesas = transactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
-    const saldo = receitas - despesas;
-    return { receitas, despesas, saldo };
+    return receitas - despesas;
   }, [transactions]);
+
+  // 2. FILTRAR TRANSAÇÕES PELO MÊS SELECIONADO
+  const filteredTransactions = useMemo(() => {
+      return transactions.filter(t => t.date.startsWith(selectedMonth));
+  }, [transactions, selectedMonth]);
+
+  // 3. RECEITAS E DESPESAS (Baseado apenas no mês selecionado - Fluxo de Caixa Mensal)
+  const { receitasMensais, despesasMensais } = useMemo(() => {
+    const receitas = filteredTransactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
+    const despesas = filteredTransactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
+    return { receitasMensais: receitas, despesasMensais: despesas };
+  }, [filteredTransactions]);
 
   const totalInvestido = useMemo(() => {
       return investments.reduce((acc, inv) => acc + inv.currentValue, 0);
   }, [investments]);
 
+  // Gráfico: Mostra os dados do ANO correspondente ao mês selecionado
   const monthlyChartData = useMemo(() => {
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const data = months.map(month => ({ name: month, Receitas: 0, Despesas: 0 }));
 
     transactions.forEach(transaction => {
-      // Adding 'T00:00:00' ensures the date is parsed in the local timezone, avoiding off-by-one day errors.
-      const monthIndex = new Date(transaction.date + 'T00:00:00').getMonth();
-      if (transaction.type === TransactionType.Receita) {
-        data[monthIndex].Receitas += transaction.amount;
-      } else {
-        data[monthIndex].Despesas += transaction.amount;
+      const dateParts = transaction.date.split('-'); // YYYY-MM-DD
+      const year = parseInt(dateParts[0]);
+      
+      // Filtra o gráfico apenas para o ANO selecionado no filtro
+      const selectedYear = parseInt(selectedMonth.split('-')[0]);
+
+      if (year === selectedYear) {
+          // Ajuste de fuso horário simples pegando o mês direto da string (01 = Jan, index 0)
+          const monthIndex = parseInt(dateParts[1]) - 1; 
+          
+          if (monthIndex >= 0 && monthIndex < 12) {
+            if (transaction.type === TransactionType.Receita) {
+                data[monthIndex].Receitas += transaction.amount;
+            } else {
+                data[monthIndex].Despesas += transaction.amount;
+            }
+          }
       }
     });
 
     return data;
-  }, [transactions]);
+  }, [transactions, selectedMonth]);
     
   return (
     <div>
-      <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-4">Dashboard Pessoal</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard Pessoal</h3>
+          
+          {/* Componente de Filtro de Mês */}
+          <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <label htmlFor="month-filter" className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Período:
+              </label>
+              <input 
+                  type="month" 
+                  id="month-filter"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5"
+              />
+          </div>
+      </div>
 
       {transactions.length === 0 ? (
         <WelcomeBanner onActionClick={onNewTransaction} />
@@ -63,19 +107,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           {/* Metric Cards */}
           <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              title="Saldo Atual"
-              value={formatCurrency(saldo)}
+              title="Saldo Atual (Global)"
+              value={formatCurrency(saldoGlobal)}
               icon={<DollarSignIcon className="h-8 w-8 text-blue-500" />}
             />
             <MetricCard
               title="Receitas (Mês)"
-              value={formatCurrency(receitas)}
+              value={formatCurrency(receitasMensais)}
               icon={<ArrowUpIcon className="h-8 w-8 text-green-500" />}
+              changeType="increase"
             />
             <MetricCard
               title="Despesas (Mês)"
-              value={formatCurrency(despesas)}
+              value={formatCurrency(despesasMensais)}
               icon={<ArrowDownIcon className="h-8 w-8 text-red-500" />}
+              changeType="decrease"
             />
             <MetricCard
               title="Total Investido"
@@ -87,7 +133,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           {/* Chart */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                <h4 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">Visão Geral Mensal</h4>
+                <h4 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">
+                    Visão Geral de {selectedMonth.split('-')[0]}
+                </h4>
                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
@@ -112,8 +160,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
 
           <div className="mt-8">
             <TransactionsTable 
-                transactions={transactions.slice(0, 5)} 
-                title="Últimas Transações"
+                transactions={filteredTransactions} 
+                title={`Transações de ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}
                 showViewAllLink={true}
                 onViewAll={() => setActivePage('Transações')}
                 onEdit={onEditTransaction}
