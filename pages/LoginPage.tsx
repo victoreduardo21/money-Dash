@@ -8,7 +8,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [isLoginMode, setIsLoginMode] = useState(true); // Toggle entre Login e Cadastro
+  const [isLoginMode, setIsLoginMode] = useState(true);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -76,96 +76,130 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const toggleMode = () => {
       setIsLoginMode(!isLoginMode);
       setError('');
-      // Limpa campos sensíveis ao trocar
       setPassword(''); 
   };
   
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
-            <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-                    Meu<span className="text-blue-500">Fin</span>
+    <div className="flex min-h-screen bg-white font-sans">
+        {/* Lado Esquerdo - Visual/Marketing (Midnight Blue Profundo) */}
+        <div className="hidden md:flex md:w-1/2 bg-[#020617] flex-col justify-center px-12 lg:px-24 relative overflow-hidden">
+            {/* Background Gradient simulando o glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+            
+            <div className="relative z-10 text-white">
+                {/* Logo da Marca */}
+                <div className="mb-8 flex items-center gap-3">
+                    <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-500/20">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <span className="text-2xl font-bold tracking-wide">FinDash</span>
+                </div>
+
+                <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6">
+                    FinDash <br />
+                    Gestão Financeira <br />
+                    <span className="text-blue-500">Pessoal</span>
                 </h1>
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
-                    {isLoginMode ? 'Acesse sua conta para gerenciar suas finanças' : 'Crie sua conta gratuitamente'}
-                </p>
-            </div>
-            
-            <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-                {/* Campos de Cadastro */}
-                {!isLoginMode && (
-                    <>
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome Completo</label>
-                        <input id="name" name="name" type="text" required={!isLoginMode}
-                            className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                            placeholder="Seu Nome" value={name} onChange={(e) => setName(e.target.value)} />
-                    </div>
-                    <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
-                        <input id="phone" name="phone" type="text" required={!isLoginMode}
-                            className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                            placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                    </div>
-                    <div>
-                         <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF</label>
-                         <input id="cpf" name="cpf" type="text" required={!isLoginMode}
-                             className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                             placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(e.target.value)} />
-                    </div>
-                    </>
-                )}
-
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                    <input id="email" name="email" type="email" autoComplete="email" required
-                        className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                        placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div>
-                    <label htmlFor="password"  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
-                    <input id="password" name="password" type="password" autoComplete={isLoginMode ? "current-password" : "new-password"} required
-                        className="appearance-none relative block w-full px-4 py-3 border border-gray-300 dark:border-slate-600 placeholder-gray-500 text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                        placeholder={isLoginMode ? "Sua senha" : "Crie uma senha"} value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-            </div>
-
-            {isLoginMode && (
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                    <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-600 rounded bg-slate-700" />
-                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">Lembrar-me</label>
-                    </div>
-                    <div className="text-sm">
-                    <a href="#" className="font-medium text-blue-500 hover:text-blue-400">Esqueceu sua senha?</a>
-                    </div>
-                </div>
-            )}
-
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-            
-            <button type="submit" disabled={isLoading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-slate-800 disabled:bg-blue-500 disabled:cursor-not-allowed">
-                {isLoading ? 'Processando...' : (isLoginMode ? 'Entrar' : 'Criar Conta')}
-            </button>
-            </form>
-
-            <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {isLoginMode ? "Não tem uma conta?" : "Já tem uma conta?"}{' '}
-                    <button onClick={toggleMode} className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-                        {isLoginMode ? "Cadastre-se" : "Faça Login"}
-                    </button>
+                <p className="text-gray-400 text-lg mb-10 max-w-md leading-relaxed">
+                    Organize suas receitas, despesas e investimentos em um único lugar. 
+                    Tenha clareza sobre seu dinheiro e alcance seus objetivos.
                 </p>
             </div>
         </div>
-      
-      <footer className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>&copy; 2024 GTS - Global Tech Software</p>
-        <p>Todos os direitos reservados</p>
-      </footer>
+
+        {/* Lado Direito - Formulário (Branco Clarinho) */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800">
+            <div className="w-full max-w-md space-y-8">
+                {/* Header Mobile - Visível apenas em telas pequenas */}
+                <div className="md:hidden text-center mb-6">
+                     <h1 className="text-3xl font-extrabold text-[#020617] flex items-center justify-center gap-2">
+                        <span className="text-blue-600">
+                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        </span>
+                        FinDash
+                     </h1>
+                </div>
+
+                <div className="text-left">
+                    <h2 className="text-3xl font-bold text-gray-900">
+                        {isLoginMode ? 'Acesse sua conta' : 'Crie sua conta'}
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-500">
+                        {isLoginMode ? 'Bem-vindo de volta!' : 'Preencha seus dados para começar.'}
+                    </p>
+                </div>
+
+                <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+                    <div className="space-y-4">
+                        {!isLoginMode && (
+                            <>
+                                <div>
+                                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                                    <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Seu Nome"
+                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                </div>
+                                <div>
+                                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                                    <input id="phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="(00) 00000-0000"
+                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                </div>
+                                <div>
+                                    <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+                                    <input id="cpf" type="text" value={cpf} onChange={(e) => setCpf(e.target.value)} required placeholder="000.000.000-00"
+                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                </div>
+                            </>
+                        )}
+
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="exemplo@email.com"
+                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••"
+                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                        </div>
+                    </div>
+
+                    {isLoginMode && (
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center cursor-pointer">
+                                <input id="remember-me" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                                <span className="ml-2 block text-sm text-gray-600">Lembrar-me</span>
+                            </label>
+                            <div className="text-sm">
+                                <a href="#" className="font-medium text-blue-700 hover:text-blue-600">Esqueceu a senha?</a>
+                            </div>
+                        </div>
+                    )}
+
+                    {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+                    <button type="submit" disabled={isLoading}
+                        className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-bold text-white bg-[#020617] hover:bg-[#0f172a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition duration-200 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide">
+                        {isLoading ? 'Carregando...' : (isLoginMode ? 'Entrar' : 'Cadastrar')}
+                    </button>
+
+                    <div className="mt-6 text-center">
+                        <button type="button" onClick={toggleMode} className="text-sm font-bold text-blue-700 hover:text-blue-800 transition-colors">
+                            {isLoginMode ? "Não tem conta? Cadastre-se" : "Já tem uma conta? Faça Login"}
+                        </button>
+                    </div>
+
+                    <div className="mt-8 text-center">
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Protegido por reCAPTCHA e sujeito à Política de Privacidade.<br/>
+                            © 2025 GTS - Global Tech Software.
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
   );
 };

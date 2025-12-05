@@ -168,7 +168,8 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 font-sans`}>
+    // Sidebar Escura (#020617) + Conteúdo Claro (bg-slate-50)
+    <div className="flex h-screen bg-slate-50 font-sans">
        {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
@@ -183,7 +184,7 @@ const App: React.FC = () => {
         setActivePage={setActivePage} 
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
         <Header 
             onLogout={handleLogout} 
             onNewTransaction={() => {
@@ -201,7 +202,7 @@ const App: React.FC = () => {
             </button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6 relative">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 md:p-8 relative">
             {activePage === 'Dashboard' && (
                 <Dashboard 
                     transactions={transactions} 

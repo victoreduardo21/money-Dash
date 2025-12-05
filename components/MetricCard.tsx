@@ -13,22 +13,24 @@ interface MetricCardProps {
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType }) => {
   const isIncrease = changeType === 'increase';
-  const changeColor = isIncrease ? 'text-green-500' : 'text-red-500';
+  const changeColor = isIncrease ? 'text-green-600' : 'text-red-600';
   const ChangeIcon = isIncrease ? ArrowUpIcon : ArrowDownIcon;
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg flex items-center justify-between">
+    // Visual Branco Puro com Sombra e Borda
+    <div className="p-6 bg-white rounded-2xl shadow-xl border border-gray-200 flex items-center justify-between transition-transform duration-300 hover:scale-[1.02]">
       <div className="flex items-center space-x-4">
-        <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full">
+        {/* Fundo do ícone suave para contrastar com o branco */}
+        <div className="p-4 bg-gray-50 border border-gray-100 rounded-2xl shadow-sm">
             {icon}
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
+          <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">{title}</p>
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">{value}</p>
         </div>
       </div>
       {change && changeType && (
-        <div className={`flex items-center text-sm font-semibold ${changeColor}`}>
+        <div className={`flex items-center text-sm font-bold px-2 py-1 rounded-lg ${isIncrease ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             <ChangeIcon className="h-4 w-4 mr-1" />
             <span>{change}</span>
         </div>

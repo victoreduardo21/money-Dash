@@ -82,12 +82,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
     
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard Pessoal</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <h3 className="text-3xl font-bold text-gray-800">Dashboard Pessoal</h3>
           
           {/* Componente de Filtro de Mês */}
-          <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <label htmlFor="month-filter" className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="bg-white p-2 rounded-lg shadow-md border border-gray-200 flex items-center">
+              <label htmlFor="month-filter" className="mr-2 text-sm font-medium text-gray-600">
                   Período:
               </label>
               <input 
@@ -95,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
                   id="month-filter"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5"
+                  className="bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none"
               />
           </div>
       </div>
@@ -104,12 +104,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
         <WelcomeBanner onActionClick={onNewTransaction} />
       ) : (
         <>
-          {/* Metric Cards */}
+          {/* Metric Cards - Agora são brancos com borda sombreada */}
           <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Saldo Atual (Global)"
               value={formatCurrency(saldoGlobal)}
-              icon={<DollarSignIcon className="h-8 w-8 text-blue-500" />}
+              icon={<DollarSignIcon className="h-8 w-8 text-blue-600" />}
             />
             <MetricCard
               title="Receitas (Mês)"
@@ -130,25 +130,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
             />
           </div>
 
-          {/* Chart */}
+          {/* Chart - Forçado Branco com Borda e Sombra */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                <h4 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">
+            <div className="xl:col-span-3 bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
+                <h4 className="text-xl font-bold text-gray-800 mb-6">
                     Visão Geral de {selectedMonth.split('-')[0]}
                 </h4>
                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
-                        <XAxis dataKey="name" stroke="#9CA3AF" />
-                        <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#9CA3AF" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" stroke="#6B7280" />
+                        <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#6B7280" />
                         <Tooltip 
                             formatter={(value: number) => formatCurrency(value)}
                             contentStyle={{
-                                backgroundColor: 'rgba(31, 41, 55, 0.9)', 
-                                border: 'none', 
-                                borderRadius: '0.5rem'
+                                backgroundColor: '#fff', 
+                                border: '1px solid #e5e7eb', 
+                                borderRadius: '0.5rem',
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                             }}
-                            labelStyle={{color: '#F9FAFB'}}
+                            labelStyle={{color: '#374151', fontWeight: 'bold'}}
                         />
                         <Legend />
                         <Bar dataKey="Receitas" fill="#22C55E" name="Receitas" radius={[4, 4, 0, 0]} />
@@ -159,14 +160,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           </div>
 
           <div className="mt-8">
-            <TransactionsTable 
-                transactions={filteredTransactions} 
-                title={`Transações de ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}
-                showViewAllLink={true}
-                onViewAll={() => setActivePage('Transações')}
-                onEdit={onEditTransaction}
-                onDelete={onDeleteTransaction}
-            />
+            {/* Tabela - Forçada Branca com Borda e Sombra */}
+            <div className="rounded-2xl shadow-xl bg-white border border-gray-200 overflow-hidden">
+                <TransactionsTable 
+                    transactions={filteredTransactions} 
+                    title={`Transações de ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}
+                    showViewAllLink={true}
+                    onViewAll={() => setActivePage('Transações')}
+                    onEdit={onEditTransaction}
+                    onDelete={onDeleteTransaction}
+                />
+            </div>
           </div>
         </>
       )}
