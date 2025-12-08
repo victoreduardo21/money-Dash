@@ -17,9 +17,10 @@ interface DashboardProps {
     onEditTransaction: (transaction: PersonalTransaction) => void;
     onDeleteTransaction: (id: string) => void;
     onNewTransaction: () => void;
+    searchQuery: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction, searchQuery }) => {
     
   // Estado para o filtro de mês (Padrão: Mês atual no formato YYYY-MM)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -28,22 +29,40 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
-  // 1. SALDO GLOBAL (Sempre considera todo o histórico - Dinheiro em conta)
+  // 1. SALDO GLOBAL (Mantemos a lógica original aqui para refletir o dinheiro em conta real)
+  // Investimentos saem da conta corrente, então devem subtrair do Saldo, mas não aparecem como Despesa Visual.
   const saldoGlobal = useMemo(() => {
     const receitas = transactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
     const despesas = transactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
     return receitas - despesas;
   }, [transactions]);
 
-  // 2. FILTRAR TRANSAÇÕES PELO MÊS SELECIONADO
+  // 2. FILTRAR TRANSAÇÕES PELO MÊS SELECIONADO E PELA BUSCA
   const filteredTransactions = useMemo(() => {
-      return transactions.filter(t => t.date.startsWith(selectedMonth));
-  }, [transactions, selectedMonth]);
+      const lowerQuery = searchQuery.toLowerCase();
+      return transactions.filter(t => {
+          const matchMonth = t.date.startsWith(selectedMonth);
+          const matchSearch = 
+            t.description.toLowerCase().includes(lowerQuery) ||
+            t.category.toLowerCase().includes(lowerQuery) ||
+            t.type.toLowerCase().includes(lowerQuery) ||
+            t.amount.toString().includes(lowerQuery);
+            
+          return matchMonth && matchSearch;
+      });
+  }, [transactions, selectedMonth, searchQuery]);
 
-  // 3. RECEITAS E DESPESAS (Baseado apenas no mês selecionado - Fluxo de Caixa Mensal)
+  // 3. RECEITAS E DESPESAS (Visual)
+  // Aqui aplicamos a regra: Se a categoria for 'Investimentos', NÃO conta como despesa visual.
   const { receitasMensais, despesasMensais } = useMemo(() => {
-    const receitas = filteredTransactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
-    const despesas = filteredTransactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
+    const receitas = filteredTransactions
+        .filter(t => t.type === TransactionType.Receita)
+        .reduce((acc, t) => acc + t.amount, 0);
+        
+    const despesas = filteredTransactions
+        .filter(t => t.type === TransactionType.Despesa && t.category !== 'Investimentos') // Filtro aplicado
+        .reduce((acc, t) => acc + t.amount, 0);
+        
     return { receitasMensais: receitas, despesasMensais: despesas };
   }, [filteredTransactions]);
 
@@ -64,13 +83,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       const selectedYear = parseInt(selectedMonth.split('-')[0]);
 
       if (year === selectedYear) {
-          // Ajuste de fuso horário simples pegando o mês direto da string (01 = Jan, index 0)
           const monthIndex = parseInt(dateParts[1]) - 1; 
           
           if (monthIndex >= 0 && monthIndex < 12) {
             if (transaction.type === TransactionType.Receita) {
                 data[monthIndex].Receitas += transaction.amount;
-            } else {
+            } else if (transaction.category !== 'Investimentos') { // Filtro aplicado no Gráfico
                 data[monthIndex].Despesas += transaction.amount;
             }
           }
@@ -160,8 +178,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           </div>
 
           <div className="mt-8">
-            {/* Tabela - Forçada Branca com Borda e Sombra */}
-            <div className="rounded-2xl shadow-xl bg-white border border-gray-200 overflow-hidden">
+            {/* Tabela - Forçada Branca com Borda e Sombra. REMOVIDO OVERFLOW-HIDDEN */}
+            <div className="rounded-2xl shadow-xl bg-white border border-gray-200">
                 <TransactionsTable 
                     transactions={filteredTransactions} 
                     title={`Transações de ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}

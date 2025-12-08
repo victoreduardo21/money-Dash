@@ -20,6 +20,9 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<PersonalTransaction[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
+  
+  // Estado para busca global
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load user and token from localStorage if available to persist session on refresh
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -193,6 +196,7 @@ const App: React.FC = () => {
             }}
             currentUser={currentUser}
             setActivePage={setActivePage}
+            onSearch={setSearchQuery}
         >
              <button
               className="md:hidden mr-4 text-gray-500 focus:outline-none"
@@ -217,6 +221,7 @@ const App: React.FC = () => {
                         setEditingTransaction(null);
                         setIsTransactionModalOpen(true);
                     }}
+                    searchQuery={searchQuery}
                 />
             )}
             {activePage === 'Transações' && (
@@ -227,6 +232,7 @@ const App: React.FC = () => {
                         setIsTransactionModalOpen(true);
                     }}
                     onDeleteTransaction={handleDeleteTransaction}
+                    searchQuery={searchQuery}
                 />
             )}
             {activePage === 'Investimentos' && (

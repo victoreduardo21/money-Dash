@@ -8,9 +8,22 @@ interface TransactionsProps {
     transactions: PersonalTransaction[];
     onOpenModal: (transaction: PersonalTransaction | null) => void;
     onDeleteTransaction: (id: string) => void;
+    searchQuery: string;
 }
 
-const Transactions: React.FC<TransactionsProps> = ({ transactions, onOpenModal, onDeleteTransaction }) => {
+const Transactions: React.FC<TransactionsProps> = ({ transactions, onOpenModal, onDeleteTransaction, searchQuery }) => {
+  
+  // Filtragem local
+  const filteredTransactions = transactions.filter(t => {
+      const lowerQuery = searchQuery.toLowerCase();
+      return (
+          t.description.toLowerCase().includes(lowerQuery) ||
+          t.category.toLowerCase().includes(lowerQuery) ||
+          t.type.toLowerCase().includes(lowerQuery) ||
+          t.amount.toString().includes(lowerQuery)
+      );
+  });
+
   return (
     <div>
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
@@ -21,12 +34,11 @@ const Transactions: React.FC<TransactionsProps> = ({ transactions, onOpenModal, 
             </button>
         </div>
         
-        {/* Bloco de filtros removido conforme solicitado */}
-
-        <div className="rounded-2xl shadow-xl bg-white border border-gray-200 overflow-hidden">
+        {/* Container sem overflow-hidden para não cortar o dropdown de ações */}
+        <div className="rounded-2xl shadow-xl bg-white border border-gray-200">
             <TransactionsTable 
-                transactions={transactions} 
-                title="Todas as Transações"
+                transactions={filteredTransactions} 
+                title={searchQuery ? `Resultados para "${searchQuery}"` : "Todas as Transações"}
                 onEdit={onOpenModal}
                 onDelete={onDeleteTransaction}
             />

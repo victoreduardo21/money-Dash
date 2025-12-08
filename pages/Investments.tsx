@@ -131,10 +131,10 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, 
                                 <p className={`text-sm font-medium ${inv.currentValue - inv.initialAmount >= 0 ? 'text-green-500' : 'text-red-500'}`}>{inv.currentValue - inv.initialAmount >= 0 ? '+' : ''}{formatCurrency(inv.currentValue - inv.initialAmount)}</p>
                             </div>
                             <div className="flex space-x-2">
-                                <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); handleOpenModal(inv); }} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
                                     <EditIcon className="h-5 w-5" />
                                 </button>
-                                <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteInvestment(inv.id); }} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
                                     <TrashIcon className="h-5 w-5" />
                                 </button>
                             </div>

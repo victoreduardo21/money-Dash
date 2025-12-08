@@ -16,9 +16,10 @@ interface HeaderProps {
     onNewTransaction: () => void;
     currentUser: User | null;
     setActivePage: (page: Page) => void;
+    onSearch: (query: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, currentUser, setActivePage }) => {
+const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, currentUser, setActivePage, onSearch }) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -57,7 +58,8 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
           <input
             className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-gray-100 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border-transparent focus:border-transparent transition-all"
             type="text"
-            placeholder="Buscar"
+            placeholder="Buscar receitas, despesas..."
+            onChange={(e) => onSearch(e.target.value)}
           />
         </div>
       </div>

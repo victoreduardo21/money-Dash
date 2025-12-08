@@ -30,15 +30,24 @@ const ActionMenu: React.FC<{ transaction: PersonalTransaction; onEdit: any; onDe
 
     return (
         <div className="relative" ref={menuRef}>
-            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors">
+            <button 
+                onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+                className="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
                 <MoreVerticalIcon className="h-5 w-5" />
             </button>
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-                    <button onClick={() => { onEdit(transaction); setIsOpen(false); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onEdit(transaction); setIsOpen(false); }} 
+                        className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
                         <EditIcon className="h-4 w-4 mr-2" /> Editar
                     </button>
-                    <button onClick={() => { onDelete(transaction.id); setIsOpen(false); }} className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onDelete(transaction.id); setIsOpen(false); }} 
+                        className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
                         <TrashIcon className="h-4 w-4 mr-2" /> Excluir
                     </button>
                 </div>
@@ -60,7 +69,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       <div className="p-6 border-b border-gray-100">
         <h4 className="text-xl font-bold text-gray-800">{title}</h4>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[300px]"> {/* min-h adicionado para garantir espaço para o dropdown */}
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100">
             <tr>
@@ -93,7 +102,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                 <td className="px-6 py-4">
                   <TypeBadge type={transaction.type} />
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right overflow-visible">
                    {onEdit && onDelete && <ActionMenu transaction={transaction} onEdit={onEdit} onDelete={onDelete} />}
                 </td>
               </tr>
