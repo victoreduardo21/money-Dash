@@ -5,13 +5,15 @@ import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Investments from './pages/Investments';
+import Agenda from './pages/Agenda';
 import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User, Page, Theme } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent } from './types';
 import { api } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
+import Toast, { ToastMessage } from './components/Toast';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -19,10 +21,14 @@ const App: React.FC = () => {
   
   const [transactions, setTransactions] = useState<PersonalTransaction[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
+  const [tasks, setTasks] = useState<CalendarEvent[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
   
   // Estado para busca global
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Estado para Notificações (Toast)
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // Load user and token from localStorage if available to persist session on refresh
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -55,8 +61,12 @@ const App: React.FC = () => {
              // 2. Atualiza Investimentos
              const invs = await api.getInvestments(token);
              if (Array.isArray(invs)) setInvestments(invs);
+             
+             // 3. Atualiza Agenda (CALENDAR)
+             const userTasks = await api.getCalendarEvents(token);
+             if (Array.isArray(userTasks)) setTasks(userTasks);
 
-             // 3. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF, Tel e Status estejam sincronizados)
+             // 4. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF, Tel e Status estejam sincronizados)
              const userProfile = await api.getMe(token);
              if (userProfile && !userProfile.error) {
                  setCurrentUser(userProfile);
@@ -66,6 +76,10 @@ const App: React.FC = () => {
         fetchData();
     }
   }, [token]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+      setToast({ id: Date.now().toString(), message, type });
+  };
 
   const handleLogin = (user: User, authToken: string) => {
     setCurrentUser(user);
@@ -81,6 +95,7 @@ const App: React.FC = () => {
     localStorage.removeItem('auth_token');
     setTransactions([]);
     setInvestments([]);
+    setTasks([]);
   };
 
   const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
@@ -89,10 +104,12 @@ const App: React.FC = () => {
     if (transaction.id) {
          const txId = transaction.id;
          setTransactions(prev => prev.map(t => t.id === txId ? { ...transaction, id: txId } as PersonalTransaction : t));
+         showToast("Transação atualizada!", "success");
     } else {
         await api.createTransaction(transaction, token);
         const txs = await api.getTransactions(token);
         if (Array.isArray(txs)) setTransactions(txs);
+        showToast("Transação criada com sucesso!", "success");
     }
     setIsTransactionModalOpen(false);
     setEditingTransaction(null);
@@ -103,6 +120,7 @@ const App: React.FC = () => {
      if (window.confirm("Tem certeza que deseja excluir esta transação permanentemente?")) {
          // Atualiza UI otimista
          setTransactions(prev => prev.filter(t => t.id !== id));
+         showToast("Transação removida.", "error");
          
          // Chama API
          const result = await api.deleteTransaction(id, token);
@@ -120,10 +138,12 @@ const App: React.FC = () => {
       if (investment.id) {
           const invId = investment.id;
           setInvestments(prev => prev.map(i => i.id === invId ? { ...investment, id: invId } as Investment : i));
+          showToast("Investimento atualizado!", "success");
       } else {
           await api.createInvestment(investment, token);
           const invs = await api.getInvestments(token);
           if (Array.isArray(invs)) setInvestments(invs);
+          showToast("Investimento adicionado!", "success");
       }
   };
 
@@ -131,6 +151,7 @@ const App: React.FC = () => {
       if (!token) return;
       if (window.confirm("Tem certeza que deseja excluir este investimento permanentemente?")) {
           setInvestments(prev => prev.filter(i => i.id !== id));
+          showToast("Investimento removido.", "error");
           
           const result = await api.deleteInvestment(id, token);
           if (result.error) {
@@ -140,10 +161,49 @@ const App: React.FC = () => {
           }
       }
   }
+
+  // --- AGENDA HANDLERS (CALENDAR) ---
+  const handleAddTask = async (task: Omit<CalendarEvent, 'id'>) => {
+      if (!token) return;
+      // Optimistic update
+      const tempId = 'temp-' + Date.now();
+      setTasks(prev => [...prev, { ...task, id: tempId }]);
+      showToast("Lembrete adicionado à agenda!", "success");
+      
+      const response = await api.createCalendarEvent(task, token);
+      if (!response.error) {
+          const serverTasks = await api.getCalendarEvents(token);
+          if(Array.isArray(serverTasks)) setTasks(serverTasks);
+      }
+  };
+
+  const handleToggleTask = async (id: string, done: boolean) => {
+      if (!token) return;
+      // Atualiza UI Imediatamente
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, done } : t));
+      
+      // Notificação Visual
+      if (done) {
+          showToast("Tarefa concluída! 🎉", "success");
+      } else {
+          showToast("Tarefa reaberta.", "info");
+      }
+
+      await api.toggleCalendarEvent(id, done, token);
+  };
+
+  const handleDeleteTask = async (id: string) => {
+      if (!token) return;
+      if (window.confirm("Excluir lembrete?")) {
+        setTasks(prev => prev.filter(t => t.id !== id));
+        showToast("Lembrete excluído.", "error");
+        await api.deleteCalendarEvent(id, token);
+      }
+  };
   
   const handleUpdatePassword = async (current: string, newPass: string) => {
       if(token) await api.updatePassword({currentPassword: current, newPassword: newPass}, token);
-      alert("Senha atualizada (se as credenciais estavam corretas).");
+      showToast("Senha atualizada com sucesso.", "success");
   };
 
   const handleUpdateAvatar = async (avatar: string) => {
@@ -153,6 +213,7 @@ const App: React.FC = () => {
               const updatedUser = { ...currentUser, avatar };
               setCurrentUser(updatedUser);
               localStorage.setItem('user_data', JSON.stringify(updatedUser));
+              showToast("Foto de perfil atualizada!", "success");
           }
       }
   };
@@ -172,7 +233,10 @@ const App: React.FC = () => {
 
   return (
     // Sidebar Escura (#020617) + Conteúdo Claro (bg-slate-50)
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen bg-slate-50 font-sans relative">
+       {/* Sistema de Notificação (Toast) */}
+       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+
        {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
@@ -233,6 +297,14 @@ const App: React.FC = () => {
                     }}
                     onDeleteTransaction={handleDeleteTransaction}
                     searchQuery={searchQuery}
+                />
+            )}
+            {activePage === 'Agenda' && (
+                <Agenda 
+                    tasks={tasks}
+                    onAddTask={handleAddTask}
+                    onToggleTask={handleToggleTask}
+                    onDeleteTask={handleDeleteTask}
                 />
             )}
             {activePage === 'Investimentos' && (

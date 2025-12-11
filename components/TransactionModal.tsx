@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PersonalTransaction, TransactionType } from '../types';
 import { XIcon } from './icons/XIcon';
@@ -8,6 +9,19 @@ interface TransactionModalProps {
     onSave: (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => void;
     transaction: PersonalTransaction | null;
 }
+
+const CATEGORIES = [
+    "Alimentação",
+    "Moradia",
+    "Transporte",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Salário",
+    "Investimentos",
+    "Serviços",
+    "Outros"
+];
 
 const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, onSave, transaction }) => {
     const [description, setDescription] = useState('');
@@ -74,7 +88,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
                         </div>
                         <div>
                             <label htmlFor="trans-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-                            <input type="text" id="trans-description" value={description} onChange={e => setDescription(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
+                            <input type="text" id="trans-description" value={description} onChange={e => setDescription(e.target.value)} required placeholder="Ex: Mercado, Salário" className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
                         </div>
                         <div>
                             <label htmlFor="trans-amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
@@ -82,7 +96,23 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
                         </div>
                         <div>
                             <label htmlFor="trans-category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
-                            <input type="text" id="trans-category" value={category} onChange={e => setCategory(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    id="trans-category" 
+                                    list="category-suggestions"
+                                    value={category} 
+                                    onChange={e => setCategory(e.target.value)} 
+                                    required 
+                                    placeholder="Selecione ou digite..."
+                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" 
+                                />
+                                <datalist id="category-suggestions">
+                                    {CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat} />
+                                    ))}
+                                </datalist>
+                            </div>
                         </div>
                          <div>
                             <label htmlFor="trans-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data</label>

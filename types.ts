@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Configurações';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Configurações';
 export type Theme = 'light' | 'dark';
 
 export enum TransactionType {
@@ -22,6 +22,13 @@ export interface Investment {
     initialAmount: number;
     currentValue: number;
     yieldRate: number; // Percentage
+}
+
+export interface CalendarEvent {
+    id: string;
+    description: string;
+    date: string;
+    done: boolean;
 }
 
 export interface User {

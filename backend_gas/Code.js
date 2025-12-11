@@ -40,11 +40,11 @@ function doGet(e) {
       data = getTransactions(token);
     } else if (route === 'investments') {
       data = getInvestments(token);
+    } else if (route === 'calendar') { // Alterado de tasks para calendar
+      data = getCalendarEvents(token);
     } else if (route === 'users') {
-      // Rota para listar usuários (Painel Admin - SaaS)
       data = getAllUsers();
     } else if (route === 'users/me') {
-      // Rota para pegar perfil atualizado do usuário logado
       data = getUserProfile(token);
     } else {
       return responseJSON([]); 
@@ -61,7 +61,6 @@ function doPost(e) {
   let requestBody = {};
   
   try {
-    // Leitura robusta do corpo da requisição
     if (e.postData && e.postData.contents) {
       requestBody = JSON.parse(e.postData.contents);
     } else if (e.postData && e.postData.type === "application/json") {
@@ -91,6 +90,15 @@ function doPost(e) {
     } else if (route === 'investments/delete') {
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = deleteInvestment(requestBody.id, userEmail);
+    } else if (route === 'calendar') { // Rota Create Calendar
+      const userEmail = getUserEmailFromToken(e, requestBody);
+      data = createCalendarEvent(requestBody, userEmail);
+    } else if (route === 'calendar/toggle') { // Rota Toggle Calendar
+      const userEmail = getUserEmailFromToken(e, requestBody);
+      data = toggleCalendarEvent(requestBody.id, requestBody.done, userEmail);
+    } else if (route === 'calendar/delete') { // Rota Delete Calendar
+      const userEmail = getUserEmailFromToken(e, requestBody);
+      data = deleteCalendarEvent(requestBody.id, userEmail);
     } else if (route === 'users/me/password') {
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = updatePassword(requestBody, userEmail);
@@ -123,17 +131,16 @@ function loginUser(body) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Validação de email e senha
     if (String(row[2]).trim() == String(body.email).trim() && String(row[3]).trim() == String(body.password).trim()) { 
       return {
         token: Utilities.base64Encode(body.email),
         user: {
           name: row[1],
           email: row[2],
-          avatar: row[4], // Coluna E
-          phone: row[5],  // Coluna F
-          cpf: row[6],    // Coluna G
-          subscriptionStatus: row[7] || 'PENDING' // Coluna H
+          avatar: row[4], 
+          phone: row[5],  
+          cpf: row[6],    
+          subscriptionStatus: row[7] || 'PENDING' 
         }
       };
     }
@@ -168,7 +175,6 @@ function createUser(body) {
   
   const rows = sheet.getDataRange().getValues();
   
-  // Verifica se email já existe
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][2]).trim() == String(body.email).trim()) {
       throw new Error("Email já cadastrado.");
@@ -176,16 +182,14 @@ function createUser(body) {
   }
   
   const newId = Utilities.getUuid();
-  // Status padrão para novos usuários: PENDING
   const initialStatus = 'PENDING';
 
-  // ORDEM DAS COLUNAS: id, name, email, password, avatar, phone, cpf, status
   sheet.appendRow([
     newId, 
     body.name, 
     body.email, 
     body.password, 
-    "", // Avatar
+    "", 
     body.phone || "", 
     body.cpf || "",
     initialStatus
@@ -220,7 +224,6 @@ function getAllUsers() {
   return users;
 }
 
-// ... (Funções getTransactions, createTransaction, deleteTransaction permanecem iguais)
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Transactions');
@@ -283,7 +286,6 @@ function deleteTransaction(id, userEmail) {
   throw new Error("Transação não encontrada ou sem permissão.");
 }
 
-// ... (Funções getInvestments, createInvestment, deleteInvestment permanecem iguais)
 function getInvestments(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Investments');
@@ -349,6 +351,81 @@ function deleteInvestment(id, userEmail) {
   throw new Error("Investimento não encontrado ou sem permissão.");
 }
 
+// === FUNÇÕES DO CALENDÁRIO (ANTIGO TASKS) ===
+
+function getCalendarEvents(encodedEmail) {
+  const userEmail = decodeToken(encodedEmail);
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  if (!sheet) return [];
+  
+  const rows = sheet.getDataRange().getValues();
+  let events = [];
+  
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row[4] === userEmail) {
+      events.push({
+        id: row[0],
+        description: row[1],
+        date: formatDate(row[2]),
+        done: row[3] === true || row[3] === "TRUE"
+      });
+    }
+  }
+  return events;
+}
+
+function createCalendarEvent(body, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  if (!sheet) throw new Error("Aba 'Calendar' não encontrada. Crie uma aba chamada 'Calendar' na planilha.");
+
+  const newId = "CAL" + new Date().getTime(); // Prefixo CAL
+  let dateStr = body.date;
+  if(dateStr && dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+
+  sheet.appendRow([
+    newId,
+    body.description,
+    dateStr,
+    false, // Done
+    userEmail
+  ]);
+  
+  return body;
+}
+
+function toggleCalendarEvent(id, done, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
+  
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[0]) == String(id) && row[4] == userEmail) {
+       sheet.getRange(i + 1, 4).setValue(done);
+       return { success: true };
+    }
+  }
+  throw new Error("Evento não encontrada.");
+}
+
+function deleteCalendarEvent(id, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
+  
+  const rows = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[0]) == String(id) && row[4] == userEmail) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  throw new Error("Evento não encontrada.");
+}
+
 function updatePassword(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
@@ -358,7 +435,6 @@ function updatePassword(body, userEmail) {
        if (data[i][3] != body.currentPassword) {
          throw new Error("Senha atual incorreta.");
        }
-       // Atualiza a senha (Coluna index 4 na função getRange = Coluna D)
        sheet.getRange(i + 1, 4).setValue(body.newPassword);
        return { message: "Senha alterada com sucesso." };
     }
@@ -392,15 +468,11 @@ function createAsaasCharge(userEmail) {
     throw new Error("API Key do Asaas não configurada no script.");
   }
 
-  // 1. Busca dados do usuário na planilha para criar cliente no Asaas
   const userProfile = getUserProfile(Utilities.base64Encode(userEmail));
   
   if (!userProfile.cpf) throw new Error("CPF é obrigatório para gerar cobrança.");
   if (!userProfile.phone) throw new Error("Telefone é obrigatório para gerar cobrança.");
 
-  // 2. Criar ou Buscar Cliente no Asaas
-  // Para simplificar, vamos criar direto. Se já existir com o mesmo CPF, o Asaas costuma lidar ou duplicar,
-  // O ideal seria buscar primeiro, mas vamos ao MVP.
   const customerPayload = {
     name: userProfile.name,
     cpfCnpj: userProfile.cpf.replace(/\D/g, ''),
@@ -416,7 +488,6 @@ function createAsaasCharge(userEmail) {
   
   let customerId = '';
   try {
-     // Primeiro tentamos buscar pelo email
      const searchRes = UrlFetchApp.fetch(ASAAS_URL + '/customers?email=' + userProfile.email, {
        method: 'get',
        headers: { 'access_token': ASAAS_API_KEY }
@@ -426,7 +497,6 @@ function createAsaasCharge(userEmail) {
      if (searchData.data && searchData.data.length > 0) {
        customerId = searchData.data[0].id;
      } else {
-       // Cria novo
        const createRes = UrlFetchApp.fetch(ASAAS_URL + '/customers', customerOptions);
        const createData = JSON.parse(createRes.getContentText());
        customerId = createData.id;
@@ -435,12 +505,11 @@ function createAsaasCharge(userEmail) {
      throw new Error("Erro ao criar cliente no Asaas: " + e.toString());
   }
 
-  // 3. Criar Cobrança de R$ 50,00
   const paymentPayload = {
     customer: customerId,
-    billingType: "UNDEFINED", // Permite cliente escolher PIX ou Boleto
+    billingType: "UNDEFINED", 
     value: 50.00,
-    dueDate: new Date().toISOString().split('T')[0], // Vence hoje
+    dueDate: new Date().toISOString().split('T')[0],
     description: "Mensalidade FinDash - Acesso ao Sistema"
   };
 
@@ -463,7 +532,6 @@ function createAsaasCharge(userEmail) {
     throw new Error("Erro ao gerar cobrança no Asaas: " + e.toString());
   }
 }
-
 
 // ============================================================================
 // UTILITÁRIOS

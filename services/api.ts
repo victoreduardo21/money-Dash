@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent } from '../types';
 
 // URL atualizada e correta (versão /exec)
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WbdPuvqgK32yOyn76CBItcB-d3zmcBcZq70cBwafSZJgqyA61685U1plUtfc4qri/exec';
@@ -134,6 +134,36 @@ export const api = {
     deleteInvestment: async (id: string, token: string) => {
         const payload = { id, token };
         return postData('investments/delete', payload);
+    },
+    
+    // AGENDA (CALENDAR)
+    getCalendarEvents: async (token: string) => {
+        try {
+            const response = await fetch(getUrl('calendar', token));
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch {
+                return [];
+            }
+        } catch (e) {
+            return [];
+        }
+    },
+
+    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => {
+        const payload = { ...event, token };
+        return postData('calendar', payload);
+    },
+
+    toggleCalendarEvent: async (id: string, done: boolean, token: string) => {
+        const payload = { id, done, token };
+        return postData('calendar/toggle', payload);
+    },
+
+    deleteCalendarEvent: async (id: string, token: string) => {
+        const payload = { id, token };
+        return postData('calendar/delete', payload);
     },
 
     // Usuário

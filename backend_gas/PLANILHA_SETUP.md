@@ -44,3 +44,16 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | **D** | `currentValue` | Valor atual |
 | **E** | `yieldRate` | Taxa de rendimento |
 | **F** | `userEmail` | Dono do investimento |
+
+---
+
+### 4. Aba: `Calendar` (Antigo Tasks)
+Crie uma nova aba chamada `Calendar` para a Agenda.
+
+| Coluna | Nome (Cabeçalho) | Descrição |
+| :--- | :--- | :--- |
+| **A** | `id` | ID do evento/tarefa |
+| **B** | `description` | O que fazer |
+| **C** | `date` | Data (YYYY-MM-DD) |
+| **D** | `done` | Concluído (TRUE/FALSE) |
+| **E** | `userEmail` | Dono do evento |

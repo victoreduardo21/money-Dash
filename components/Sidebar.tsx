@@ -5,6 +5,7 @@ import { SettingsIcon } from './icons/SettingsIcon';
 import { XIcon } from './icons/XIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
+import { CalendarIcon } from './icons/CalendarIcon';
 import { Page } from '../types';
 
 
@@ -78,6 +79,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                         Transações
                     </NavLink>
                     <NavLink 
+                        icon={<CalendarIcon className="h-5 w-5" />}
+                        active={activePage === 'Agenda'}
+                        onClick={() => handleNavClick('Agenda')}
+                    >
+                        Agenda
+                    </NavLink>
+                    <NavLink 
                         icon={<TrendingUpIcon className="h-5 w-5" />}
                         active={activePage === 'Investimentos'}
                         onClick={() => handleNavClick('Investimentos')}
@@ -100,11 +108,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                 </nav>
             </div>
 
-            {/* User Info / Footer da Sidebar (Opcional para dar um charme) */}
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 bg-[#020617]">
                 <div className="flex items-center">
                     <div className="ml-3">
-                        <p className="text-xs font-medium text-gray-500">Versão 1.0.0</p>
+                        <p className="text-xs font-medium text-gray-500">Versão 1.1.0</p>
                     </div>
                 </div>
             </div>
