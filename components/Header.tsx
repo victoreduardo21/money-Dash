@@ -67,27 +67,39 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
   return (
     // Header Branco com sombra suave
     <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm border-b border-gray-200 z-10">
-      <div className="flex items-center">
+      <div className="flex items-center flex-1">
         {children}
-        <div className="relative mx-4 lg:mx-0">
+        
+        {/* LOGO MOBILE: Aparece apenas em telas pequenas ao lado do menu */}
+        <div className="flex md:hidden items-center gap-2 ml-3 mr-4">
+             <div className="bg-blue-600 p-1 rounded-md">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+             </div>
+             <span className="text-lg font-bold text-gray-800">FinDash</span>
+        </div>
+
+        <div className="relative mx-4 lg:mx-0 hidden sm:block">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3">
             <SearchIcon className="h-5 w-5 text-gray-400" />
           </span>
           <input
             className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-gray-100 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border-transparent focus:border-transparent transition-all"
             type="text"
-            placeholder="Buscar receitas, despesas..."
+            placeholder="Buscar..."
             onChange={(e) => onSearch(e.target.value)}
           />
         </div>
       </div>
+      
       <div className="flex items-center">
-         <button onClick={onNewTransaction} className="hidden sm:flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors duration-200 text-sm font-medium shadow-md hover:shadow-lg">
+         <button onClick={onNewTransaction} className="hidden lg:flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors duration-200 text-sm font-medium shadow-md hover:shadow-lg">
             <PlusIcon className="h-5 w-5 mr-2" />
             Nova Transação
         </button>
 
-        <div className="relative mx-4" ref={notificationsMenuRef}>
+        <div className="relative mx-2 sm:mx-4" ref={notificationsMenuRef}>
             <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} 
                 className="flex text-gray-500 hover:text-blue-600 transition-colors focus:outline-none relative"
