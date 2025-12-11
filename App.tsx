@@ -273,6 +273,7 @@ const App: React.FC = () => {
             currentUser={currentUser}
             setActivePage={setActivePage}
             onSearch={setSearchQuery}
+            tasks={tasks} 
         >
              <button
               className="md:hidden mr-4 text-gray-500 focus:outline-none"
