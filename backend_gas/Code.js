@@ -40,7 +40,7 @@ function doGet(e) {
       data = getTransactions(token);
     } else if (route === 'investments') {
       data = getInvestments(token);
-    } else if (route === 'calendar') { // Alterado de tasks para calendar
+    } else if (route === 'calendar') { 
       data = getCalendarEvents(token);
     } else if (route === 'users') {
       data = getAllUsers();
@@ -90,13 +90,13 @@ function doPost(e) {
     } else if (route === 'investments/delete') {
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = deleteInvestment(requestBody.id, userEmail);
-    } else if (route === 'calendar') { // Rota Create Calendar
+    } else if (route === 'calendar') { 
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = createCalendarEvent(requestBody, userEmail);
-    } else if (route === 'calendar/toggle') { // Rota Toggle Calendar
+    } else if (route === 'calendar/toggle') { 
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = toggleCalendarEvent(requestBody.id, requestBody.done, userEmail);
-    } else if (route === 'calendar/delete') { // Rota Delete Calendar
+    } else if (route === 'calendar/delete') { 
       const userEmail = getUserEmailFromToken(e, requestBody);
       data = deleteCalendarEvent(requestBody.id, userEmail);
     } else if (route === 'users/me/password') {
@@ -355,7 +355,7 @@ function deleteInvestment(id, userEmail) {
 
 function getCalendarEvents(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
-  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); 
   if (!sheet) return [];
   
   const rows = sheet.getDataRange().getValues();
@@ -376,7 +376,7 @@ function getCalendarEvents(encodedEmail) {
 }
 
 function createCalendarEvent(body, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); 
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada. Crie uma aba chamada 'Calendar' na planilha.");
 
   const newId = "CAL" + new Date().getTime(); // Prefixo CAL
@@ -391,11 +391,17 @@ function createCalendarEvent(body, userEmail) {
     userEmail
   ]);
   
-  return body;
+  // RETORNA O OBJETO COMPLETO COM O ID GERADO
+  return {
+    id: newId,
+    description: body.description,
+    date: dateStr,
+    done: false
+  };
 }
 
 function toggleCalendarEvent(id, done, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  const sheet = getSpreadsheet().getSheetByName('Calendar'); 
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
@@ -411,19 +417,20 @@ function toggleCalendarEvent(id, done, userEmail) {
 }
 
 function deleteCalendarEvent(id, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Calendar'); // Atualizado para Calendar
+  const sheet = getSpreadsheet().getSheetByName('Calendar');
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
+    // row[0] é ID, row[4] é email
     if (String(row[0]) == String(id) && row[4] == userEmail) {
       sheet.deleteRow(i + 1);
-      return { success: true };
+      return { success: true, message: "Evento excluído com sucesso" };
     }
   }
-  throw new Error("Evento não encontrada.");
+  throw new Error("Evento não encontrado ou permissão negada.");
 }
 
 function updatePassword(body, userEmail) {

@@ -165,13 +165,22 @@ const App: React.FC = () => {
   // --- AGENDA HANDLERS (CALENDAR) ---
   const handleAddTask = async (task: Omit<CalendarEvent, 'id'>) => {
       if (!token) return;
-      // Optimistic update
+      // 1. Cria ID temporário para mostrar na tela imediatamente
       const tempId = 'temp-' + Date.now();
-      setTasks(prev => [...prev, { ...task, id: tempId }]);
+      const tempTask = { ...task, id: tempId };
+      
+      // 2. Atualiza UI (Otimista)
+      setTasks(prev => [...prev, tempTask]);
       showToast("Lembrete adicionado à agenda!", "success");
       
+      // 3. Chama o servidor
       const response = await api.createCalendarEvent(task, token);
-      if (!response.error) {
+      
+      if (response && response.id) {
+          // 4. SUCESSO: Troca o ID temporário pelo ID real do banco
+          setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: response.id } : t));
+      } else {
+          // 5. FALHA ou Fallback: Recarrega tudo se algo der errado
           const serverTasks = await api.getCalendarEvents(token);
           if(Array.isArray(serverTasks)) setTasks(serverTasks);
       }
@@ -195,8 +204,11 @@ const App: React.FC = () => {
   const handleDeleteTask = async (id: string) => {
       if (!token) return;
       if (window.confirm("Excluir lembrete?")) {
+        // Atualiza UI Imediatamente (Remove o item)
         setTasks(prev => prev.filter(t => t.id !== id));
         showToast("Lembrete excluído.", "error");
+        
+        // Chama API para deletar
         await api.deleteCalendarEvent(id, token);
       }
   };

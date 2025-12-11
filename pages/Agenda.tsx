@@ -97,10 +97,12 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                     </div>
                                     <button 
                                         onClick={(e) => { 
-                                            e.stopPropagation(); 
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            e.nativeEvent.stopImmediatePropagation();
                                             onDeleteTask(task.id); 
                                         }}
-                                        className="p-2 text-gray-300 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors ml-4"
+                                        className="relative z-10 p-2 text-gray-300 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors ml-4"
                                         title="Excluir"
                                     >
                                         <TrashIcon className="h-5 w-5" />
