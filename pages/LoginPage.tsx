@@ -62,8 +62,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 return;
             }
 
-            // Envia o PLANO selecionado
-            const createResponse = await api.createUser({ name, email, password, phone, cpf, plan: selectedPlan as Plan });
+            // Envia o PLANO selecionado. A tipagem 'as Plan' garante ao TS que a string é válida.
+            const createResponse = await api.createUser({ 
+                name, 
+                email, 
+                password, 
+                phone, 
+                cpf, 
+                plan: selectedPlan as Plan 
+            });
             
             if (createResponse.error) {
                 setError(createResponse.message || 'Erro ao criar conta.');
