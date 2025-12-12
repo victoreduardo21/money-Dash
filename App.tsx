@@ -239,8 +239,13 @@ const App: React.FC = () => {
       }
   };
 
+  // FIXED: Adjusted logic to return { success: boolean, message: string } to match CreateUserModal expectation
   const handleCreateUser = async (newUser: Omit<User, 'id'>) => {
-     return await api.createUser(newUser);
+     const result = await api.createUser(newUser);
+     if (result.error) {
+         return { success: false, message: result.message || 'Erro ao criar usuário' };
+     }
+     return { success: true, message: 'Usuário criado com sucesso' };
   };
 
   if (!token) {

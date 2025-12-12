@@ -62,7 +62,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 return;
             }
 
-            // Envia o PLANO selecionado. A tipagem 'as Plan' garante ao TS que a string é válida.
+            // Envia o PLANO selecionado.
             const createResponse = await api.createUser({ 
                 name, 
                 email, 

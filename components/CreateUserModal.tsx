@@ -41,7 +41,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCr
         }
 
         setIsLoading(true);
-        // CORREÇÃO: Adicionado plan: 'FREE' para satisfazer a interface User
+        // Enviamos 'plan: FREE' para satisfazer a interface User
         const result = await onCreate({ 
             name, 
             email, 
