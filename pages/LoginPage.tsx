@@ -3,12 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { User, Plan } from '../types';
 import { api } from '../services/api';
 
-const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-    </svg>
-);
-
 interface LoginPageProps {
   onLogin: (user: User, token: string) => void;
   onBack: () => void;
@@ -108,14 +102,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
             
             <div className="relative z-10 text-white">
-                <button 
-                    onClick={onBack}
-                    className="absolute top-10 left-0 flex items-center text-gray-400 hover:text-white transition-colors"
-                >
-                    <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                    Voltar para o site
-                </button>
-
                 {/* Logo da Marca */}
                 <div className="mb-8 flex items-center gap-3">
                     <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-500/20">
@@ -152,15 +138,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
         {/* Lado Direito - Formulário (Branco Clarinho) */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800 relative">
             
-            {/* Botão de Voltar Mobile */}
-            <button 
-                onClick={onBack}
-                className="absolute top-6 left-6 md:hidden flex items-center text-gray-500 hover:text-gray-900 transition-colors"
-            >
-                <ArrowLeftIcon className="h-5 w-5 mr-1" />
-                Voltar
-            </button>
-
             <div className="w-full max-w-md space-y-8">
                 {/* Header Mobile - Visível apenas em telas pequenas */}
                 <div className="md:hidden text-center mb-6 mt-8">
