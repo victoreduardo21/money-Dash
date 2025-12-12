@@ -17,6 +17,7 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | **F** | `phone` | Telefone |
 | **G** | `cpf` | CPF |
 | **H** | `status` | Status Assinatura (`PENDING` ou `ACTIVE`) |
+| **I** | `plan` | Plano (`FREE`, `PRO`, `VIP`) |
 
 ---
 

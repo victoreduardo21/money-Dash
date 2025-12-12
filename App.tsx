@@ -8,9 +8,10 @@ import Investments from './pages/Investments';
 import Agenda from './pages/Agenda';
 import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan } from './types';
 import { api } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
@@ -36,6 +37,13 @@ const App: React.FC = () => {
       return savedUser ? JSON.parse(savedUser) : null;
   });
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
+
+  // Estado para controlar se mostra a tela de Login ou a Landing Page
+  const [isLoginScreen, setIsLoginScreen] = useState(false);
+  // Estado para pre-selecionar o modo de registro no login se vier do botão "Criar Conta" da Landing Page
+  const [preSelectRegister, setPreSelectRegister] = useState(false);
+  // Estado para armazenar o plano selecionado na Landing Page
+  const [selectedPlan, setSelectedPlan] = useState<Plan>('FREE');
 
   const [cdiRate, setCdiRate] = useState(0);
 
@@ -96,6 +104,7 @@ const App: React.FC = () => {
     setTransactions([]);
     setInvestments([]);
     setTasks([]);
+    setIsLoginScreen(false); // Volta para a Landing Page ao sair
   };
 
   const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
@@ -235,9 +244,32 @@ const App: React.FC = () => {
   };
 
   if (!token) {
+      if (isLoginScreen) {
+          return (
+            <>
+                <LoginPage 
+                    onLogin={handleLogin} 
+                    onBack={() => setIsLoginScreen(false)} 
+                    initialMode={preSelectRegister ? 'register' : 'login'}
+                    selectedPlan={selectedPlan}
+                />
+                <WhatsAppButton />
+            </>
+          );
+      }
       return (
           <>
-            <LoginPage onLogin={handleLogin} />
+            <LandingPage 
+                onLogin={() => {
+                    setPreSelectRegister(false);
+                    setIsLoginScreen(true);
+                }}
+                onRegister={(plan) => {
+                    if (plan) setSelectedPlan(plan);
+                    setPreSelectRegister(true);
+                    setIsLoginScreen(true);
+                }}
+            />
             <WhatsAppButton />
           </>
       );
@@ -261,6 +293,7 @@ const App: React.FC = () => {
         setIsOpen={setIsSidebarOpen} 
         activePage={activePage} 
         setActivePage={setActivePage} 
+        currentUser={currentUser}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">

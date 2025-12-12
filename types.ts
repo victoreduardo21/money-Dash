@@ -1,6 +1,7 @@
 
 export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Configurações';
 export type Theme = 'light' | 'dark';
+export type Plan = 'FREE' | 'PRO' | 'VIP';
 
 export enum TransactionType {
   Receita = 'Receita',
@@ -39,4 +40,5 @@ export interface User {
   phone?: string;
   cpf?: string;
   subscriptionStatus?: 'ACTIVE' | 'PENDING' | 'OVERDUE';
+  plan: Plan;
 }

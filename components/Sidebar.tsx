@@ -6,7 +6,7 @@ import { XIcon } from './icons/XIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
-import { Page } from '../types';
+import { Page, User } from '../types';
 
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ interface SidebarProps {
     setIsOpen: (isOpen: boolean) => void;
     activePage: Page;
     setActivePage: (page: Page) => void;
+    currentUser: User | null;
 }
 
 const NavLink: React.FC<{ 
@@ -35,10 +36,13 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setActivePage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setActivePage, currentUser }) => {
     // Definindo a cor de fundo fixa para combinar com o Login (#020617)
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-[#020617] border-r border-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
     
+    // Verifica o plano
+    const isFreePlan = currentUser?.plan === 'FREE';
+
     const handleNavClick = (page: Page) => {
         setActivePage(page);
         if (isOpen) {
@@ -57,9 +61,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                         </svg>
                     </div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">
-                        Fin<span className="text-blue-500">Dash</span>
-                    </h1>
+                    <div className="flex flex-col">
+                        <h1 className="text-xl font-bold text-white tracking-tight leading-none">
+                            Fin<span className="text-blue-500">Dash</span>
+                        </h1>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-0.5">
+                            {currentUser?.plan || 'FREE'}
+                        </span>
+                    </div>
                 </div>
                  <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white">
                     <XIcon className="h-6 w-6" />
@@ -85,21 +94,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                     >
                         Transações
                     </NavLink>
-                    <NavLink 
-                        icon={<CalendarIcon className="h-5 w-5" />}
-                        active={activePage === 'Agenda'}
-                        onClick={() => handleNavClick('Agenda')}
-                    >
-                        Agenda
-                    </NavLink>
-                    <NavLink 
-                        icon={<TrendingUpIcon className="h-5 w-5" />}
-                        active={activePage === 'Investimentos'}
-                        onClick={() => handleNavClick('Investimentos')}
-                    >
-                        Investimentos
-                    </NavLink>
+                    
+                    {/* Feature Gating: Agenda e Investimentos só aparecem se NÃO for Free */}
+                    {!isFreePlan && (
+                        <>
+                            <NavLink 
+                                icon={<CalendarIcon className="h-5 w-5" />}
+                                active={activePage === 'Agenda'}
+                                onClick={() => handleNavClick('Agenda')}
+                            >
+                                Agenda
+                            </NavLink>
+                            <NavLink 
+                                icon={<TrendingUpIcon className="h-5 w-5" />}
+                                active={activePage === 'Investimentos'}
+                                onClick={() => handleNavClick('Investimentos')}
+                            >
+                                Investimentos
+                            </NavLink>
+                        </>
+                    )}
                 </nav>
+
+                {/* Upsell box for Free users */}
+                {isFreePlan && (
+                    <div className="mx-4 mt-6 p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700">
+                        <p className="text-xs text-blue-400 font-bold uppercase mb-2">Faça o Upgrade</p>
+                        <p className="text-xs text-gray-400 mb-3">Libere Investimentos e Agenda com o plano PRO.</p>
+                        <button className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-500 transition-colors">
+                            Assinar PRO
+                        </button>
+                    </div>
+                )}
 
                 <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-8 mb-4">
                     Sistema
@@ -118,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 bg-[#020617]">
                 <div className="flex items-center">
                     <div className="ml-3">
-                        <p className="text-xs font-medium text-gray-500">Versão 1.1.0</p>
+                        <p className="text-xs font-medium text-gray-500">Versão 2.0.0</p>
                     </div>
                 </div>
             </div>

@@ -47,6 +47,7 @@ export const api = {
     },
 
     createUser: async (user: Omit<User, 'id'>) => {
+        // Envia o plano junto com os dados do usuário
         return postData('users', user);
     },
 

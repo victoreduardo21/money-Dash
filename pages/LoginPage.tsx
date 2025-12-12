@@ -1,14 +1,23 @@
 
-import React, { useState } from 'react';
-import { User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Plan } from '../types';
 import { api } from '../services/api';
+
+const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+    </svg>
+);
 
 interface LoginPageProps {
   onLogin: (user: User, token: string) => void;
+  onBack: () => void;
+  initialMode?: 'login' | 'register';
+  selectedPlan?: Plan;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [isLoginMode, setIsLoginMode] = useState(true);
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'login', selectedPlan = 'FREE' }) => {
+  const [isLoginMode, setIsLoginMode] = useState(initialMode === 'login');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,6 +27,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+      setIsLoginMode(initialMode === 'login');
+  }, [initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +62,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 return;
             }
 
-            const createResponse = await api.createUser({ name, email, password, phone, cpf });
+            // Envia o PLANO selecionado
+            const createResponse = await api.createUser({ name, email, password, phone, cpf, plan: selectedPlan as Plan });
             
             if (createResponse.error) {
                 setError(createResponse.message || 'Erro ao criar conta.');
@@ -87,6 +101,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
             
             <div className="relative z-10 text-white">
+                <button 
+                    onClick={onBack}
+                    className="absolute top-10 left-0 flex items-center text-gray-400 hover:text-white transition-colors"
+                >
+                    <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                    Voltar para o site
+                </button>
+
                 {/* Logo da Marca */}
                 <div className="mb-8 flex items-center gap-3">
                     <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-500/20">
@@ -106,14 +128,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     Organize suas receitas, despesas e investimentos em um único lugar. 
                     Tenha clareza sobre seu dinheiro e alcance seus objetivos.
                 </p>
+                
+                {/* Mostra o plano selecionado durante o cadastro */}
+                {!isLoginMode && (
+                    <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 inline-block">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Plano Selecionado</p>
+                        <div className="flex items-center gap-2">
+                             <div className={`w-3 h-3 rounded-full ${selectedPlan === 'VIP' ? 'bg-purple-500' : selectedPlan === 'PRO' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+                             <span className="text-xl font-bold">{selectedPlan === 'FREE' ? 'Grátis' : selectedPlan}</span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
 
         {/* Lado Direito - Formulário (Branco Clarinho) */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800">
+        <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800 relative">
+            
+            {/* Botão de Voltar Mobile */}
+            <button 
+                onClick={onBack}
+                className="absolute top-6 left-6 md:hidden flex items-center text-gray-500 hover:text-gray-900 transition-colors"
+            >
+                <ArrowLeftIcon className="h-5 w-5 mr-1" />
+                Voltar
+            </button>
+
             <div className="w-full max-w-md space-y-8">
                 {/* Header Mobile - Visível apenas em telas pequenas */}
-                <div className="md:hidden text-center mb-6">
+                <div className="md:hidden text-center mb-6 mt-8">
                      <h1 className="text-3xl font-extrabold text-[#020617] flex items-center justify-center gap-2">
                         <span className="text-blue-600">
                              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>

@@ -140,7 +140,8 @@ function loginUser(body) {
           avatar: row[4], 
           phone: row[5],  
           cpf: row[6],    
-          subscriptionStatus: row[7] || 'PENDING' 
+          subscriptionStatus: row[7] || 'PENDING',
+          plan: row[8] || 'FREE' // Lê a coluna I (índice 8) para o plano
         }
       };
     }
@@ -162,7 +163,8 @@ function getUserProfile(encodedEmail) {
           avatar: row[4], 
           phone: row[5],  
           cpf: row[6],
-          subscriptionStatus: row[7] || 'PENDING'
+          subscriptionStatus: row[7] || 'PENDING',
+          plan: row[8] || 'FREE'
       };
     }
   }
@@ -183,6 +185,7 @@ function createUser(body) {
   
   const newId = Utilities.getUuid();
   const initialStatus = 'PENDING';
+  const selectedPlan = body.plan || 'FREE'; // Pega o plano ou assume FREE
 
   sheet.appendRow([
     newId, 
@@ -192,14 +195,16 @@ function createUser(body) {
     "", 
     body.phone || "", 
     body.cpf || "",
-    initialStatus
+    initialStatus,
+    selectedPlan // Adiciona na coluna I
   ]);
   
   return { 
     id: newId, 
     name: body.name, 
     email: body.email,
-    subscriptionStatus: initialStatus
+    subscriptionStatus: initialStatus,
+    plan: selectedPlan
   };
 }
 
@@ -218,12 +223,14 @@ function getAllUsers() {
       email: row[2],
       phone: row[5],
       cpf: row[6],
-      subscriptionStatus: row[7] || 'PENDING'
+      subscriptionStatus: row[7] || 'PENDING',
+      plan: row[8] || 'FREE'
     });
   }
   return users;
 }
 
+// ... (Restante das funções de Transações, Investimentos, etc. permanecem iguais)
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Transactions');
@@ -351,8 +358,6 @@ function deleteInvestment(id, userEmail) {
   throw new Error("Investimento não encontrado ou sem permissão.");
 }
 
-// === FUNÇÕES DO CALENDÁRIO (ANTIGO TASKS) ===
-
 function getCalendarEvents(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Calendar'); 
@@ -379,7 +384,7 @@ function createCalendarEvent(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Calendar'); 
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada. Crie uma aba chamada 'Calendar' na planilha.");
 
-  const newId = "CAL" + new Date().getTime(); // Prefixo CAL
+  const newId = "CAL" + new Date().getTime(); 
   let dateStr = body.date;
   if(dateStr && dateStr.includes('T')) dateStr = dateStr.split('T')[0];
 
@@ -387,11 +392,10 @@ function createCalendarEvent(body, userEmail) {
     newId,
     body.description,
     dateStr,
-    false, // Done
+    false, 
     userEmail
   ]);
   
-  // RETORNA O OBJETO COMPLETO COM O ID GERADO
   return {
     id: newId,
     description: body.description,
@@ -424,7 +428,6 @@ function deleteCalendarEvent(id, userEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // row[0] é ID, row[4] é email
     if (String(row[0]) == String(id) && row[4] == userEmail) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Evento excluído com sucesso" };
@@ -465,10 +468,6 @@ function updateAvatar(body, userEmail) {
   }
   throw new Error("Usuário não encontrado.");
 }
-
-// ============================================================================
-// INTEGRAÇÃO COM ASAAS
-// ============================================================================
 
 function createAsaasCharge(userEmail) {
   if (ASAAS_API_KEY.includes('$aact_') === false) {
@@ -539,10 +538,6 @@ function createAsaasCharge(userEmail) {
     throw new Error("Erro ao gerar cobrança no Asaas: " + e.toString());
   }
 }
-
-// ============================================================================
-// UTILITÁRIOS
-// ============================================================================
 
 function responseJSON(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
