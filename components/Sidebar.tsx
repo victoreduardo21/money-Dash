@@ -15,6 +15,7 @@ interface SidebarProps {
     activePage: Page;
     setActivePage: (page: Page) => void;
     currentUser: User | null;
+    onUpgrade?: () => void; // Nova prop opcional para realizar o upgrade
 }
 
 const NavLink: React.FC<{ 
@@ -36,7 +37,7 @@ const NavLink: React.FC<{
   </button>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setActivePage, currentUser }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setActivePage, currentUser, onUpgrade }) => {
     // Definindo a cor de fundo fixa para combinar com o Login (#020617)
     const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-[#020617] border-r border-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
     
@@ -118,10 +119,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
 
                 {/* Upsell box for Free users */}
                 {isFreePlan && (
-                    <div className="mx-4 mt-6 p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700">
+                    <div className="mx-4 mt-6 p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 animate-pulse">
                         <p className="text-xs text-blue-400 font-bold uppercase mb-2">Faça o Upgrade</p>
                         <p className="text-xs text-gray-400 mb-3">Libere Investimentos e Agenda com o plano PRO.</p>
-                        <button className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-500 transition-colors">
+                        <button 
+                            onClick={onUpgrade}
+                            className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20"
+                        >
                             Assinar PRO
                         </button>
                     </div>
@@ -144,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 bg-[#020617]">
                 <div className="flex items-center">
                     <div className="ml-3">
-                        <p className="text-xs font-medium text-gray-500">Versão 2.0.0</p>
+                        <p className="text-xs font-medium text-gray-500">Versão 2.1.0</p>
                     </div>
                 </div>
             </div>

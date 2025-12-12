@@ -60,30 +60,36 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (token) {
+    if (token && currentUser) {
         const fetchData = async () => {
-             // 1. Atualiza Transações
+             // 1. Atualiza Transações (Disponível para todos)
              const txs = await api.getTransactions(token);
              if (Array.isArray(txs)) setTransactions(txs);
              
-             // 2. Atualiza Investimentos
-             const invs = await api.getInvestments(token);
-             if (Array.isArray(invs)) setInvestments(invs);
-             
-             // 3. Atualiza Agenda (CALENDAR)
-             const userTasks = await api.getCalendarEvents(token);
-             if (Array.isArray(userTasks)) setTasks(userTasks);
+             // 2. LÓGICA DE PLANOS: Só busca Investimentos e Agenda se NÃO for FREE
+             if (currentUser.plan !== 'FREE') {
+                 const invs = await api.getInvestments(token);
+                 if (Array.isArray(invs)) setInvestments(invs);
+                 
+                 const userTasks = await api.getCalendarEvents(token);
+                 if (Array.isArray(userTasks)) setTasks(userTasks);
+             } else {
+                 // Se for FREE, garante que os arrays estejam vazios para não mostrar dados antigos
+                 setInvestments([]);
+                 setTasks([]);
+             }
 
              // 4. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF, Tel e Status estejam sincronizados)
              const userProfile = await api.getMe(token);
              if (userProfile && !userProfile.error) {
+                 // Mantém o usuário atualizado
                  setCurrentUser(userProfile);
                  localStorage.setItem('user_data', JSON.stringify(userProfile));
              }
         };
         fetchData();
     }
-  }, [token]);
+  }, [token, currentUser?.plan]); // Adicionado currentUser.plan nas dependências
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
       setToast({ id: Date.now().toString(), message, type });
@@ -105,6 +111,25 @@ const App: React.FC = () => {
     setInvestments([]);
     setTasks([]);
     setIsLoginScreen(false); // Volta para a Landing Page ao sair
+  };
+
+  // --- FUNÇÃO DE UPGRADE DE PLANO ---
+  const handlePlanUpgrade = async () => {
+      if (!token) return;
+      showToast("Gerando link de pagamento seguro...", "info");
+      
+      try {
+          const response = await api.createSubscriptionCharge(token);
+          
+          if (response && response.paymentUrl) {
+              window.open(response.paymentUrl, '_blank');
+              showToast("Link aberto! Conclua o pagamento para liberar o acesso.", "success");
+          } else {
+              showToast("Erro ao gerar link. Tente novamente mais tarde.", "error");
+          }
+      } catch (error) {
+          showToast("Erro de conexão.", "error");
+      }
   };
 
   const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
@@ -135,7 +160,7 @@ const App: React.FC = () => {
          const result = await api.deleteTransaction(id, token);
          if (result.error) {
              alert(result.message);
-             // Reverte se der erro (opcional, aqui estamos apenas recarregando)
+             // Reverte se der erro
              const txs = await api.getTransactions(token);
              if (Array.isArray(txs)) setTransactions(txs);
          }
@@ -144,6 +169,12 @@ const App: React.FC = () => {
 
   const handleSaveInvestment = async (investment: Omit<Investment, 'id'> & { id?: string }) => {
       if (!token) return;
+      // Proteção extra: Bloqueia ação se for Free (caso o usuário tente burlar)
+      if (currentUser?.plan === 'FREE') {
+          showToast("Atualize seu plano para adicionar investimentos!", "error");
+          return;
+      }
+
       if (investment.id) {
           const invId = investment.id;
           setInvestments(prev => prev.map(i => i.id === invId ? { ...investment, id: invId } as Investment : i));
@@ -174,22 +205,23 @@ const App: React.FC = () => {
   // --- AGENDA HANDLERS (CALENDAR) ---
   const handleAddTask = async (task: Omit<CalendarEvent, 'id'>) => {
       if (!token) return;
-      // 1. Cria ID temporário para mostrar na tela imediatamente
+      // Proteção extra
+      if (currentUser?.plan === 'FREE') {
+          showToast("Atualize seu plano para usar a agenda!", "error");
+          return;
+      }
+
       const tempId = 'temp-' + Date.now();
       const tempTask = { ...task, id: tempId };
       
-      // 2. Atualiza UI (Otimista)
       setTasks(prev => [...prev, tempTask]);
       showToast("Lembrete adicionado à agenda!", "success");
       
-      // 3. Chama o servidor
       const response = await api.createCalendarEvent(task, token);
       
       if (response && response.id) {
-          // 4. SUCESSO: Troca o ID temporário pelo ID real do banco
           setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: response.id } : t));
       } else {
-          // 5. FALHA ou Fallback: Recarrega tudo se algo der errado
           const serverTasks = await api.getCalendarEvents(token);
           if(Array.isArray(serverTasks)) setTasks(serverTasks);
       }
@@ -197,10 +229,8 @@ const App: React.FC = () => {
 
   const handleToggleTask = async (id: string, done: boolean) => {
       if (!token) return;
-      // Atualiza UI Imediatamente
       setTasks(prev => prev.map(t => t.id === id ? { ...t, done } : t));
       
-      // Notificação Visual
       if (done) {
           showToast("Tarefa concluída! 🎉", "success");
       } else {
@@ -213,11 +243,8 @@ const App: React.FC = () => {
   const handleDeleteTask = async (id: string) => {
       if (!token) return;
       if (window.confirm("Excluir lembrete?")) {
-        // Atualiza UI Imediatamente (Remove o item)
         setTasks(prev => prev.filter(t => t.id !== id));
         showToast("Lembrete excluído.", "error");
-        
-        // Chama API para deletar
         await api.deleteCalendarEvent(id, token);
       }
   };
@@ -239,7 +266,6 @@ const App: React.FC = () => {
       }
   };
 
-  // FIXED: Adjusted logic to return { success: boolean, message: string } to match CreateUserModal expectation
   const handleCreateUser = async (newUser: Omit<User, 'id'>) => {
      const result = await api.createUser(newUser);
      if (result.error) {
@@ -299,6 +325,7 @@ const App: React.FC = () => {
         activePage={activePage} 
         setActivePage={setActivePage} 
         currentUser={currentUser}
+        onUpgrade={handlePlanUpgrade} // Passando a função de upgrade para a Sidebar
       />
 
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
@@ -387,7 +414,6 @@ const App: React.FC = () => {
         transaction={editingTransaction}
       />
 
-      {/* Floating WhatsApp Button */}
       <WhatsAppButton />
     </div>
   );
