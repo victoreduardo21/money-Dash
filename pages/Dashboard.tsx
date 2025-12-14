@@ -101,11 +101,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-          <h3 className="text-3xl font-bold text-gray-800">Dashboard Pessoal</h3>
+          <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard Pessoal</h3>
           
           {/* Componente de Filtro de Mês */}
-          <div className="bg-white p-2 rounded-lg shadow-md border border-gray-200 flex items-center">
-              <label htmlFor="month-filter" className="mr-2 text-sm font-medium text-gray-600">
+          <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 flex items-center">
+              <label htmlFor="month-filter" className="mr-2 text-sm font-medium text-gray-600 dark:text-gray-300">
                   Período:
               </label>
               <input 
@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
                   id="month-filter"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none"
+                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none"
               />
           </div>
       </div>
@@ -122,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
         <WelcomeBanner onActionClick={onNewTransaction} />
       ) : (
         <>
-          {/* Metric Cards - Agora são brancos com borda sombreada */}
+          {/* Metric Cards - Agora com suporte a modo escuro */}
           <div className="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               title="Saldo Atual (Global)"
@@ -148,28 +148,31 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
             />
           </div>
 
-          {/* Chart - Forçado Branco com Borda e Sombra */}
+          {/* Chart - Suporte a modo escuro */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-3 bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-                <h4 className="text-xl font-bold text-gray-800 mb-6">
+            <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
                     Visão Geral de {selectedMonth.split('-')[0]}
                 </h4>
                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="name" stroke="#6B7280" />
-                        <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#6B7280" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#9CA3AF" opacity={0.3} />
+                        <XAxis dataKey="name" stroke="#9CA3AF" />
+                        <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#9CA3AF" />
                         <Tooltip 
                             formatter={(value: number) => formatCurrency(value)}
+                            // Deixamos o tooltip com fundo branco padrão para contraste, mesmo no dark mode, ou customizamos se necessário
+                            // Para simplicidade, vamos deixar o padrão mas com texto escuro garantido
                             contentStyle={{
                                 backgroundColor: '#fff', 
                                 border: '1px solid #e5e7eb', 
                                 borderRadius: '0.5rem',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                color: '#000'
                             }}
                             labelStyle={{color: '#374151', fontWeight: 'bold'}}
                         />
-                        <Legend />
+                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
                         <Bar dataKey="Receitas" fill="#22C55E" name="Receitas" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="Despesas" fill="#EF4444" name="Despesas" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -178,8 +181,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           </div>
 
           <div className="mt-8">
-            {/* Tabela - Forçada Branca com Borda e Sombra. REMOVIDO OVERFLOW-HIDDEN */}
-            <div className="rounded-2xl shadow-xl bg-white border border-gray-200">
+            {/* Tabela - Suporte a modo escuro */}
+            <div className="rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
                 <TransactionsTable 
                     transactions={filteredTransactions} 
                     title={`Transações de ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}

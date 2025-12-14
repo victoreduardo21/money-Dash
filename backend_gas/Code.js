@@ -105,7 +105,7 @@ function doPost(e) {
     } else if (route === 'users/me/avatar') {
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateAvatar(requestBody, userEmail);
-    } else if (route === 'users/me/plan') { // NOVA ROTA PARA ATUALIZAR PLANO
+    } else if (route === 'users/me/plan') { // NOVA ROTA: ATUALIZAR PLANO
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateUserPlan(requestBody, userEmail);
     } else if (route === 'subscription/pay') {
@@ -131,12 +131,17 @@ function loginUser(body) {
   if (!sheet) throw new Error("Aba 'Users' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
+  // Normaliza o email para minúsculo para garantir o login
+  const targetEmail = String(body.email).trim().toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[2]).trim() == String(body.email).trim() && String(row[3]).trim() == String(body.password).trim()) { 
+    const rowEmail = String(row[2]).trim().toLowerCase();
+    
+    // Compara email (case insensitive) e senha (case sensitive)
+    if (rowEmail == targetEmail && String(row[3]).trim() == String(body.password).trim()) { 
       return {
-        token: Utilities.base64Encode(body.email),
+        token: Utilities.base64Encode(body.email), // O token continua sendo o email original
         user: {
           name: row[1],
           email: row[2],
@@ -156,10 +161,11 @@ function getUserProfile(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Users');
   const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).trim().toLowerCase();
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[2]).trim() == String(userEmail).trim()) {
+    if (String(row[2]).trim().toLowerCase() == targetEmail) {
       return {
           name: row[1],
           email: row[2],
@@ -180,28 +186,25 @@ function createUser(body) {
   
   const rows = sheet.getDataRange().getValues();
   
-  // Normaliza o CPF recebido para remover pontuação, se houver, para comparação
-  const newCpf = body.cpf ? String(body.cpf).trim() : "";
-  const newEmail = String(body.email).trim();
+  // Normaliza os dados para verificação
+  const newEmail = String(body.email).trim().toLowerCase();
+  const newCpf = body.cpf ? String(body.cpf).replace(/\D/g, '') : ""; // Remove tudo que não for número
 
   for (let i = 1; i < rows.length; i++) {
-    const rowEmail = String(rows[i][2]).trim();
-    // Coluna G é o índice 6 (0-based: A=0, B=1, C=2, D=3, E=4, F=5, G=6)
-    const rowCpf = String(rows[i][6]).trim(); 
+    const rowEmail = String(rows[i][2]).trim().toLowerCase();
+    const rowCpf = String(rows[i][6]).replace(/\D/g, ''); // Coluna G é o índice 6
 
-    if (rowEmail == newEmail) {
+    if (rowEmail === newEmail) {
       throw new Error("Email já cadastrado.");
     }
-    
-    // Verifica se CPF já existe (se o CPF foi informado)
-    if (newCpf && rowCpf == newCpf) {
+    if (newCpf !== "" && rowCpf === newCpf) {
       throw new Error("CPF já cadastrado.");
     }
   }
   
   const newId = Utilities.getUuid();
   const initialStatus = 'PENDING';
-  const selectedPlan = body.plan || 'FREE'; // Pega o plano ou assume FREE
+  const selectedPlan = body.plan || 'FREE';
 
   sheet.appendRow([
     newId, 
@@ -257,7 +260,7 @@ function getTransactions(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (row[6] === userEmail) {
+    if (String(row[6]).toLowerCase() === String(userEmail).toLowerCase()) {
       transactions.push({
         id: row[0],
         description: row[1],
@@ -298,10 +301,11 @@ function deleteTransaction(id, userEmail) {
   if (!sheet) throw new Error("Aba 'Transactions' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && row[6] == userEmail) {
+    if (String(row[0]) == String(id) && String(row[6]).toLowerCase() == targetEmail) {
       sheet.deleteRow(i + 1); 
       return { success: true, message: "Transação excluída." };
     }
@@ -319,7 +323,7 @@ function getInvestments(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (row[5] === userEmail) {
+    if (String(row[5]).toLowerCase() === String(userEmail).toLowerCase()) {
       investments.push({
         id: row[0],
         name: row[1],
@@ -363,10 +367,11 @@ function deleteInvestment(id, userEmail) {
   if (!sheet) throw new Error("Aba 'Investments' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && row[5] == userEmail) {
+    if (String(row[0]) == String(id) && String(row[5]).toLowerCase() == targetEmail) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Investimento excluído." };
     }
@@ -384,7 +389,7 @@ function getCalendarEvents(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (row[4] === userEmail) {
+    if (String(row[4]).toLowerCase() === String(userEmail).toLowerCase()) {
       events.push({
         id: row[0],
         description: row[1],
@@ -425,10 +430,11 @@ function toggleCalendarEvent(id, done, userEmail) {
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && row[4] == userEmail) {
+    if (String(row[0]) == String(id) && String(row[4]).toLowerCase() == targetEmail) {
        sheet.getRange(i + 1, 4).setValue(done);
        return { success: true };
     }
@@ -441,10 +447,11 @@ function deleteCalendarEvent(id, userEmail) {
   if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && row[4] == userEmail) {
+    if (String(row[0]) == String(id) && String(row[4]).toLowerCase() == targetEmail) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Evento excluído com sucesso" };
     }
@@ -455,10 +462,11 @@ function deleteCalendarEvent(id, userEmail) {
 function updatePassword(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).trim().toLowerCase();
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] == userEmail) {
-       if (data[i][3] != body.currentPassword) {
+    if (String(data[i][2]).trim().toLowerCase() == targetEmail) {
+       if (String(data[i][3]).trim() != String(body.currentPassword).trim()) {
          throw new Error("Senha atual incorreta.");
        }
        sheet.getRange(i + 1, 4).setValue(body.newPassword);
@@ -471,9 +479,10 @@ function updatePassword(body, userEmail) {
 function updateAvatar(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).trim().toLowerCase();
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] == userEmail) {
+    if (String(data[i][2]).trim().toLowerCase() == targetEmail) {
        try {
          sheet.getRange(i + 1, 5).setValue(body.avatar);
        } catch(e) {
@@ -489,18 +498,22 @@ function updateAvatar(body, userEmail) {
 function updateUserPlan(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
+  const targetEmail = String(userEmail).trim().toLowerCase();
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] == userEmail) {
-       // Coluna I (Indice 9, mas array começa em 0, então é 8)
+    // Normaliza o email da planilha para comparar
+    const rowEmail = String(data[i][2]).trim().toLowerCase();
+    
+    if (rowEmail == targetEmail) {
+       // Atualiza a Coluna I (Plano) - Índice 9 (1-based para getRange)
        sheet.getRange(i + 1, 9).setValue(body.plan);
-       // Também pode atualizar o status para ACTIVE se quiser garantir
+       // Atualiza a Coluna H (Status) - Índice 8
        sheet.getRange(i + 1, 8).setValue('ACTIVE');
        
        return { success: true, plan: body.plan };
     }
   }
-  throw new Error("Usuário não encontrado.");
+  throw new Error("Usuário não encontrado para atualização de plano.");
 }
 
 function createAsaasCharge(userEmail) {

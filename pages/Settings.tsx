@@ -30,23 +30,26 @@ const ThemeToggle: React.FC<{ theme: Theme; setTheme: (theme: Theme) => void; }>
     const isDark = theme === 'dark';
 
     const toggleTheme = () => {
-        setTheme(isDark ? 'light' : 'dark');
+        const newTheme = isDark ? 'light' : 'dark';
+        setTheme(newTheme);
     };
 
     return (
         <button
+            type="button"
             onClick={toggleTheme}
-            className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                isDark ? 'bg-blue-600' : 'bg-gray-300'
+            className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 border-2 ${
+                isDark ? 'bg-blue-600 border-blue-600' : 'bg-gray-200 border-gray-300'
             }`}
+            aria-label="Alternar Tema"
         >
             <span className="sr-only">Alternar tema</span>
             <span
-                className={`inline-block h-6 w-6 transform bg-white rounded-full transition-transform duration-300 ease-in-out flex items-center justify-center ${
-                    isDark ? 'translate-x-7' : 'translate-x-1'
+                className={`inline-block h-6 w-6 transform bg-white rounded-full shadow-md transition-transform duration-300 ease-in-out flex items-center justify-center ${
+                    isDark ? 'translate-x-6' : 'translate-x-0'
                 }`}
             >
-                {isDark ? <MoonIcon className="h-4 w-4 text-blue-600" /> : <SunIcon className="h-4 w-4 text-yellow-500" />}
+                {isDark ? <MoonIcon className="h-3.5 w-3.5 text-blue-600" /> : <SunIcon className="h-3.5 w-3.5 text-yellow-500" />}
             </span>
         </button>
     );
@@ -168,18 +171,18 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
         onCreate={onCreateUser}
       />
       <div>
-        <h3 className="text-3xl font-bold text-gray-800 mb-6">Configurações</h3>
+        <h3 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Configurações</h3>
         
         <div className="space-y-8 max-w-4xl mx-auto">
           {/* Profile Section - Estilo Branco Puro */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-            <h4 className="text-xl font-bold text-gray-800 mb-6 border-b pb-4 border-gray-100">Perfil</h4>
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+            <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">Perfil</h4>
             <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8">
                 <div className="relative group">
                     <img 
                         src={currentUser.avatar || `https://i.pravatar.cc/150?u=${currentUser.email}`} 
                         alt="Avatar"
-                        className="h-28 w-28 rounded-full object-cover bg-gray-100 ring-4 ring-white shadow-lg"
+                        className="h-28 w-28 rounded-full object-cover bg-gray-100 dark:bg-gray-700 ring-4 ring-white dark:ring-gray-600 shadow-lg"
                     />
                     <button 
                         onClick={handleAvatarClick}
@@ -199,24 +202,24 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                 <div className="flex-grow w-full">
                     <div className="space-y-5">
                       <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1">Nome</label>
-                          <input type="text" value={currentUser.name} disabled className="block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-gray-500 cursor-not-allowed" />
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Nome</label>
+                          <input type="text" value={currentUser.name} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                              <input type="email" value={currentUser.email} disabled className="block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-gray-500 cursor-not-allowed" />
+                              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                              <input type="email" value={currentUser.email} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                           </div>
                           <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">CPF</label>
-                              <input type="text" value={currentUser.cpf || 'Não informado'} disabled className="block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-gray-500 cursor-not-allowed" />
+                              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">CPF</label>
+                              <input type="text" value={currentUser.cpf || 'Não informado'} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                           </div>
                       </div>
                       <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-1">Telefone</label>
-                          <input type="text" value={currentUser.phone || 'Não informado'} disabled className="block w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-gray-500 cursor-not-allowed" />
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
+                          <input type="text" value={currentUser.phone || 'Não informado'} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm text-gray-500 dark:text-gray-400 cursor-not-allowed" />
                       </div>
-                      <button onClick={() => setIsPasswordModalOpen(true)} className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">Alterar Senha</button>
+                      <button onClick={() => setIsPasswordModalOpen(true)} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">Alterar Senha</button>
                     </div>
                 </div>
             </div>
@@ -224,30 +227,30 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
 
           {/* SUBSCRIPTION SECTION - Estilo Branco Puro */}
           {!isAdmin && (
-            <div className="bg-white p-8 rounded-2xl shadow-xl border border-green-100">
-                <div className="flex justify-between items-center mb-6 border-b pb-4 border-gray-100">
-                    <h4 className="text-xl font-bold text-gray-800 flex items-center">
-                        <CreditCardIcon className="h-6 w-6 mr-2 text-green-600" />
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-green-100 dark:border-green-900/30">
+                <div className="flex justify-between items-center mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+                        <CreditCardIcon className="h-6 w-6 mr-2 text-green-600 dark:text-green-400" />
                         Minha Assinatura
                     </h4>
                     <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
                         currentUser.subscriptionStatus === 'ACTIVE' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-red-100 text-red-700'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                        : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
                     }`}>
                         {currentUser.subscriptionStatus === 'ACTIVE' ? 'ATIVA' : 'PENDENTE'}
                     </span>
                 </div>
                 <div className="flex flex-col md:flex-row justify-between items-center">
                     <div className="mb-6 md:mb-0">
-                        <p className="text-gray-600 font-medium">Plano Atual</p>
-                        <p className="text-4xl font-extrabold text-gray-900 mt-1">
+                        <p className="text-gray-600 dark:text-gray-400 font-medium">Plano Atual</p>
+                        <p className="text-4xl font-extrabold text-gray-900 dark:text-white mt-1">
                             {currentUser.plan === 'VIP' ? 'VIP' : currentUser.plan === 'PRO' ? 'R$ 29,90' : 'Grátis'}
-                            <span className="text-sm font-semibold text-gray-500">
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
                                 {currentUser.plan === 'VIP' ? ' / Vitalício' : currentUser.plan === 'PRO' ? '/mês' : ''}
                             </span>
                         </p>
-                        <p className="text-sm text-gray-500 mt-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                              {currentUser.plan === 'VIP' 
                                 ? 'Acesso vitalício completo a todos os recursos.' 
                                 : currentUser.plan === 'PRO' 
@@ -265,7 +268,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                                 Solicitar Link de Pagamento
                             </button>
                         ) : (
-                            <button disabled className="bg-gray-100 text-green-600 px-8 py-3.5 rounded-xl font-bold border border-green-200 cursor-default flex items-center">
+                            <button disabled className="bg-gray-100 dark:bg-gray-700 text-green-600 dark:text-green-400 px-8 py-3.5 rounded-xl font-bold border border-green-200 dark:border-green-800 cursor-default flex items-center">
                                 <span className="mr-2">✓</span> Status OK
                             </button>
                         )}
@@ -276,9 +279,9 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
 
           {/* User Management Section - ONLY VISIBLE TO ADMIN */}
           {isAdmin && (
-            <div className="bg-white p-8 rounded-2xl shadow-xl border border-blue-100">
-                <div className="flex justify-between items-center mb-6 border-b pb-4 border-gray-100">
-                    <h4 className="text-xl font-bold text-blue-600 flex items-center">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-blue-100 dark:border-blue-900/30">
+                <div className="flex justify-between items-center mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
                         <UsersIcon className="h-6 w-6 mr-2" />
                         Painel Administrativo (SaaS)
                     </h4>
@@ -286,35 +289,35 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                 
                 <div className="mb-8 flex items-center justify-between">
                     <div>
-                        <p className="font-bold text-gray-800">Gerenciar Assinantes</p>
-                        <p className="text-sm text-gray-500">Controle manual de usuários.</p>
+                        <p className="font-bold text-gray-800 dark:text-white">Gerenciar Assinantes</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Controle manual de usuários.</p>
                     </div>
                     <button onClick={() => setIsCreateUserModalOpen(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold shadow-md">
                         Adicionar Admin/Teste
                     </button>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nome</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plano</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nome</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Plano</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {clients.map((client, index) => (
-                                <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{client.email}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.plan || 'FREE'}</td>
+                                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{client.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{client.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{client.plan || 'FREE'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${
                                             client.subscriptionStatus === 'ACTIVE' 
-                                            ? 'bg-green-100 text-green-800' 
-                                            : 'bg-red-100 text-red-800'
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                                         }`}>
                                             {client.subscriptionStatus === 'ACTIVE' ? 'Ativo' : 'Pendente'}
                                         </span>
@@ -323,7 +326,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                             ))}
                             {clients.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">Nenhum cliente encontrado.</td>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">Nenhum cliente encontrado.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -333,34 +336,34 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
           )}
 
           {/* Appearance Section - Estilo Branco Puro */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-              <h4 className="text-xl font-bold text-gray-800 mb-6 border-b pb-4 border-gray-100">Aparência</h4>
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+              <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">Aparência</h4>
               <div className="flex items-center justify-between">
                   <div>
-                      <p className="font-bold text-gray-800">Modo Escuro</p>
-                      <p className="text-sm text-gray-500">Personalize a aparência da interface.</p>
+                      <p className="font-bold text-gray-800 dark:text-white">Modo Escuro</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Personalize a aparência da interface.</p>
                   </div>
                   <ThemeToggle theme={theme} setTheme={setTheme} />
               </div>
           </div>
 
           {/* Data Management Section - Estilo Branco Puro */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-              <h4 className="text-xl font-bold text-gray-800 mb-6 border-b pb-4 border-gray-100">Gerenciamento de Dados</h4>
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+              <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">Gerenciamento de Dados</h4>
               <div className="space-y-6">
                   <div className="flex items-center justify-between">
                       <div>
-                          <p className="font-bold text-gray-800">Exportar Dados</p>
-                          <p className="text-sm text-gray-500">Faça um backup de suas transações e investimentos.</p>
+                          <p className="font-bold text-gray-800 dark:text-white">Exportar Dados</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Faça um backup de suas transações e investimentos.</p>
                       </div>
-                      <button onClick={handleExport} className="bg-gray-100 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-200 transition-colors text-sm font-bold">Exportar</button>
+                      <button onClick={handleExport} className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-5 py-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-bold">Exportar</button>
                   </div>
-                  <div className="flex items-center justify-between border-t pt-6 border-red-50">
+                  <div className="flex items-center justify-between border-t pt-6 border-red-50 dark:border-red-900/30">
                       <div>
-                          <p className="font-bold text-red-600">Apagar Conta</p>
-                          <p className="text-sm text-gray-500">Esta ação é irreversível e excluirá todos os seus dados.</p>
+                          <p className="font-bold text-red-600 dark:text-red-400">Apagar Conta</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Esta ação é irreversível e excluirá todos os seus dados.</p>
                       </div>
-                      <button onClick={handleDeleteAccount} className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-5 py-2.5 rounded-lg transition-colors text-sm font-bold">Apagar</button>
+                      <button onClick={handleDeleteAccount} className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 px-5 py-2.5 rounded-lg transition-colors text-sm font-bold">Apagar</button>
                   </div>
               </div>
           </div>

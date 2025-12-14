@@ -65,19 +65,19 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
   }, [tasks]);
 
   return (
-    // Header Branco com sombra suave
-    <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm border-b border-gray-200 z-10">
+    // Header com suporte a modo escuro
+    <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 z-10 transition-colors duration-300">
       <div className="flex items-center flex-1">
         {children}
         
-        {/* LOGO MOBILE: Aparece apenas em telas pequenas ao lado do menu */}
+        {/* LOGO MOBILE */}
         <div className="flex md:hidden items-center gap-2 ml-3 mr-4">
              <div className="bg-blue-600 p-1 rounded-md">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                 </svg>
              </div>
-             <span className="text-lg font-bold text-gray-800">FinDash</span>
+             <span className="text-lg font-bold text-gray-800 dark:text-white">FinDash</span>
         </div>
 
         <div className="relative mx-4 lg:mx-0 hidden sm:block">
@@ -85,7 +85,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
             <SearchIcon className="h-5 w-5 text-gray-400" />
           </span>
           <input
-            className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-gray-100 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border-transparent focus:border-transparent transition-all"
+            className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border-transparent focus:border-transparent transition-all"
             type="text"
             placeholder="Buscar..."
             onChange={(e) => onSearch(e.target.value)}
@@ -102,7 +102,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
         <div className="relative mx-2 sm:mx-4" ref={notificationsMenuRef}>
             <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} 
-                className="flex text-gray-500 hover:text-blue-600 transition-colors focus:outline-none relative"
+                className="flex text-gray-500 dark:text-gray-300 hover:text-blue-600 transition-colors focus:outline-none relative"
             >
                 <BellIcon className="h-6 w-6" />
                 {notifications.length > 0 && (
@@ -112,14 +112,14 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
                 )}
             </button>
             {isNotificationsOpen && (
-                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-20 border border-gray-200 animate-fade-in">
-                    <div className="py-3 px-4 text-sm font-bold text-gray-800 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden z-20 border border-gray-200 dark:border-gray-700 animate-fade-in">
+                    <div className="py-3 px-4 text-sm font-bold text-gray-800 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
                         <span>Lembretes Pendentes</span>
-                        <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">{notifications.length}</span>
+                        <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">{notifications.length}</span>
                     </div>
-                    <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-80 overflow-y-auto">
                         {notifications.length === 0 ? (
-                            <div className="p-6 text-center text-gray-500 text-sm">
+                            <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
                                 <p>Tudo em dia! 🎉</p>
                                 <p className="text-xs mt-1">Nenhuma tarefa pendente para hoje.</p>
                             </div>
@@ -137,7 +137,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
                                             setActivePage('Agenda');
                                             setIsNotificationsOpen(false);
                                         }}
-                                        className="flex items-start px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                                        className="flex items-start px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                                     >
                                         {isLate ? (
                                             <ClockIcon className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -146,10 +146,10 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
                                         )}
                                         
                                         <div>
-                                            <p className={`text-sm font-medium ${isLate ? 'text-red-600' : 'text-gray-800'}`}>
+                                            <p className={`text-sm font-medium ${isLate ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'}`}>
                                                 {notif.description}
                                             </p>
-                                            <p className="text-xs text-gray-500 mt-0.5">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                                 {isLate ? 'Atrasado - Era para ' : 'Para hoje - '}
                                                 {new Date(notif.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                             </p>
@@ -165,7 +165,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
                                 setActivePage('Agenda');
                                 setIsNotificationsOpen(false);
                             }}
-                            className="w-full block text-center py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 border-t border-gray-100 transition-colors"
+                            className="w-full block text-center py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 border-t border-gray-100 dark:border-gray-700 transition-colors"
                         >
                             Ver Agenda Completa
                         </button>
@@ -177,21 +177,21 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
         <div className="relative" ref={profileMenuRef}>
           <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className="flex items-center focus:outline-none group">
              <img
-                className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 group-hover:border-blue-500 transition-colors"
+                className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600 group-hover:border-blue-500 transition-colors"
                 src={currentUser?.avatar || `https://i.pravatar.cc/150?u=${currentUser?.email}`}
                 alt="Your avatar"
             />
             <div className="hidden md:block ml-3 text-left">
-                <p className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{currentUser?.name || 'Usuário'}</p>
-                <p className="text-xs text-gray-500">Meu Perfil</p>
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 transition-colors">{currentUser?.name || 'Usuário'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Meu Perfil</p>
             </div>
           </button>
           {isProfileMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border border-gray-100">
-              <button onClick={handleViewProfile} className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Ver Perfil</button>
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-20 border border-gray-100 dark:border-gray-700">
+              <button onClick={handleViewProfile} className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Ver Perfil</button>
               <button
                 onClick={onLogout}
-                className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                className="w-full text-left block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Sair
               </button>

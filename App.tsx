@@ -152,10 +152,11 @@ const App: React.FC = () => {
               }
 
           } else {
-              showToast("Erro ao atualizar plano. Tente novamente.", "error");
+              // Mostra a mensagem exata do erro para facilitar o debug
+              showToast(result.message || "Erro ao atualizar plano.", "error");
           }
       } catch (e) {
-          showToast("Erro de conexão.", "error");
+          showToast("Erro de conexão com o servidor.", "error");
       }
   };
 
@@ -334,8 +335,8 @@ const App: React.FC = () => {
   }
 
   return (
-    // Sidebar Escura (#020617) + Conteúdo Claro (bg-slate-50)
-    <div className="flex h-screen bg-slate-50 font-sans relative">
+    // Sidebar Escura (#020617) + Conteúdo Claro/Escuro
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans relative transition-colors duration-300">
        {/* Sistema de Notificação (Toast) */}
        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
@@ -360,10 +361,10 @@ const App: React.FC = () => {
         activePage={activePage} 
         setActivePage={setActivePage} 
         currentUser={currentUser}
-        onUpgrade={handleOpenPlanSelection} // Agora abre o modal em vez de link de pagamento
+        onUpgrade={handleOpenPlanSelection} 
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         <Header 
             onLogout={handleLogout} 
             onNewTransaction={() => {
@@ -376,14 +377,14 @@ const App: React.FC = () => {
             tasks={tasks} 
         >
              <button
-              className="md:hidden mr-4 text-gray-500 focus:outline-none"
+              className="md:hidden mr-4 text-gray-500 dark:text-gray-300 focus:outline-none"
               onClick={() => setIsSidebarOpen(true)}
             >
               <MenuIcon className="h-6 w-6" />
             </button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 md:p-8 relative">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative transition-colors duration-300">
             {activePage === 'Dashboard' && (
                 <Dashboard 
                     transactions={transactions} 
