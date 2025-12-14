@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan } from '../types';
 
 // URL atualizada e correta (versão /exec)
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WbdPuvqgK32yOyn76CBItcB-d3zmcBcZq70cBwafSZJgqyA61685U1plUtfc4qri/exec';
@@ -81,7 +81,13 @@ export const api = {
         }
     },
 
-    // ASSINATURA / PAGAMENTOS
+    // ASSINATURA / PLANOS
+    // Nova função para atualizar o plano diretamente
+    updatePlan: async (plan: Plan, token: string) => {
+        const payload = { plan, token };
+        return postData('users/me/plan', payload);
+    },
+
     createSubscriptionCharge: async (token: string) => {
         const payload = { token };
         return postData('subscription/pay', payload);

@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
+import PlanSelectionModal from './components/PlanSelectionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
 import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan } from './types';
 import { api } from './services/api';
@@ -45,6 +46,9 @@ const App: React.FC = () => {
   const [preSelectRegister, setPreSelectRegister] = useState(false);
   // Estado para armazenar o plano selecionado na Landing Page
   const [selectedPlan, setSelectedPlan] = useState<Plan>('FREE');
+
+  // Estado do Modal de Seleção de Plano
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
 
   const [cdiRate, setCdiRate] = useState(0);
 
@@ -114,21 +118,43 @@ const App: React.FC = () => {
     setIsLoginScreen(false); // Volta para a Landing Page ao sair
   };
 
-  // --- FUNÇÃO DE UPGRADE DE PLANO ---
-  const handlePlanUpgrade = async () => {
-      if (!token) return;
-      showToast("Gerando link de pagamento...", "info");
+  // --- FUNÇÃO PARA ABRIR SELEÇÃO DE PLANO ---
+  const handleOpenPlanSelection = () => {
+      setIsPlanModalOpen(true);
+  };
+
+  // --- FUNÇÃO DE CONFIRMAÇÃO DE UPGRADE ---
+  const handleConfirmUpgrade = async (newPlan: Plan) => {
+      if (!token || !currentUser) return;
       
+      setIsPlanModalOpen(false);
+      showToast(`Processando atualização para ${newPlan}...`, "info");
+
       try {
-          const response = await api.createSubscriptionCharge(token);
+          // Chama a API para atualizar no banco
+          const result = await api.updatePlan(newPlan, token);
           
-          if (response && response.paymentUrl) {
-              window.open(response.paymentUrl, '_blank');
-              showToast("Link aberto! Conclua o pagamento para liberar o acesso.", "success");
+          if (!result.error) {
+              // Atualiza o estado local imediatamente
+              const updatedUser = { ...currentUser, plan: newPlan, subscriptionStatus: 'ACTIVE' as const };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('user_data', JSON.stringify(updatedUser));
+              
+              showToast(`Parabéns! Você agora é ${newPlan}.`, "success");
+              
+              // Se virou PRO/VIP, já busca os dados extras
+              if (newPlan !== 'FREE') {
+                   const invs = await api.getInvestments(token);
+                   if (Array.isArray(invs)) setInvestments(invs);
+                   
+                   const userTasks = await api.getCalendarEvents(token);
+                   if (Array.isArray(userTasks)) setTasks(userTasks);
+              }
+
           } else {
-              showToast("Erro ao gerar link. Tente novamente mais tarde.", "error");
+              showToast("Erro ao atualizar plano. Tente novamente.", "error");
           }
-      } catch (error) {
+      } catch (e) {
           showToast("Erro de conexão.", "error");
       }
   };
@@ -313,6 +339,14 @@ const App: React.FC = () => {
        {/* Sistema de Notificação (Toast) */}
        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
+       {/* Modal de Seleção de Plano */}
+       <PlanSelectionModal 
+           isOpen={isPlanModalOpen}
+           onClose={() => setIsPlanModalOpen(false)}
+           onConfirmUpgrade={handleConfirmUpgrade}
+           currentPlan={currentUser?.plan || 'FREE'}
+       />
+
        {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
@@ -326,7 +360,7 @@ const App: React.FC = () => {
         activePage={activePage} 
         setActivePage={setActivePage} 
         currentUser={currentUser}
-        onUpgrade={handlePlanUpgrade} // Passando a função de upgrade para a Sidebar
+        onUpgrade={handleOpenPlanSelection} // Agora abre o modal em vez de link de pagamento
       />
 
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">

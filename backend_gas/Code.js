@@ -105,6 +105,9 @@ function doPost(e) {
     } else if (route === 'users/me/avatar') {
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateAvatar(requestBody, userEmail);
+    } else if (route === 'users/me/plan') { // NOVA ROTA PARA ATUALIZAR PLANO
+       const userEmail = getUserEmailFromToken(e, requestBody);
+       data = updateUserPlan(requestBody, userEmail);
     } else if (route === 'subscription/pay') {
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = createAsaasCharge(userEmail);
@@ -177,9 +180,22 @@ function createUser(body) {
   
   const rows = sheet.getDataRange().getValues();
   
+  // Normaliza o CPF recebido para remover pontuação, se houver, para comparação
+  const newCpf = body.cpf ? String(body.cpf).trim() : "";
+  const newEmail = String(body.email).trim();
+
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][2]).trim() == String(body.email).trim()) {
+    const rowEmail = String(rows[i][2]).trim();
+    // Coluna G é o índice 6 (0-based: A=0, B=1, C=2, D=3, E=4, F=5, G=6)
+    const rowCpf = String(rows[i][6]).trim(); 
+
+    if (rowEmail == newEmail) {
       throw new Error("Email já cadastrado.");
+    }
+    
+    // Verifica se CPF já existe (se o CPF foi informado)
+    if (newCpf && rowCpf == newCpf) {
+      throw new Error("CPF já cadastrado.");
     }
   }
   
@@ -464,6 +480,24 @@ function updateAvatar(body, userEmail) {
          throw new Error("Imagem muito grande para a planilha.");
        }
        return { avatar: body.avatar };
+    }
+  }
+  throw new Error("Usuário não encontrado.");
+}
+
+// NOVA FUNÇÃO: ATUALIZA PLANO NA PLANILHA
+function updateUserPlan(body, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] == userEmail) {
+       // Coluna I (Indice 9, mas array começa em 0, então é 8)
+       sheet.getRange(i + 1, 9).setValue(body.plan);
+       // Também pode atualizar o status para ACTIVE se quiser garantir
+       sheet.getRange(i + 1, 8).setValue('ACTIVE');
+       
+       return { success: true, plan: body.plan };
     }
   }
   throw new Error("Usuário não encontrado.");
