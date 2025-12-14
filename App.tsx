@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Investments from './pages/Investments';
 import Agenda from './pages/Agenda';
+import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
@@ -116,7 +117,7 @@ const App: React.FC = () => {
   // --- FUNÇÃO DE UPGRADE DE PLANO ---
   const handlePlanUpgrade = async () => {
       if (!token) return;
-      showToast("Gerando link de pagamento seguro...", "info");
+      showToast("Gerando link de pagamento...", "info");
       
       try {
           const response = await api.createSubscriptionCharge(token);
@@ -393,6 +394,9 @@ const App: React.FC = () => {
                     onSaveInvestment={handleSaveInvestment}
                     onDeleteInvestment={handleDeleteInvestment}
                 />
+            )}
+            {activePage === 'Relatórios' && (
+                <Reports transactions={transactions} />
             )}
             {activePage === 'Configurações' && currentUser && (
                 <Settings 

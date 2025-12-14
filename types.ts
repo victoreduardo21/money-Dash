@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Configurações';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Configurações' | 'Relatórios';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 

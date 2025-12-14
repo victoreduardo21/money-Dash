@@ -514,9 +514,9 @@ function createAsaasCharge(userEmail) {
   const paymentPayload = {
     customer: customerId,
     billingType: "UNDEFINED", 
-    value: 50.00,
+    value: 29.90, // Atualizado para o valor do Plano PRO
     dueDate: new Date().toISOString().split('T')[0],
-    description: "Mensalidade FinDash - Acesso ao Sistema"
+    description: "Mensalidade FinDash - Acesso ao Plano PRO"
   };
 
   const paymentOptions = {

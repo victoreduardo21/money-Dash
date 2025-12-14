@@ -240,12 +240,23 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                 </div>
                 <div className="flex flex-col md:flex-row justify-between items-center">
                     <div className="mb-6 md:mb-0">
-                        <p className="text-gray-600 font-medium">Plano Mensal</p>
-                        <p className="text-4xl font-extrabold text-gray-900 mt-1">R$ 50,00<span className="text-sm font-semibold text-gray-500">/mês</span></p>
-                        <p className="text-sm text-gray-500 mt-2">Acesso completo ao Dashboard, Gráficos e Gestão de Carteira.</p>
+                        <p className="text-gray-600 font-medium">Plano Atual</p>
+                        <p className="text-4xl font-extrabold text-gray-900 mt-1">
+                            {currentUser.plan === 'VIP' ? 'VIP' : currentUser.plan === 'PRO' ? 'R$ 29,90' : 'Grátis'}
+                            <span className="text-sm font-semibold text-gray-500">
+                                {currentUser.plan === 'VIP' ? ' / Vitalício' : currentUser.plan === 'PRO' ? '/mês' : ''}
+                            </span>
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                             {currentUser.plan === 'VIP' 
+                                ? 'Acesso vitalício completo a todos os recursos.' 
+                                : currentUser.plan === 'PRO' 
+                                    ? 'Acesso a Dashboard, Investimentos, Agenda e Relatórios.' 
+                                    : 'Acesso básico ao Dashboard e Transações.'}
+                        </p>
                     </div>
                     <div>
-                        {currentUser.subscriptionStatus !== 'ACTIVE' ? (
+                        {currentUser.subscriptionStatus !== 'ACTIVE' && currentUser.plan !== 'FREE' ? (
                             <button 
                                 onClick={handleRequestPaymentLink}
                                 className="bg-[#25D366] text-white px-8 py-3.5 rounded-xl hover:bg-[#128C7E] transition-all duration-300 font-bold shadow-lg hover:shadow-xl flex items-center transform hover:-translate-y-0.5"
@@ -255,7 +266,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                             </button>
                         ) : (
                             <button disabled className="bg-gray-100 text-green-600 px-8 py-3.5 rounded-xl font-bold border border-green-200 cursor-default flex items-center">
-                                <span className="mr-2">✓</span> Assinatura em dia
+                                <span className="mr-2">✓</span> Status OK
                             </button>
                         )}
                     </div>
@@ -276,7 +287,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                 <div className="mb-8 flex items-center justify-between">
                     <div>
                         <p className="font-bold text-gray-800">Gerenciar Assinantes</p>
-                        <p className="text-sm text-gray-500">Controle manual de usuários para cobrança (R$ 50/mês).</p>
+                        <p className="text-sm text-gray-500">Controle manual de usuários.</p>
                     </div>
                     <button onClick={() => setIsCreateUserModalOpen(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold shadow-md">
                         Adicionar Admin/Teste
@@ -289,7 +300,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                             <tr>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nome</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Plano</th>
                                 <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
@@ -298,7 +309,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{client.email}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.phone || '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.plan || 'FREE'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${
                                             client.subscriptionStatus === 'ACTIVE' 

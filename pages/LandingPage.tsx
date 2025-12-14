@@ -259,12 +259,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {[
-                      { icon: <DashboardIcon className="w-6 h-6 text-blue-600" />, title: 'Dashboard Inteligente', desc: 'Visualize para onde vai seu dinheiro mês a mês com gráficos claros.' },
-                      { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Segurança de Dados', desc: 'Seus dados são criptografados de ponta a ponta. Privacidade absoluta.' },
-                      { icon: <UsersIcon className="w-6 h-6 text-blue-600" />, title: 'Acesso Mobile', desc: 'Controle suas finanças de qualquer lugar. Funciona perfeitamente no celular.' },
-                      { icon: <TrendingUpIcon className="w-6 h-6 text-blue-600" />, title: 'Controle de Investimentos', desc: 'Acompanhe a evolução do seu patrimônio, rendimentos de FIIs e Ações.' },
-                      { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Agenda Financeira', desc: 'Nunca mais pague juros por atraso. Receba notificações de contas.' },
-                      { icon: <RocketLaunchIcon className="w-6 h-6 text-blue-600" />, title: 'Metas e Objetivos', desc: 'Defina metas de economia para viajar, comprar carro ou casa própria.' },
+                      { icon: <DashboardIcon className="w-6 h-6 text-blue-600" />, title: 'Painel de Controle', desc: 'Visualize para onde vai seu dinheiro mês a mês com gráficos claros.' },
+                      { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Tronco de Transações', desc: 'Registre e acompanhe todas as suas receitas e despesas em um só lugar.' },
+                      { icon: <UsersIcon className="w-6 h-6 text-blue-600" />, title: 'Relatórios Avançados', desc: 'Análises detalhadas por categoria e evolução mensal (Plano PRO).' },
+                      { icon: <TrendingUpIcon className="w-6 h-6 text-blue-600" />, title: 'Gestão de Investimentos', desc: 'Acompanhe a evolução do seu patrimônio (Plano PRO).' },
+                      { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Agenda Financeira', desc: 'Nunca mais pague juros por atraso. Receba notificações de contas (Plano PRO).' },
+                      { icon: <RocketLaunchIcon className="w-6 h-6 text-blue-600" />, title: 'Suporte Prioritário', desc: 'Atendimento exclusivo e direto para membros VIP.' },
                   ].map((feature, idx) => (
                       <div key={idx} className="bg-slate-50 border border-slate-100 p-8 rounded-2xl hover:bg-white hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-100 transition-all duration-300 group">
                           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -278,67 +278,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           </div>
       </section>
 
-      {/* --- BENEFÍCIOS SECTION --- */}
-      <section id="beneficios" className="py-24 bg-slate-900 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-
-          <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center relative z-10">
-              {/* Left Side: Abstract UI Representation */}
-              <div className="relative order-2 lg:order-1">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-30"></div>
-                  <div className="relative bg-[#0f172a] border border-slate-800 rounded-xl p-8 shadow-2xl">
-                      <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-                          <span className="text-sm font-bold text-slate-400">RESUMO MENSAL</span>
-                          <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-1 rounded">+15% economizado</span>
-                      </div>
-                      <div className="space-y-4">
-                          {[1, 2, 3].map(i => (
-                              <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-800/50 transition-colors">
-                                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xl">🔥</div>
-                                  <div className="flex-1">
-                                      <div className="h-2 w-24 bg-slate-700 rounded mb-2"></div>
-                                      <div className="h-1.5 w-16 bg-slate-800 rounded"></div>
-                                  </div>
-                                  <div className="h-2 w-12 bg-slate-700 rounded"></div>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              </div>
-
-              {/* Right Side: Text */}
-              <div className="order-1 lg:order-2">
-                  <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
-                      Pare de tentar adivinhar para onde <span className="text-blue-400">seu dinheiro vai.</span>
-                  </h2>
-                  <p className="text-lg text-slate-400 mb-8">
-                      Com o FinDash, você tem clareza total. Identifique gastos supérfluos, otimize seu orçamento e veja seu patrimônio crescer mês a mês.
-                  </p>
-                  
-                  <ul className="space-y-4">
-                      {[
-                          'Categorização automática de despesas',
-                          'Alertas de gastos excessivos',
-                          'Comparativos mensais e anuais',
-                          'Suporte prioritário via WhatsApp'
-                      ].map((item, i) => (
-                          <li key={i} className="flex items-center gap-3 text-slate-300">
-                              <div className="w-5 h-5 rounded-full bg-blue-600/20 flex items-center justify-center">
-                                  <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                              </div>
-                              {item}
-                          </li>
-                      ))}
-                  </ul>
-
-                  <button onClick={() => onRegister('FREE')} className="mt-10 text-blue-400 font-bold hover:text-white transition-colors flex items-center gap-2 group">
-                      Conhecer funcionalidades 
-                      <span className="group-hover:translate-x-1 transition-transform">-></span>
-                  </button>
-              </div>
-          </div>
-      </section>
-
       {/* --- PRICING SECTION --- */}
       <section id="planos" className="py-24 bg-slate-50">
           <div className="max-w-7xl mx-auto px-6">
@@ -348,16 +287,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               </div>
 
               <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-end">
-                  {/* Free Plan */}
+                  {/* INICIANTE */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-slate-300 hover:shadow-xl transition-all duration-300">
                       <div className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">INICIANTE</div>
                       <h3 className="text-3xl font-bold text-slate-900 mb-4">Grátis</h3>
                       <p className="text-slate-500 text-sm mb-6">Para quem está começando a se organizar.</p>
                       <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Dashboard Básico</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Controle de Transações</li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Painel de Controle</li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Tronco de Transações</li>
                           <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Investimentos</li>
-                          <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Agenda</li>
+                          <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Relatórios Avançados</li>
                       </ul>
                       <button 
                         onClick={() => onRegister('FREE')}
@@ -394,13 +333,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-purple-200 hover:shadow-xl transition-all duration-300">
                       <div className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-2">VIP</div>
                       <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ 299</span>
+                          <span className="text-4xl font-bold text-slate-900">R$ 500</span>
                           <span className="text-slate-500">/único</span>
                       </div>
                       <p className="text-slate-500 text-sm mb-6">Pague uma vez, use para sempre.</p>
                       <ul className="space-y-3 mb-8 text-sm text-slate-600">
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso VITALÍCIO ao PRO</strong></li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Suporte Prioritário VIP</li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Prioritário VIP</li>
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Acesso antecipado a betas</li>
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Sem mensalidade nunca</li>
                       </ul>

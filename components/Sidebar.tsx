@@ -6,6 +6,7 @@ import { XIcon } from './icons/XIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
+import { ChartPieIcon } from './icons/ChartPieIcon';
 import { Page, User } from '../types';
 
 
@@ -67,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                             Fin<span className="text-blue-500">Dash</span>
                         </h1>
                         <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mt-0.5">
-                            {currentUser?.plan || 'FREE'}
+                            {currentUser?.plan === 'VIP' ? 'VIP MEMBER' : currentUser?.plan || 'FREE'}
                         </span>
                     </div>
                 </div>
@@ -86,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                         active={activePage === 'Dashboard'}
                         onClick={() => handleNavClick('Dashboard')}
                     >
-                        Dashboard
+                        Painel de Controle
                     </NavLink>
                     <NavLink 
                         icon={<SwitchHorizontalIcon className="h-5 w-5" />}
@@ -104,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                                 active={activePage === 'Agenda'}
                                 onClick={() => handleNavClick('Agenda')}
                             >
-                                Agenda
+                                Agenda Financeira
                             </NavLink>
                             <NavLink 
                                 icon={<TrendingUpIcon className="h-5 w-5" />}
@@ -113,6 +114,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                             >
                                 Investimentos
                             </NavLink>
+                            <NavLink 
+                                icon={<ChartPieIcon className="h-5 w-5" />}
+                                active={activePage === 'Relatórios'}
+                                onClick={() => handleNavClick('Relatórios')}
+                            >
+                                Relatórios Avançados
+                            </NavLink>
                         </>
                     )}
                 </nav>
@@ -120,8 +128,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                 {/* Upsell box for Free users */}
                 {isFreePlan && (
                     <div className="mx-4 mt-6 p-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 animate-pulse">
-                        <p className="text-xs text-blue-400 font-bold uppercase mb-2">Faça o Upgrade</p>
-                        <p className="text-xs text-gray-400 mb-3">Libere Investimentos e Agenda com o plano PRO.</p>
+                        <p className="text-xs text-blue-400 font-bold uppercase mb-2">Desbloqueie Tudo</p>
+                        <p className="text-xs text-gray-400 mb-3">Tenha Relatórios, Investimentos e Agenda com o plano PRO.</p>
                         <button 
                             onClick={onUpgrade}
                             className="w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20"
@@ -148,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 bg-[#020617]">
                 <div className="flex items-center">
                     <div className="ml-3">
-                        <p className="text-xs font-medium text-gray-500">Versão 2.1.0</p>
+                        <p className="text-xs font-medium text-gray-500">Versão 2.2.0 (Pro Edition)</p>
                     </div>
                 </div>
             </div>
