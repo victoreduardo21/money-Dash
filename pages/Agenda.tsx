@@ -36,6 +36,16 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
     // Agrupar tarefas por data e ordenar cronologicamente
     const sortedTasks = [...tasks].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+    // Obter data de hoje localmente (YYYY-MM-DD) para comparação correta
+    const getTodayString = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    const todayStr = getTodayString();
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -65,8 +75,13 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                 ) : (
                     <ul className="space-y-4">
                         {sortedTasks.map((task) => {
-                             const isPast = new Date(task.date) < new Date(new Date().setHours(0,0,0,0));
-                             const isToday = new Date(task.date).toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                             // Lógica corrigida: Comparação de strings de data local
+                             let taskDateStr = task.date;
+                             if(taskDateStr.includes('T')) taskDateStr = taskDateStr.split('T')[0];
+
+                             // Só é passado se a data da tarefa for MENOR que hoje. Se for IGUAL, é Hoje.
+                             const isPast = taskDateStr < todayStr;
+                             const isToday = taskDateStr === todayStr;
                              
                              return (
                                 <li key={task.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 group ${task.done ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'}`}>
@@ -76,8 +91,9 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                         >
                                             <CheckCircleIcon className="h-6 w-6" />
                                         </div>
-                                        <div>
-                                            <p className={`font-bold text-lg transition-all duration-300 ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                        <div className="flex-1 min-w-0 pr-4"> 
+                                            {/* Adicionado break-words e whitespace-pre-wrap para permitir quebra de linha de textos longos */}
+                                            <p className={`font-bold text-lg transition-all duration-300 break-words whitespace-pre-wrap ${task.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                                                 {task.description}
                                             </p>
                                             <div className="flex items-center text-sm mt-1">
@@ -102,7 +118,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                             e.nativeEvent.stopImmediatePropagation();
                                             onDeleteTask(task.id); 
                                         }}
-                                        className="relative z-10 p-2 text-gray-300 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors ml-4"
+                                        className="relative z-10 p-2 text-gray-300 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors ml-4 flex-shrink-0"
                                         title="Excluir"
                                     >
                                         <TrashIcon className="h-5 w-5" />
@@ -126,13 +142,13 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">O que você precisa fazer?</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">O que você faz?</label>
                                 <input 
                                     type="text" 
                                     value={newTaskDesc}
                                     onChange={(e) => setNewTaskDesc(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                    placeholder="Ex: Pagar conta de luz"
+                                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-gray-900"
+                                    placeholder="Ex: Pagar"
                                     autoFocus
                                     required
                                 />
@@ -143,7 +159,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                     type="date" 
                                     value={newTaskDate}
                                     onChange={(e) => setNewTaskDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-gray-900"
                                     required
                                 />
                             </div>

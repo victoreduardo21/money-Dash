@@ -189,17 +189,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                                 <div>
                                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                                     <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Seu Nome"
-                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                        className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
                                 </div>
                                 <div>
                                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
                                     <input id="phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="(00) 00000-0000"
-                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                        className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
                                 </div>
                                 <div>
                                     <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
                                     <input id="cpf" type="text" value={cpf} onChange={(e) => setCpf(e.target.value)} required placeholder="000.000.000-00"
-                                        className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                        className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
                                 </div>
                             </>
                         )}
@@ -207,13 +207,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                             <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="exemplo@email.com"
-                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
                         </div>
 
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
                             <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••"
-                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
+                                className="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 text-gray-900 placeholder-gray-400 transition duration-200" />
                         </div>
                     </div>
 

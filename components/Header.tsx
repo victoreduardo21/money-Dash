@@ -48,7 +48,8 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
 
   // Lógica de Notificações: Tarefas não concluídas que são de HOJE ou ANTERIORES (Atrasadas)
   const notifications = useMemo(() => {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       
       const pending = tasks.filter(task => {
           if (task.done) return false;
@@ -57,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
           if (taskDate.includes('T')) taskDate = taskDate.split('T')[0];
 
           // Retorna verdadeiro se for hoje ou data passada (menor ou igual a hoje)
-          return taskDate <= today;
+          return taskDate <= todayStr;
       });
 
       // Ordena: Atrasadas primeiro, depois as de hoje
@@ -85,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
             <SearchIcon className="h-5 w-5 text-gray-400" />
           </span>
           <input
-            className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border-transparent focus:border-transparent transition-all"
+            className="w-32 sm:w-64 form-input pl-10 pr-4 rounded-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             type="text"
             placeholder="Buscar..."
             onChange={(e) => onSearch(e.target.value)}
@@ -125,10 +126,12 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
                             </div>
                         ) : (
                             notifications.map((notif) => {
-                                const today = new Date().toISOString().split('T')[0];
+                                const d = new Date();
+                                const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                
                                 let notifDate = notif.date;
                                 if(notifDate.includes('T')) notifDate = notifDate.split('T')[0];
-                                const isLate = notifDate < today;
+                                const isLate = notifDate < todayStr;
 
                                 return (
                                     <div 
