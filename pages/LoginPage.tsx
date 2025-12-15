@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Plan } from '../types';
+import { User, Plan, BillingCycle } from '../types';
 import { api } from '../services/api';
 
 const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -14,9 +14,10 @@ interface LoginPageProps {
   onBack: () => void;
   initialMode?: 'login' | 'register';
   selectedPlan?: Plan;
+  selectedBillingCycle?: BillingCycle;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'login', selectedPlan = 'FREE' }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'login', selectedPlan = 'FREE', selectedBillingCycle = 'MONTHLY' }) => {
   const [isLoginMode, setIsLoginMode] = useState(initialMode === 'login');
 
   const [name, setName] = useState('');
@@ -62,14 +63,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 return;
             }
 
-            // Envia o PLANO selecionado.
+            // Envia o PLANO e o CICLO selecionados.
             const createResponse = await api.createUser({ 
                 name, 
                 email, 
                 password, 
                 phone, 
                 cpf, 
-                plan: selectedPlan as Plan 
+                plan: selectedPlan as Plan,
+                billingCycle: selectedBillingCycle // Envia se é Mensal ou Anual
             });
             
             if (createResponse.error) {
@@ -143,7 +145,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                         <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Plano Selecionado</p>
                         <div className="flex items-center gap-2">
                              <div className={`w-3 h-3 rounded-full ${selectedPlan === 'VIP' ? 'bg-purple-500' : selectedPlan === 'PRO' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-                             <span className="text-xl font-bold">{selectedPlan === 'FREE' ? 'Grátis' : selectedPlan}</span>
+                             <span className="text-xl font-bold">
+                                 {selectedPlan === 'FREE' ? 'Grátis' : selectedPlan} 
+                                 {selectedPlan !== 'FREE' && (
+                                     <span className="text-sm font-normal text-gray-300 ml-1">
+                                         ({selectedBillingCycle === 'ANNUAL' ? 'Anual' : 'Mensal'})
+                                     </span>
+                                 )}
+                             </span>
                         </div>
                     </div>
                 )}

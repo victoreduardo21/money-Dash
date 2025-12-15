@@ -105,7 +105,7 @@ function doPost(e) {
     } else if (route === 'users/me/avatar') {
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateAvatar(requestBody, userEmail);
-    } else if (route === 'users/me/plan') { // NOVA ROTA: ATUALIZAR PLANO
+    } else if (route === 'users/me/plan') { 
        const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateUserPlan(requestBody, userEmail);
     } else if (route === 'subscription/pay') {
@@ -149,7 +149,8 @@ function loginUser(body) {
           phone: row[5],  
           cpf: row[6],    
           subscriptionStatus: row[7] || 'PENDING',
-          plan: row[8] || 'FREE' // Lê a coluna I (índice 8) para o plano
+          plan: row[8] || 'FREE', 
+          billingCycle: row[9] || 'MONTHLY' // Coluna J (Indice 9)
         }
       };
     }
@@ -173,7 +174,8 @@ function getUserProfile(encodedEmail) {
           phone: row[5],  
           cpf: row[6],
           subscriptionStatus: row[7] || 'PENDING',
-          plan: row[8] || 'FREE'
+          plan: row[8] || 'FREE',
+          billingCycle: row[9] || 'MONTHLY' // Coluna J
       };
     }
   }
@@ -205,6 +207,7 @@ function createUser(body) {
   const newId = Utilities.getUuid();
   const initialStatus = 'PENDING';
   const selectedPlan = body.plan || 'FREE';
+  const selectedCycle = body.billingCycle || 'MONTHLY'; // Recebe do frontend ou default
 
   sheet.appendRow([
     newId, 
@@ -215,7 +218,8 @@ function createUser(body) {
     body.phone || "", 
     body.cpf || "",
     initialStatus,
-    selectedPlan // Adiciona na coluna I
+    selectedPlan, // Coluna I (Indice 8)
+    selectedCycle // Coluna J (Indice 9) - Salva o ciclo escolhido
   ]);
   
   return { 
@@ -223,7 +227,8 @@ function createUser(body) {
     name: body.name, 
     email: body.email,
     subscriptionStatus: initialStatus,
-    plan: selectedPlan
+    plan: selectedPlan,
+    billingCycle: selectedCycle
   };
 }
 
@@ -243,13 +248,14 @@ function getAllUsers() {
       phone: row[5],
       cpf: row[6],
       subscriptionStatus: row[7] || 'PENDING',
-      plan: row[8] || 'FREE'
+      plan: row[8] || 'FREE',
+      billingCycle: row[9] || 'MONTHLY'
     });
   }
   return users;
 }
 
-// ... (Restante das funções de Transações, Investimentos, etc. permanecem iguais)
+// ... (Funções de Transações, Investimentos, Calendar permanecem iguais)
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Transactions');
@@ -494,7 +500,7 @@ function updateAvatar(body, userEmail) {
   throw new Error("Usuário não encontrado.");
 }
 
-// NOVA FUNÇÃO: ATUALIZA PLANO NA PLANILHA
+// ATUALIZA PLANO E CICLO DE PAGAMENTO
 function updateUserPlan(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
@@ -505,12 +511,14 @@ function updateUserPlan(body, userEmail) {
     const rowEmail = String(data[i][2]).trim().toLowerCase();
     
     if (rowEmail == targetEmail) {
-       // Atualiza a Coluna I (Plano) - Índice 9 (1-based para getRange)
+       // Atualiza a Coluna I (Plano) - Índice 9
        sheet.getRange(i + 1, 9).setValue(body.plan);
+       // Atualiza a Coluna J (Ciclo) - Índice 10 (Novo)
+       sheet.getRange(i + 1, 10).setValue(body.billingCycle || 'MONTHLY');
        // Atualiza a Coluna H (Status) - Índice 8
        sheet.getRange(i + 1, 8).setValue('ACTIVE');
        
-       return { success: true, plan: body.plan };
+       return { success: true, plan: body.plan, billingCycle: body.billingCycle };
     }
   }
   throw new Error("Usuário não encontrado para atualização de plano.");
@@ -558,12 +566,25 @@ function createAsaasCharge(userEmail) {
      throw new Error("Erro ao criar cliente no Asaas: " + e.toString());
   }
 
+  // --- LÓGICA DE VALOR ATUALIZADA ---
+  let value = 29.90; // Default fallback
+  const cycle = userProfile.billingCycle || 'MONTHLY'; // Lê da coluna J
+  const plan = userProfile.plan || 'PRO';
+
+  // Tabela de Preços (Sincronizada com o Frontend)
+  if (plan === 'VIP') {
+    value = (cycle === 'ANNUAL') ? 799.90 : 79.90;
+  } else if (plan === 'PRO') {
+    value = (cycle === 'ANNUAL') ? 399.90 : 39.90;
+  }
+  // -----------------------------------
+  
   const paymentPayload = {
     customer: customerId,
     billingType: "UNDEFINED", 
-    value: 29.90, // Atualizado para o valor do Plano PRO
+    value: value, 
     dueDate: new Date().toISOString().split('T')[0],
-    description: "Mensalidade FinDash - Acesso ao Plano PRO"
+    description: `Assinatura FinDash - Plano ${plan} (${cycle === 'ANNUAL' ? 'Anual' : 'Mensal'})`
   };
 
   const paymentOptions = {

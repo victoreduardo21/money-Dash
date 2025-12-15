@@ -1,18 +1,19 @@
 
 import React, { useState } from 'react';
-import { Plan } from '../types';
+import { Plan, BillingCycle } from '../types';
 import { XIcon } from './icons/XIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 
 interface PlanSelectionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirmUpgrade: (plan: Plan) => void;
+    onConfirmUpgrade: (plan: Plan, cycle: BillingCycle) => void;
     currentPlan: Plan;
 }
 
 const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose, onConfirmUpgrade, currentPlan }) => {
     const [selectedPlan, setSelectedPlan] = useState<Plan>('PRO');
+    const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
 
     if (!isOpen) return null;
 
@@ -21,10 +22,25 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
             alert("Você já possui este plano.");
             return;
         }
-        if (window.confirm(`Tem certeza que deseja mudar seu plano para ${selectedPlan}? O acesso será liberado imediatamente.`)) {
-            onConfirmUpgrade(selectedPlan);
+        const cycleText = billingCycle === 'MONTHLY' ? 'Mensal' : 'Anual';
+        if (window.confirm(`Tem certeza que deseja mudar seu plano para ${selectedPlan} (${cycleText})? O acesso será liberado imediatamente.`)) {
+            onConfirmUpgrade(selectedPlan, billingCycle);
         }
     };
+
+    // TABELA DE PREÇOS
+    const prices = {
+        PRO: {
+            MONTHLY: 39.90,
+            ANNUAL: 399.90 // Equivalente a 33,32/mês
+        },
+        VIP: {
+            MONTHLY: 79.90,
+            ANNUAL: 799.90 // Equivalente a 66,66/mês
+        }
+    };
+
+    const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center backdrop-blur-sm p-4">
@@ -40,13 +56,34 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                     </button>
                 </div>
 
+                {/* Seletor de Ciclo */}
+                <div className="flex justify-center pt-6 bg-gray-50 pb-2">
+                    <div className="bg-gray-200 p-1.5 rounded-xl flex relative shadow-inner">
+                        <button 
+                            onClick={() => setBillingCycle('MONTHLY')}
+                            className={`px-8 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 ${billingCycle === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Mensal
+                        </button>
+                        <button 
+                            onClick={() => setBillingCycle('ANNUAL')}
+                            className={`px-8 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 flex items-center ${billingCycle === 'ANNUAL' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Anual
+                            <span className="ml-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide shadow-sm animate-pulse">
+                                -16% OFF
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
                 <div className="p-6 md:p-8 overflow-y-auto bg-gray-50">
                     <div className="grid md:grid-cols-2 gap-6">
                         
                         {/* PLANO PRO */}
                         <div 
                             onClick={() => setSelectedPlan('PRO')}
-                            className={`cursor-pointer relative bg-white rounded-2xl p-6 border-2 transition-all duration-300 ${selectedPlan === 'PRO' ? 'border-blue-600 shadow-xl scale-[1.02]' : 'border-gray-200 hover:border-blue-300 hover:shadow-lg'}`}
+                            className={`cursor-pointer relative bg-white rounded-2xl p-6 border-2 transition-all duration-300 flex flex-col ${selectedPlan === 'PRO' ? 'border-blue-600 shadow-xl scale-[1.02] z-10' : 'border-gray-200 hover:border-blue-300 hover:shadow-lg opacity-80 hover:opacity-100'}`}
                         >
                             <div className="flex justify-between items-start mb-4">
                                 <div>
@@ -58,23 +95,30 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                                 </div>
                             </div>
                             
-                            <div className="mb-6">
-                                <span className="text-4xl font-extrabold text-gray-900">R$ 39,90</span>
-                                <span className="text-gray-500">/mês</span>
+                            <div className="mb-2">
+                                <span className="text-4xl font-extrabold text-gray-900">
+                                    {formatCurrency(prices.PRO[billingCycle])}
+                                </span>
+                                <span className="text-gray-500 text-sm font-medium">/{billingCycle === 'MONTHLY' ? 'mês' : 'ano'}</span>
                             </div>
+                            {billingCycle === 'ANNUAL' && (
+                                <p className="text-xs text-green-600 font-bold mb-4 bg-green-50 inline-block px-2 py-1 rounded">
+                                    Equivale a {formatCurrency(prices.PRO.ANNUAL / 12)}/mês
+                                </p>
+                            )}
 
-                            <ul className="space-y-3 text-sm text-gray-600">
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> <strong>Tudo do plano Grátis</strong></li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Gestão de Investimentos</li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Agenda Financeira</li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Relatórios Avançados</li>
+                            <ul className="space-y-3 text-sm text-gray-600 mt-4 flex-grow">
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" /> <span>Tudo do plano Grátis</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" /> <span>Gestão de Investimentos</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" /> <span>Agenda Financeira</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" /> <span>Relatórios Avançados</span></li>
                             </ul>
                         </div>
 
                         {/* PLANO VIP */}
                         <div 
                             onClick={() => setSelectedPlan('VIP')}
-                            className={`cursor-pointer relative bg-white rounded-2xl p-6 border-2 transition-all duration-300 ${selectedPlan === 'VIP' ? 'border-purple-600 shadow-xl scale-[1.02]' : 'border-gray-200 hover:border-purple-300 hover:shadow-lg'}`}
+                            className={`cursor-pointer relative bg-white rounded-2xl p-6 border-2 transition-all duration-300 flex flex-col ${selectedPlan === 'VIP' ? 'border-purple-600 shadow-xl scale-[1.02] z-10' : 'border-gray-200 hover:border-purple-300 hover:shadow-lg opacity-80 hover:opacity-100'}`}
                         >
                             <div className="flex justify-between items-start mb-4">
                                 <div>
@@ -86,16 +130,23 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                                 </div>
                             </div>
                             
-                            <div className="mb-6">
-                                <span className="text-4xl font-extrabold text-gray-900">R$ 79,90</span>
-                                <span className="text-gray-500">/mês</span>
+                            <div className="mb-2">
+                                <span className="text-4xl font-extrabold text-gray-900">
+                                    {formatCurrency(prices.VIP[billingCycle])}
+                                </span>
+                                <span className="text-gray-500 text-sm font-medium">/{billingCycle === 'MONTHLY' ? 'mês' : 'ano'}</span>
                             </div>
+                             {billingCycle === 'ANNUAL' && (
+                                <p className="text-xs text-green-600 font-bold mb-4 bg-green-50 inline-block px-2 py-1 rounded">
+                                    Equivale a {formatCurrency(prices.VIP.ANNUAL / 12)}/mês
+                                </p>
+                            )}
 
-                            <ul className="space-y-3 text-sm text-gray-600">
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Tudo do plano PRO</strong></li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Prioridade no Suporte</li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso ao sistema via WhatsApp</strong></li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Assistente Financeiro IA</li>
+                            <ul className="space-y-3 text-sm text-gray-600 mt-4 flex-grow">
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600 flex-shrink-0" /> <span>Tudo do plano PRO</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600 flex-shrink-0" /> <span>Prioridade no Suporte</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600 flex-shrink-0" /> <span className="font-bold">Acesso ao sistema via WhatsApp</span></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600 flex-shrink-0" /> <span>Assistente Financeiro IA</span></li>
                             </ul>
                         </div>
 
@@ -115,7 +166,7 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                             selectedPlan === 'VIP' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
                         }`}
                     >
-                        Confirmar Upgrade para {selectedPlan}
+                        Confirmar Upgrade para {selectedPlan} {billingCycle === 'MONTHLY' ? '(Mensal)' : '(Anual)'}
                     </button>
                 </div>
             </div>

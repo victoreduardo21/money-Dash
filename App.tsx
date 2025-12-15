@@ -13,7 +13,7 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle } from './types';
 import { api } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
@@ -46,6 +46,8 @@ const App: React.FC = () => {
   const [preSelectRegister, setPreSelectRegister] = useState(false);
   // Estado para armazenar o plano selecionado na Landing Page
   const [selectedPlan, setSelectedPlan] = useState<Plan>('FREE');
+  // Estado para armazenar o ciclo de pagamento selecionado na Landing Page
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('MONTHLY');
 
   // Estado do Modal de Seleção de Plano
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
@@ -124,19 +126,24 @@ const App: React.FC = () => {
   };
 
   // --- FUNÇÃO DE CONFIRMAÇÃO DE UPGRADE ---
-  const handleConfirmUpgrade = async (newPlan: Plan) => {
+  const handleConfirmUpgrade = async (newPlan: Plan, cycle: BillingCycle) => {
       if (!token || !currentUser) return;
       
       setIsPlanModalOpen(false);
-      showToast(`Processando atualização para ${newPlan}...`, "info");
+      showToast(`Processando atualização para ${newPlan} (${cycle === 'MONTHLY' ? 'Mensal' : 'Anual'})...`, "info");
 
       try {
           // Chama a API para atualizar no banco
-          const result = await api.updatePlan(newPlan, token);
+          const result = await api.updatePlan(newPlan, cycle, token);
           
           if (!result.error) {
               // Atualiza o estado local imediatamente
-              const updatedUser = { ...currentUser, plan: newPlan, subscriptionStatus: 'ACTIVE' as const };
+              const updatedUser: User = { 
+                  ...currentUser, 
+                  plan: newPlan, 
+                  billingCycle: cycle, 
+                  subscriptionStatus: 'ACTIVE' 
+              };
               setCurrentUser(updatedUser);
               localStorage.setItem('user_data', JSON.stringify(updatedUser));
               
@@ -311,6 +318,7 @@ const App: React.FC = () => {
                     onBack={() => setIsLoginScreen(false)} 
                     initialMode={preSelectRegister ? 'register' : 'login'}
                     selectedPlan={selectedPlan}
+                    selectedBillingCycle={selectedBillingCycle}
                 />
                 <WhatsAppButton />
             </>
@@ -323,8 +331,9 @@ const App: React.FC = () => {
                     setPreSelectRegister(false);
                     setIsLoginScreen(true);
                 }}
-                onRegister={(plan) => {
+                onRegister={(plan, cycle) => {
                     if (plan) setSelectedPlan(plan);
+                    if (cycle) setSelectedBillingCycle(cycle);
                     setPreSelectRegister(true);
                     setIsLoginScreen(true);
                 }}

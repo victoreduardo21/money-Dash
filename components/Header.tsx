@@ -65,6 +65,14 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
       return pending.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [tasks]);
 
+  // Lógica para obter as iniciais
+  const userInitials = useMemo(() => {
+      const name = currentUser?.name || 'U';
+      const parts = name.trim().split(' ');
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }, [currentUser]);
+
   return (
     // Header com suporte a modo escuro
     <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 z-10 transition-colors duration-300">
@@ -179,11 +187,10 @@ const Header: React.FC<HeaderProps> = ({ children, onLogout, onNewTransaction, c
 
         <div className="relative" ref={profileMenuRef}>
           <button onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} className="flex items-center focus:outline-none group">
-             <img
-                className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600 group-hover:border-blue-500 transition-colors"
-                src={currentUser?.avatar || `https://i.pravatar.cc/150?u=${currentUser?.email}`}
-                alt="Your avatar"
-            />
+             {/* Substituído imagem por iniciais */}
+             <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-200 font-bold border-2 border-blue-200 dark:border-blue-700 group-hover:border-blue-500 transition-colors">
+                {userInitials}
+             </div>
             <div className="hidden md:block ml-3 text-left">
                 <p className="text-sm font-bold text-gray-700 dark:text-gray-200 group-hover:text-blue-600 transition-colors">{currentUser?.name || 'Usuário'}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Meu Perfil</p>

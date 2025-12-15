@@ -1,9 +1,8 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Theme, User } from '../types';
 import { SunIcon } from '../components/icons/SunIcon';
 import { MoonIcon } from '../components/icons/MoonIcon';
-import { CameraIcon } from '../components/icons/CameraIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -59,7 +58,6 @@ const ThemeToggle: React.FC<{ theme: Theme; setTheme: (theme: Theme) => void; }>
 const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpdatePassword, onUpdateAvatar, onCreateUser }) => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State para lista de clientes (apenas Admin)
   const [clients, setClients] = useState<User[]>([]);
@@ -81,65 +79,6 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
       }
   }, [isAdmin, currentUser.email]);
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Função para redimensionar e comprimir a imagem
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 200; // Reduz para 200px para caber na planilha
-                const MAX_HEIGHT = 200;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-
-                // Converte para JPEG com qualidade 0.7 para reduzir o tamanho da string Base64
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                resolve(dataUrl);
-            };
-            img.onerror = (err) => reject(err);
-        };
-        reader.onerror = (err) => reject(err);
-    });
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-        try {
-            const compressedBase64 = await compressImage(file);
-            onUpdateAvatar(compressedBase64);
-        } catch (error) {
-            console.error("Erro ao processar imagem", error);
-            alert("Erro ao processar a imagem. Tente uma imagem menor.");
-        }
-    }
-  };
-
   const handleRequestPaymentLink = () => {
       // Redireciona para o WhatsApp
       const message = `Olá, gostaria de realizar o pagamento da mensalidade do FinDash. Meu email é: ${currentUser.email}`;
@@ -156,6 +95,29 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
       alert("Sua conta e todos os dados foram apagados. Você será desconectado.");
       // In a real app, you would call an API here and then log the user out.
     }
+  };
+
+  // Lógica para obter as iniciais
+  const userInitials = useMemo(() => {
+      const name = currentUser?.name || 'U';
+      const parts = name.trim().split(' ');
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }, [currentUser]);
+  
+  // Exibição de preço formatado
+  const getPriceDisplay = () => {
+      if (currentUser.plan === 'FREE') return 'Grátis';
+      
+      const isAnnual = currentUser.billingCycle === 'ANNUAL';
+      
+      if (currentUser.plan === 'VIP') {
+          return isAnnual ? 'R$ 799,90' : 'R$ 79,90';
+      }
+      if (currentUser.plan === 'PRO') {
+          return isAnnual ? 'R$ 399,90' : 'R$ 39,90';
+      }
+      return 'Grátis';
   };
 
   return (
@@ -179,25 +141,10 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
             <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-b pb-4 border-gray-100 dark:border-gray-700">Perfil</h4>
             <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8">
                 <div className="relative group">
-                    <img 
-                        src={currentUser.avatar || `https://i.pravatar.cc/150?u=${currentUser.email}`} 
-                        alt="Avatar"
-                        className="h-28 w-28 rounded-full object-cover bg-gray-100 dark:bg-gray-700 ring-4 ring-white dark:ring-gray-600 shadow-lg"
-                    />
-                    <button 
-                        onClick={handleAvatarClick}
-                        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center rounded-full transition-all duration-300"
-                        aria-label="Alterar foto de perfil"
-                    >
-                        <CameraIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300" />
-                    </button>
-                    <input 
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        accept="image/*"
-                    />
+                    {/* Substituído imagem por iniciais */}
+                    <div className="h-28 w-28 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-4xl font-bold text-blue-700 dark:text-blue-200 shadow-lg border-4 border-white dark:border-gray-600">
+                        {userInitials}
+                    </div>
                 </div>
                 <div className="flex-grow w-full">
                     <div className="space-y-5">
@@ -245,9 +192,9 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                     <div className="mb-6 md:mb-0">
                         <p className="text-gray-600 dark:text-gray-400 font-medium">Plano Atual</p>
                         <p className="text-4xl font-extrabold text-gray-900 dark:text-white mt-1">
-                            {currentUser.plan === 'VIP' ? 'R$ 79,90' : currentUser.plan === 'PRO' ? 'R$ 39,90' : 'Grátis'}
-                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                {currentUser.plan !== 'FREE' ? '/mês' : ''}
+                            {getPriceDisplay()}
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 ml-1">
+                                {currentUser.plan !== 'FREE' ? (currentUser.billingCycle === 'ANNUAL' ? '/ano' : '/mês') : ''}
                             </span>
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -312,7 +259,12 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                                 <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{client.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">{client.email}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{client.plan || 'FREE'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {client.plan || 'FREE'} 
+                                        {client.plan !== 'FREE' && (
+                                            <span className="text-xs ml-1 text-gray-400">({client.billingCycle === 'ANNUAL' ? 'Anual' : 'Mensal'})</span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                                         <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${
                                             client.subscriptionStatus === 'ACTIVE' 

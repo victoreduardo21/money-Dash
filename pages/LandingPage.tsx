@@ -1,18 +1,28 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { RocketLaunchIcon } from '../components/icons/RocketLaunchIcon';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { DashboardIcon } from '../components/icons/DashboardIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
 import { CheckCircleIcon } from '../components/icons/CheckCircleIcon';
-import { Plan } from '../types';
+import { Plan, BillingCycle } from '../types';
 
 interface LandingPageProps {
   onLogin: () => void;
-  onRegister: (plan: Plan) => void;
+  onRegister: (plan: Plan, cycle: BillingCycle) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
+
+  // Lógica de Preços
+  const prices = {
+      PRO: billingCycle === 'MONTHLY' ? '39,90' : '399,90',
+      VIP: billingCycle === 'MONTHLY' ? '79,90' : '799,90'
+  };
+
+  const periodLabel = billingCycle === 'MONTHLY' ? '/mês' : '/ano';
+
   return (
     <div className="font-sans text-slate-600 bg-white overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 scroll-smooth">
       <style>{`
@@ -48,7 +58,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 Entrar
               </button>
               <button 
-                onClick={() => onRegister('FREE')}
+                onClick={() => onRegister('FREE', 'MONTHLY')}
                 className="bg-slate-900 text-white px-5 py-2.5 rounded-full font-bold text-xs md:text-sm hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
                 Começar Grátis
@@ -83,7 +93,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
                 <button 
-                    onClick={() => onRegister('FREE')}
+                    onClick={() => onRegister('FREE', 'MONTHLY')}
                     className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-sm md:text-base hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2"
                 >
                     Criar Conta Gratuita <span className="text-blue-200">-></span>
@@ -281,9 +291,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       {/* --- PRICING SECTION --- */}
       <section id="planos" className="py-24 bg-slate-50">
           <div className="max-w-7xl mx-auto px-6">
-              <div className="text-center mb-16">
+              <div className="text-center mb-10">
                   <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Planos que cabem no seu bolso</h2>
-                  <p className="text-slate-500">Escolha o melhor plano para o seu momento financeiro.</p>
+                  <p className="text-slate-500 mb-8">Escolha o melhor plano para o seu momento financeiro.</p>
+                  
+                  {/* Seletor Mensal / Anual */}
+                  <div className="flex justify-center">
+                        <div className="bg-slate-200 p-1.5 rounded-full flex relative inline-flex">
+                            <button 
+                                onClick={() => setBillingCycle('MONTHLY')}
+                                className={`px-6 py-2 text-sm font-bold rounded-full transition-all duration-300 ${billingCycle === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Mensal
+                            </button>
+                            <button 
+                                onClick={() => setBillingCycle('ANNUAL')}
+                                className={`px-6 py-2 text-sm font-bold rounded-full transition-all duration-300 flex items-center ${billingCycle === 'ANNUAL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Anual
+                                <span className="ml-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                    -16%
+                                </span>
+                            </button>
+                        </div>
+                  </div>
               </div>
 
               <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-end">
@@ -299,7 +330,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                           <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Relatórios Avançados</li>
                       </ul>
                       <button 
-                        onClick={() => onRegister('FREE')}
+                        onClick={() => onRegister('FREE', 'MONTHLY')}
                         className="w-full py-3 border-2 border-slate-200 text-slate-700 rounded-lg font-bold text-sm hover:border-slate-900 hover:text-slate-900 transition-colors"
                       >
                           Começar Grátis
@@ -311,8 +342,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                       <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">POPULAR</div>
                       <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">PRO</div>
                       <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ 39,90</span>
-                          <span className="text-slate-500">/mês</span>
+                          <span className="text-4xl font-bold text-slate-900">R$ {prices.PRO}</span>
+                          <span className="text-slate-500">{periodLabel}</span>
                       </div>
                       <p className="text-slate-500 text-sm mb-6">Para quem quer controle total.</p>
                       <ul className="space-y-3 mb-8 text-sm text-slate-600">
@@ -322,7 +353,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-blue-600" /> Relatórios Avançados</li>
                       </ul>
                       <button 
-                        onClick={() => onRegister('PRO')}
+                        onClick={() => onRegister('PRO', billingCycle)}
                         className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                       >
                           Assinar Pro
@@ -333,8 +364,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-purple-200 hover:shadow-xl transition-all duration-300">
                       <div className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-2">VIP</div>
                       <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ 79,90</span>
-                          <span className="text-slate-500">/mês</span>
+                          <span className="text-4xl font-bold text-slate-900">R$ {prices.VIP}</span>
+                          <span className="text-slate-500">{periodLabel}</span>
                       </div>
                       <p className="text-slate-500 text-sm mb-6">Para máxima performance e comodidade.</p>
                       <ul className="space-y-3 mb-8 text-sm text-slate-600">
@@ -344,7 +375,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Assistente Financeiro IA</li>
                       </ul>
                       <button 
-                        onClick={() => onRegister('VIP')}
+                        onClick={() => onRegister('VIP', billingCycle)}
                         className="w-full py-3 border-2 border-purple-100 text-purple-600 hover:bg-purple-50 hover:border-purple-200 rounded-lg font-bold text-sm transition-colors"
                       >
                           Assinar VIP
