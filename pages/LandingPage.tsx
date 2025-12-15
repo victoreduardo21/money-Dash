@@ -264,7 +264,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                       { icon: <UsersIcon className="w-6 h-6 text-blue-600" />, title: 'Relatórios Avançados', desc: 'Análises detalhadas por categoria e evolução mensal (Plano PRO).' },
                       { icon: <TrendingUpIcon className="w-6 h-6 text-blue-600" />, title: 'Gestão de Investimentos', desc: 'Acompanhe a evolução do seu patrimônio (Plano PRO).' },
                       { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Agenda Financeira', desc: 'Nunca mais pague juros por atraso. Receba notificações de contas (Plano PRO).' },
-                      { icon: <RocketLaunchIcon className="w-6 h-6 text-blue-600" />, title: 'Suporte Prioritário', desc: 'Atendimento exclusivo e direto para membros VIP.' },
+                      { icon: <RocketLaunchIcon className="w-6 h-6 text-blue-600" />, title: 'Assistente via WhatsApp', desc: 'Controle tudo pelo chat com nosso assistente exclusivo (Plano VIP).' },
                   ].map((feature, idx) => (
                       <div key={idx} className="bg-slate-50 border border-slate-100 p-8 rounded-2xl hover:bg-white hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-100 transition-all duration-300 group">
                           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -311,7 +311,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                       <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">POPULAR</div>
                       <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">PRO</div>
                       <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ 29,90</span>
+                          <span className="text-4xl font-bold text-slate-900">R$ 39,90</span>
                           <span className="text-slate-500">/mês</span>
                       </div>
                       <p className="text-slate-500 text-sm mb-6">Para quem quer controle total.</p>
@@ -333,21 +333,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-purple-200 hover:shadow-xl transition-all duration-300">
                       <div className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-2">VIP</div>
                       <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ 500</span>
-                          <span className="text-slate-500">/único</span>
+                          <span className="text-4xl font-bold text-slate-900">R$ 79,90</span>
+                          <span className="text-slate-500">/mês</span>
                       </div>
-                      <p className="text-slate-500 text-sm mb-6">Pague uma vez, use para sempre.</p>
+                      <p className="text-slate-500 text-sm mb-6">Para máxima performance e comodidade.</p>
                       <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso VITALÍCIO ao PRO</strong></li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Tudo do plano PRO</strong></li>
                           <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Prioritário VIP</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Acesso antecipado a betas</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Sem mensalidade nunca</li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso ao sistema via WhatsApp</strong></li>
+                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Assistente Financeiro IA</li>
                       </ul>
                       <button 
                         onClick={() => onRegister('VIP')}
                         className="w-full py-3 border-2 border-purple-100 text-purple-600 hover:bg-purple-50 hover:border-purple-200 rounded-lg font-bold text-sm transition-colors"
                       >
-                          Comprar Lifetime
+                          Assinar VIP
                       </button>
                   </div>
               </div>
@@ -405,8 +405,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   </div>
               </div>
 
-              <div className="border-t border-slate-800 pt-8 text-center text-sm">
-                  <p>© 2025 FinDash Tecnologia Ltda. Todos os direitos reservados.</p>
+              <div className="border-t border-slate-800 pt-8 text-center text-sm flex flex-col gap-2">
+                  <p>© 2025 FinDash. Todos os direitos reservados.</p>
+                  <p className="text-slate-600 text-xs">
+                    Uma solução inovadora desenvolvida pela <span className="text-blue-500 font-bold">GTS - Global Tech Software</span> com Inteligência Artificial.
+                  </p>
               </div>
           </div>
       </footer>

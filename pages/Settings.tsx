@@ -245,14 +245,14 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                     <div className="mb-6 md:mb-0">
                         <p className="text-gray-600 dark:text-gray-400 font-medium">Plano Atual</p>
                         <p className="text-4xl font-extrabold text-gray-900 dark:text-white mt-1">
-                            {currentUser.plan === 'VIP' ? 'VIP' : currentUser.plan === 'PRO' ? 'R$ 29,90' : 'Grátis'}
+                            {currentUser.plan === 'VIP' ? 'R$ 79,90' : currentUser.plan === 'PRO' ? 'R$ 39,90' : 'Grátis'}
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                {currentUser.plan === 'VIP' ? ' / Vitalício' : currentUser.plan === 'PRO' ? '/mês' : ''}
+                                {currentUser.plan !== 'FREE' ? '/mês' : ''}
                             </span>
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                              {currentUser.plan === 'VIP' 
-                                ? 'Acesso vitalício completo a todos os recursos.' 
+                                ? 'Acesso completo com suporte exclusivo via WhatsApp.' 
                                 : currentUser.plan === 'PRO' 
                                     ? 'Acesso a Dashboard, Investimentos, Agenda e Relatórios.' 
                                     : 'Acesso básico ao Dashboard e Transações.'}
@@ -366,6 +366,15 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
                       <button onClick={handleDeleteAccount} className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800 px-5 py-2.5 rounded-lg transition-colors text-sm font-bold">Apagar</button>
                   </div>
               </div>
+          </div>
+          
+          <div className="mt-8 text-center border-t border-gray-200 dark:border-gray-700 pt-6">
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                    Sistema desenvolvido pela <span className="font-bold text-blue-600">GTS - Global Tech Software</span>
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
+                    Potencializado por Inteligência Artificial
+                </p>
           </div>
         </div>
       </div>

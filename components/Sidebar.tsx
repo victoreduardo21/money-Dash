@@ -154,10 +154,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 bg-[#020617]">
-                <div className="flex items-center">
-                    <div className="ml-3">
-                        <p className="text-xs font-medium text-gray-500">Versão 2.2.0 (Pro Edition)</p>
-                    </div>
+                <div className="flex flex-col">
+                    <p className="text-xs font-medium text-gray-500">Versão 2.2.0 (Pro Edition)</p>
+                    <p className="text-[10px] text-gray-600 mt-1">
+                        Desenvolvido por <span className="text-blue-500 font-bold">GTS AI</span>
+                    </p>
+                    <p className="text-[9px] text-gray-700">Global Tech Software</p>
                 </div>
             </div>
         </div>

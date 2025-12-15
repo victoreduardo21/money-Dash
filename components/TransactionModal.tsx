@@ -18,6 +18,7 @@ const CATEGORIES = [
     "Lazer",
     "Educação",
     "Salário",
+    "Aporte", // Adicionado Aporte
     "Investimentos",
     "Serviços",
     "Outros"

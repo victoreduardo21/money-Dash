@@ -13,7 +13,7 @@ interface ReportsProps {
 // Cores definidas pelo usuário
 const COLOR_RECEITA = '#10B981'; // Verde
 const COLOR_DESPESA = '#EF4444'; // Vermelho
-const COLOR_INVESTIMENTO = '#3B82F6'; // Azul
+const COLOR_APORTE = '#3B82F6'; // Azul (Antes Investimento)
 
 const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     // Estado alterado para Mês (YYYY-MM), igual ao Dashboard
@@ -21,6 +21,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
 
     const formatCurrency = (value: number) => {
         return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    // Helper para identificar categorias de aporte
+    const isInvestmentCategory = (category: string) => {
+        const cat = category.toLowerCase().trim();
+        return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
     };
 
     // Extrai o ano do mês selecionado para o gráfico de evolução
@@ -37,7 +43,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                 if (t.type === TransactionType.Receita) {
                     rec += t.amount;
                 } else {
-                    if (t.category === 'Investimentos') {
+                    if (isInvestmentCategory(t.category)) {
                         inv += t.amount;
                     } else {
                         desp += t.amount;
@@ -54,7 +60,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         const categories: Record<string, number> = {};
         
         transactions.forEach(t => {
-            if (t.type === TransactionType.Despesa && t.date.startsWith(selectedMonth) && t.category !== 'Investimentos') {
+            if (t.type === TransactionType.Despesa && t.date.startsWith(selectedMonth) && !isInvestmentCategory(t.category)) {
                 if (!categories[t.category]) {
                     categories[t.category] = 0;
                 }
@@ -71,7 +77,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     // 3. Dados para Gráfico de Evolução Mensal (Contexto do ANO TODO do mês selecionado)
     const monthlyData = useMemo(() => {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const data = months.map(m => ({ name: m, Receitas: 0, Despesas: 0, Investimentos: 0, Saldo: 0 }));
+        const data = months.map(m => ({ name: m, Receitas: 0, Despesas: 0, Aportes: 0, Saldo: 0 }));
 
         transactions.forEach(t => {
             if (t.date.startsWith(selectedYear)) {
@@ -80,8 +86,8 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                     if (t.type === TransactionType.Receita) {
                         data[monthIndex].Receitas += t.amount;
                     } else {
-                        if (t.category === 'Investimentos') {
-                            data[monthIndex].Investimentos += t.amount;
+                        if (isInvestmentCategory(t.category)) {
+                            data[monthIndex].Aportes += t.amount;
                         } else {
                             data[monthIndex].Despesas += t.amount;
                         }
@@ -92,7 +98,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         
         return data.map(d => ({
             ...d,
-            Saldo: d.Receitas - d.Despesas - d.Investimentos
+            Saldo: d.Receitas - d.Despesas - d.Aportes
         }));
 
     }, [transactions, selectedYear]);
@@ -101,7 +107,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     const pieData = useMemo(() => {
         return [
             { name: 'Receitas', value: monthTotals.rec, color: COLOR_RECEITA },
-            { name: 'Investimentos', value: monthTotals.inv, color: COLOR_INVESTIMENTO },
+            { name: 'Aportes', value: monthTotals.inv, color: COLOR_APORTE }, // Label alterada para Aportes
             { name: 'Despesas', value: monthTotals.desp, color: COLOR_DESPESA }
         ].filter(item => item.value > 0); 
     }, [monthTotals]);
@@ -187,9 +193,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                                         <stop offset="5%" stopColor={COLOR_DESPESA} stopOpacity={0.8}/>
                                         <stop offset="95%" stopColor={COLOR_DESPESA} stopOpacity={0}/>
                                     </linearGradient>
-                                    <linearGradient id="colorInv" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={COLOR_INVESTIMENTO} stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor={COLOR_INVESTIMENTO} stopOpacity={0}/>
+                                    <linearGradient id="colorAporte" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={COLOR_APORTE} stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor={COLOR_APORTE} stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
                                 <XAxis dataKey="name" stroke="#9CA3AF" />
@@ -207,7 +213,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
                                 />
                                 <Area type="monotone" dataKey="Receitas" stroke={COLOR_RECEITA} fillOpacity={1} fill="url(#colorRec)" name="Receitas" />
                                 <Area type="monotone" dataKey="Despesas" stroke={COLOR_DESPESA} fillOpacity={1} fill="url(#colorDesp)" name="Despesas" />
-                                <Area type="monotone" dataKey="Investimentos" stroke={COLOR_INVESTIMENTO} fillOpacity={1} fill="url(#colorInv)" name="Investimentos" />
+                                <Area type="monotone" dataKey="Aportes" stroke={COLOR_APORTE} fillOpacity={1} fill="url(#colorAporte)" name="Aportes" />
                                 <Legend />
                             </AreaChart>
                         </ResponsiveContainer>

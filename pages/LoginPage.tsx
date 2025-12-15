@@ -245,7 +245,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                     <div className="mt-8 text-center">
                         <p className="text-xs text-gray-400 leading-relaxed">
                             Protegido por reCAPTCHA e sujeito à Política de Privacidade.<br/>
-                            © 2025 GTS - Global Tech Software.
+                            Powered by <strong className="text-blue-600">GTS AI</strong> - Global Tech Software.
                         </p>
                     </div>
                 </form>

@@ -29,8 +29,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
+  // Helper para identificar categorias de investimento/aporte
+  const isInvestmentCategory = (category: string) => {
+      const cat = category.toLowerCase().trim();
+      return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
+  };
+
   // 1. SALDO GLOBAL (Mantemos a lógica original aqui para refletir o dinheiro em conta real)
-  // Investimentos saem da conta corrente, então devem subtrair do Saldo, mas não aparecem como Despesa Visual.
   const saldoGlobal = useMemo(() => {
     const receitas = transactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
     const despesas = transactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
@@ -53,14 +58,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   }, [transactions, selectedMonth, searchQuery]);
 
   // 3. RECEITAS E DESPESAS (Visual)
-  // Aqui aplicamos a regra: Se a categoria for 'Investimentos', NÃO conta como despesa visual.
+  // Aqui aplicamos a regra: Se a categoria for 'Investimentos' ou 'Aporte', NÃO conta como despesa visual (vermelha).
   const { receitasMensais, despesasMensais } = useMemo(() => {
     const receitas = filteredTransactions
         .filter(t => t.type === TransactionType.Receita)
         .reduce((acc, t) => acc + t.amount, 0);
         
     const despesas = filteredTransactions
-        .filter(t => t.type === TransactionType.Despesa && t.category !== 'Investimentos') // Filtro aplicado
+        .filter(t => t.type === TransactionType.Despesa && !isInvestmentCategory(t.category)) // Filtro aplicado
         .reduce((acc, t) => acc + t.amount, 0);
         
     return { receitasMensais: receitas, despesasMensais: despesas };
@@ -88,7 +93,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           if (monthIndex >= 0 && monthIndex < 12) {
             if (transaction.type === TransactionType.Receita) {
                 data[monthIndex].Receitas += transaction.amount;
-            } else if (transaction.category !== 'Investimentos') { // Filtro aplicado no Gráfico
+            } else if (!isInvestmentCategory(transaction.category)) { // Filtro aplicado no Gráfico (Exclui Aportes)
                 data[monthIndex].Despesas += transaction.amount;
             }
           }
@@ -161,8 +166,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
                         <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#9CA3AF" />
                         <Tooltip 
                             formatter={(value: number) => formatCurrency(value)}
-                            // Deixamos o tooltip com fundo branco padrão para contraste, mesmo no dark mode, ou customizamos se necessário
-                            // Para simplicidade, vamos deixar o padrão mas com texto escuro garantido
                             contentStyle={{
                                 backgroundColor: '#fff', 
                                 border: '1px solid #e5e7eb', 

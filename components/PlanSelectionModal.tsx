@@ -59,7 +59,7 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                             </div>
                             
                             <div className="mb-6">
-                                <span className="text-4xl font-extrabold text-gray-900">R$ 29,90</span>
+                                <span className="text-4xl font-extrabold text-gray-900">R$ 39,90</span>
                                 <span className="text-gray-500">/mês</span>
                             </div>
 
@@ -78,7 +78,7 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                         >
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <span className="text-purple-600 font-bold tracking-wider text-xs uppercase bg-purple-50 px-2 py-1 rounded-md">Vitalício</span>
+                                    <span className="text-purple-600 font-bold tracking-wider text-xs uppercase bg-purple-50 px-2 py-1 rounded-md">Exclusivo</span>
                                     <h4 className="text-2xl font-bold text-gray-900 mt-2">Plano VIP</h4>
                                 </div>
                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPlan === 'VIP' ? 'border-purple-600 bg-purple-600' : 'border-gray-300'}`}>
@@ -87,15 +87,15 @@ const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose
                             </div>
                             
                             <div className="mb-6">
-                                <span className="text-4xl font-extrabold text-gray-900">R$ 500</span>
-                                <span className="text-gray-500">/único</span>
+                                <span className="text-4xl font-extrabold text-gray-900">R$ 79,90</span>
+                                <span className="text-gray-500">/mês</span>
                             </div>
 
                             <ul className="space-y-3 text-sm text-gray-600">
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso VITALÍCIO ao PRO</strong></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Tudo do plano PRO</strong></li>
                                 <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Prioridade no Suporte</li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Acesso antecipado a betas</li>
-                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Sem mensalidade nunca</li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Acesso ao sistema via WhatsApp</strong></li>
+                                <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Assistente Financeiro IA</li>
                             </ul>
                         </div>
 
