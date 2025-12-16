@@ -5,7 +5,7 @@ import { XIcon } from './icons/XIcon';
 interface ChangePasswordModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (currentPassword: string, newPassword: string) => void;
+    onSave: (currentPassword: string, newPassword: string) => Promise<void> | void;
 }
 
 const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose, onSave }) => {
@@ -13,6 +13,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (!isOpen) {
@@ -20,10 +21,11 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
             setNewPassword('');
             setConfirmPassword('');
             setError('');
+            setIsSubmitting(false);
         }
     }, [isOpen]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -36,8 +38,15 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
             return;
         }
 
-        onSave(currentPassword, newPassword);
-        onClose();
+        setIsSubmitting(true);
+        try {
+            await onSave(currentPassword, newPassword);
+            onClose();
+        } catch (e) {
+            setError('Erro ao alterar senha. Verifique sua senha atual.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -50,7 +59,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                         <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
                             Alterar Senha
                         </h3>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50">
                             <XIcon className="h-6 w-6" />
                         </button>
                     </div>
@@ -83,12 +92,12 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                     </div>
                     <div
                         className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose}
-                            className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 font-semibold text-sm">Cancelar
+                        <button type="button" onClick={onClose} disabled={isSubmitting}
+                            className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 font-semibold text-sm disabled:opacity-50">Cancelar
                         </button>
-                        <button type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">
-                            Salvar Alterações
+                        <button type="submit" disabled={isSubmitting}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm disabled:bg-blue-400 disabled:cursor-not-allowed">
+                            {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
                         </button>
                     </div>
                 </form>

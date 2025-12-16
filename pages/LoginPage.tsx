@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Plan, BillingCycle } from '../types';
 import { api } from '../services/api';
@@ -71,7 +70,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 phone, 
                 cpf, 
                 plan: selectedPlan as Plan,
-                billingCycle: selectedBillingCycle // Envia se é Mensal ou Anual
+                billingCycle: selectedBillingCycle as BillingCycle // Envia se é Mensal ou Anual
             });
             
             if (createResponse.error) {

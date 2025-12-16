@@ -9,7 +9,7 @@ import { CalendarIcon } from '../components/icons/CalendarIcon';
 
 interface AgendaProps {
     tasks: CalendarEvent[];
-    onAddTask: (task: Omit<CalendarEvent, 'id'>) => void;
+    onAddTask: (task: Omit<CalendarEvent, 'id'>) => Promise<void> | void;
     onToggleTask: (id: string, done: boolean) => void;
     onDeleteTask: (id: string) => void;
 }
@@ -18,18 +18,28 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskDate, setNewTaskDate] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
         if (newTaskDesc && newTaskDate) {
-            onAddTask({
-                description: newTaskDesc,
-                date: newTaskDate,
-                done: false
-            });
-            setNewTaskDesc('');
-            setNewTaskDate('');
-            setIsModalOpen(false);
+            setIsSubmitting(true);
+            try {
+                await onAddTask({
+                    description: newTaskDesc,
+                    date: newTaskDate,
+                    done: false
+                });
+                setNewTaskDesc('');
+                setNewTaskDate('');
+                setIsModalOpen(false);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
@@ -57,6 +67,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                     onClick={() => {
                         setNewTaskDate(new Date().toISOString().split('T')[0]);
                         setIsModalOpen(true);
+                        setIsSubmitting(false);
                     }} 
                     className="flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-colors duration-200 text-sm font-bold shadow-md hover:shadow-lg"
                 >
@@ -136,7 +147,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md m-4 p-6 animate-fade-in">
                         <div className="flex justify-between items-center mb-6 border-b pb-4">
                             <h3 className="text-xl font-bold text-gray-800">Novo Lembrete</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50">
                                 <XIcon className="h-6 w-6" />
                             </button>
                         </div>
@@ -164,11 +175,15 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                 />
                             </div>
                             <div className="flex justify-end pt-4 gap-2">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">
+                                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors disabled:opacity-50">
                                     Cancelar
                                 </button>
-                                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg hover:shadow-blue-500/30">
-                                    Adicionar
+                                <button 
+                                    type="submit" 
+                                    disabled={isSubmitting}
+                                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg hover:shadow-blue-500/30 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {isSubmitting ? 'Salvando...' : 'Adicionar'}
                                 </button>
                             </div>
                         </form>

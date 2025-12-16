@@ -6,7 +6,7 @@ import { XIcon } from './icons/XIcon';
 interface TransactionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => void;
+    onSave: (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => Promise<void> | void;
     transaction: PersonalTransaction | null;
 }
 
@@ -18,7 +18,7 @@ const CATEGORIES = [
     "Lazer",
     "Educação",
     "Salário",
-    "Aporte", // Adicionado Aporte
+    "Aporte", 
     "Investimentos",
     "Serviços",
     "Outros"
@@ -30,9 +30,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
     const [date, setDate] = useState('');
     const [type, setType] = useState<TransactionType>(TransactionType.Despesa);
     const [category, setCategory] = useState('');
+    
+    // Estado para controlar o loading e desabilitar botão
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
+            setIsSubmitting(false); // Reseta o estado ao abrir
             if (transaction) {
                 setDescription(transaction.description);
                 setAmount(transaction.amount);
@@ -49,20 +53,33 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
         }
     }, [transaction, isOpen]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!description || !amount || !date || !category) {
             alert("Por favor, preencha todos os campos.");
             return;
         }
-        onSave({
-            id: transaction?.id,
-            description,
-            amount,
-            date,
-            type,
-            category,
-        });
+
+        // Previne duplo clique
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
+
+        try {
+            await onSave({
+                id: transaction?.id,
+                description,
+                amount,
+                date,
+                type,
+                category,
+            });
+            // O modal será fechado pelo componente pai (App.tsx), 
+            // mas caso haja erro no pai que não feche o modal, removemos o loading.
+        } catch (error) {
+            console.error(error);
+            setIsSubmitting(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -75,7 +92,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
                         <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
                             {transaction ? 'Editar Transação' : 'Adicionar Transação'}
                         </h3>
-                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50">
                             <XIcon className="h-6 w-6" />
                         </button>
                     </div>
@@ -121,8 +138,26 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
                         </div>
                     </div>
                     <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 font-semibold text-sm">Cancelar</button>
-                        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">Salvar</button>
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 font-semibold text-sm disabled:opacity-50">
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Salvando...
+                                </>
+                            ) : (
+                                'Salvar'
+                            )}
+                        </button>
                     </div>
                 </form>
             </div>
