@@ -9,9 +9,10 @@ interface MetricCardProps {
   icon: React.ReactNode;
   change?: string;
   changeType?: 'increase' | 'decrease';
+  valueClassName?: string; // Propriedade opcional para cor do texto
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType }) => {
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType, valueClassName }) => {
   const isIncrease = changeType === 'increase';
   const ChangeIcon = isIncrease ? ArrowUpIcon : ArrowDownIcon;
 
@@ -25,7 +26,8 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, cha
         </div>
         <div>
           <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{value}</p>
+          {/* Aplica a cor customizada se fornecida, senão usa o padrão */}
+          <p className={`text-2xl font-extrabold mt-1 ${valueClassName || 'text-gray-900 dark:text-white'}`}>{value}</p>
         </div>
       </div>
       {change && changeType && (

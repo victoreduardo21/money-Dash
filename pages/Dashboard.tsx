@@ -26,19 +26,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
 
   const formatCurrency = (value: number) => {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // CORREÇÃO: Se o valor for muito próximo de zero (ex: -0.00001), força para 0 positivo.
+    // Isso evita o problema de aparecer "-R$ 0,00".
+    const safeValue = Math.abs(value) < 0.005 ? 0 : value;
+    return `R$ ${safeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // Formatador compacto para o Eixo Y (Ex: 1.5k, 2 mil) para não poluir o gráfico
+  const formatCompactCurrency = (value: number) => {
+      return new Intl.NumberFormat('pt-BR', {
+          notation: "compact",
+          compactDisplay: "short",
+          maximumFractionDigits: 1,
+      }).format(value);
   }
 
   // Helper para identificar categorias de investimento/aporte
+  // FIX: Adicionada verificação (!category) para evitar erro se a categoria vier nula ou undefined
   const isInvestmentCategory = (category: string) => {
+      if (!category) return false;
       const cat = category.toLowerCase().trim();
       return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
   };
 
   // 1. SALDO GLOBAL (Mantemos a lógica original aqui para refletir o dinheiro em conta real)
   const saldoGlobal = useMemo(() => {
-    const receitas = transactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
-    const despesas = transactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
+    const receitas = transactions.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (t.amount || 0), 0);
+    const despesas = transactions.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + (t.amount || 0), 0);
     return receitas - despesas;
   }, [transactions]);
 
@@ -47,11 +61,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       const lowerQuery = searchQuery.toLowerCase();
       return transactions.filter(t => {
           const matchMonth = t.date.startsWith(selectedMonth);
-          const matchSearch = 
-            t.description.toLowerCase().includes(lowerQuery) ||
-            t.category.toLowerCase().includes(lowerQuery) ||
-            t.type.toLowerCase().includes(lowerQuery) ||
-            t.amount.toString().includes(lowerQuery);
+          
+          // Verifica se as propriedades existem antes de usar toLowerCase()
+          const descriptionMatch = (t.description || '').toLowerCase().includes(lowerQuery);
+          const categoryMatch = (t.category || '').toLowerCase().includes(lowerQuery);
+          const typeMatch = (t.type || '').toLowerCase().includes(lowerQuery);
+          const amountMatch = (t.amount || 0).toString().includes(lowerQuery);
+          
+          const matchSearch = descriptionMatch || categoryMatch || typeMatch || amountMatch;
             
           return matchMonth && matchSearch;
       });
@@ -62,17 +79,17 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   const { receitasMensais, despesasMensais } = useMemo(() => {
     const receitas = filteredTransactions
         .filter(t => t.type === TransactionType.Receita)
-        .reduce((acc, t) => acc + t.amount, 0);
+        .reduce((acc, t) => acc + (t.amount || 0), 0);
         
     const despesas = filteredTransactions
         .filter(t => t.type === TransactionType.Despesa && !isInvestmentCategory(t.category)) // Filtro aplicado
-        .reduce((acc, t) => acc + t.amount, 0);
+        .reduce((acc, t) => acc + (t.amount || 0), 0);
         
     return { receitasMensais: receitas, despesasMensais: despesas };
   }, [filteredTransactions]);
 
   const totalInvestido = useMemo(() => {
-      return investments.reduce((acc, inv) => acc + inv.currentValue, 0);
+      return investments.reduce((acc, inv) => acc + (inv.currentValue || 0), 0);
   }, [investments]);
 
   // Gráfico: Mostra os dados do ANO correspondente ao mês selecionado
@@ -81,7 +98,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
     const data = months.map(month => ({ name: month, Receitas: 0, Despesas: 0 }));
 
     transactions.forEach(transaction => {
+      // Verifica se a data existe antes de tentar dividir
+      if (!transaction.date) return;
+
       const dateParts = transaction.date.split('-'); // YYYY-MM-DD
+      if (dateParts.length < 2) return;
+
       const year = parseInt(dateParts[0]);
       
       // Filtra o gráfico apenas para o ANO selecionado no filtro
@@ -91,10 +113,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           const monthIndex = parseInt(dateParts[1]) - 1; 
           
           if (monthIndex >= 0 && monthIndex < 12) {
+            const amount = transaction.amount || 0;
             if (transaction.type === TransactionType.Receita) {
-                data[monthIndex].Receitas += transaction.amount;
+                data[monthIndex].Receitas += amount;
             } else if (!isInvestmentCategory(transaction.category)) { // Filtro aplicado no Gráfico (Exclui Aportes)
-                data[monthIndex].Despesas += transaction.amount;
+                data[monthIndex].Despesas += amount;
             }
           }
       }
@@ -118,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
                   id="month-filter"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none"
+                  className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none cursor-pointer"
               />
           </div>
       </div>
@@ -133,6 +156,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
               title="Saldo Atual (Global)"
               value={formatCurrency(saldoGlobal)}
               icon={<DollarSignIcon className="h-8 w-8 text-blue-600" />}
+              // LÓGICA DE COR: Só fica vermelho se for menor que zero (considerando pequena margem de erro)
+              valueClassName={saldoGlobal < -0.005 ? "text-red-600 dark:text-red-500" : "text-gray-900 dark:text-white"}
             />
             <MetricCard
               title="Receitas (Mês)"
@@ -153,31 +178,73 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
             />
           </div>
 
-          {/* Chart - Suporte a modo escuro */}
+          {/* Chart - Design Limpo e Moderno */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-                <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
-                    Visão Geral de {selectedMonth.split('-')[0]}
-                </h4>
-                 <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={monthlyChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#9CA3AF" opacity={0.3} />
-                        <XAxis dataKey="name" stroke="#9CA3AF" />
-                        <YAxis tickFormatter={(value) => formatCurrency(Number(value))} stroke="#9CA3AF" />
+                <div className="flex justify-between items-center mb-8">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white">
+                        Visão Geral de {selectedMonth.split('-')[0]}
+                    </h4>
+                    {/* Legenda Customizada (Opcional, se quiser substituir a padrão do Recharts) */}
+                </div>
+                
+                 <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={monthlyChartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                        {/* Grade apenas horizontal e bem suave */}
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" strokeOpacity={0.5} />
+                        
+                        <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }}
+                            dy={10} // Afasta um pouco o texto
+                        />
+                        
+                        <YAxis 
+                            width={50} // Largura fixa para garantir que "1.5 mil" caiba
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fill: '#9CA3AF', fontSize: 12, fontWeight: 500 }}
+                            tickFormatter={formatCompactCurrency} // Ex: 1.5k
+                        />
+                        
                         <Tooltip 
+                            cursor={{ fill: 'rgba(0,0,0,0.03)' }} // Highlight suave na barra ao passar o mouse
                             formatter={(value: number) => formatCurrency(value)}
                             contentStyle={{
                                 backgroundColor: '#fff', 
-                                border: '1px solid #e5e7eb', 
-                                borderRadius: '0.5rem',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                color: '#000'
+                                border: 'none', 
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                color: '#111827',
+                                padding: '12px 16px'
                             }}
-                            labelStyle={{color: '#374151', fontWeight: 'bold'}}
+                            itemStyle={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}
+                            labelStyle={{ color: '#6B7280', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                         />
-                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                        <Bar dataKey="Receitas" fill="#22C55E" name="Receitas" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Despesas" fill="#EF4444" name="Despesas" radius={[4, 4, 0, 0]} />
+                        
+                        <Legend 
+                            wrapperStyle={{ paddingTop: '24px' }} 
+                            iconType="circle"
+                            formatter={(value) => <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 ml-1">{value}</span>}
+                        />
+                        
+                        {/* Barras com bordas arredondadas no topo e largura máxima controlada */}
+                        <Bar 
+                            dataKey="Receitas" 
+                            fill="#22C55E" 
+                            name="Receitas" 
+                            radius={[6, 6, 0, 0]} 
+                            maxBarSize={50}
+                        />
+                        <Bar 
+                            dataKey="Despesas" 
+                            fill="#EF4444" 
+                            name="Despesas" 
+                            radius={[6, 6, 0, 0]} 
+                            maxBarSize={50}
+                        />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

@@ -24,7 +24,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
     };
 
     // Helper para identificar categorias de aporte
+    // FIX: Proteção contra categoria nula/undefined
     const isInvestmentCategory = (category: string) => {
+        if (!category) return false;
         const cat = category.toLowerCase().trim();
         return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
     };
@@ -41,12 +43,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         transactions.forEach(t => {
             if (t.date.startsWith(selectedMonth)) {
                 if (t.type === TransactionType.Receita) {
-                    rec += t.amount;
+                    rec += (t.amount || 0);
                 } else {
                     if (isInvestmentCategory(t.category)) {
-                        inv += t.amount;
+                        inv += (t.amount || 0);
                     } else {
-                        desp += t.amount;
+                        desp += (t.amount || 0);
                     }
                 }
             }
@@ -61,10 +63,11 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         
         transactions.forEach(t => {
             if (t.type === TransactionType.Despesa && t.date.startsWith(selectedMonth) && !isInvestmentCategory(t.category)) {
-                if (!categories[t.category]) {
-                    categories[t.category] = 0;
+                const catName = t.category || 'Outros'; // Fallback para categoria
+                if (!categories[catName]) {
+                    categories[catName] = 0;
                 }
-                categories[t.category] += t.amount;
+                categories[catName] += (t.amount || 0);
             }
         });
 
@@ -80,16 +83,22 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
         const data = months.map(m => ({ name: m, Receitas: 0, Despesas: 0, Aportes: 0, Saldo: 0 }));
 
         transactions.forEach(t => {
+            if (!t.date) return;
+            
             if (t.date.startsWith(selectedYear)) {
-                const monthIndex = parseInt(t.date.split('-')[1]) - 1;
+                const parts = t.date.split('-');
+                if (parts.length < 2) return;
+
+                const monthIndex = parseInt(parts[1]) - 1;
                 if (monthIndex >= 0 && monthIndex < 12) {
+                    const amount = t.amount || 0;
                     if (t.type === TransactionType.Receita) {
-                        data[monthIndex].Receitas += t.amount;
+                        data[monthIndex].Receitas += amount;
                     } else {
                         if (isInvestmentCategory(t.category)) {
-                            data[monthIndex].Aportes += t.amount;
+                            data[monthIndex].Aportes += amount;
                         } else {
-                            data[monthIndex].Despesas += t.amount;
+                            data[monthIndex].Despesas += amount;
                         }
                     }
                 }
