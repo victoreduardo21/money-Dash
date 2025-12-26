@@ -131,17 +131,15 @@ function loginUser(body) {
   if (!sheet) throw new Error("Aba 'Users' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
-  // Normaliza o email para minúsculo para garantir o login
   const targetEmail = String(body.email).trim().toLowerCase();
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const rowEmail = String(row[2]).trim().toLowerCase();
     
-    // Compara email (case insensitive) e senha (case sensitive)
     if (rowEmail == targetEmail && String(row[3]).trim() == String(body.password).trim()) { 
       return {
-        token: Utilities.base64Encode(body.email), // O token continua sendo o email original
+        token: Utilities.base64Encode(body.email),
         user: {
           name: row[1],
           email: row[2],
@@ -150,7 +148,7 @@ function loginUser(body) {
           cpf: row[6],    
           subscriptionStatus: row[7] || 'PENDING',
           plan: row[8] || 'FREE', 
-          billingCycle: row[9] || 'MONTHLY' // Coluna J (Indice 9)
+          billingCycle: row[9] || 'MONTHLY'
         }
       };
     }
@@ -175,7 +173,7 @@ function getUserProfile(encodedEmail) {
           cpf: row[6],
           subscriptionStatus: row[7] || 'PENDING',
           plan: row[8] || 'FREE',
-          billingCycle: row[9] || 'MONTHLY' // Coluna J
+          billingCycle: row[9] || 'MONTHLY'
       };
     }
   }
@@ -187,14 +185,12 @@ function createUser(body) {
   if (!sheet) throw new Error("Aba 'Users' não encontrada.");
   
   const rows = sheet.getDataRange().getValues();
-  
-  // Normaliza os dados para verificação
   const newEmail = String(body.email).trim().toLowerCase();
-  const newCpf = body.cpf ? String(body.cpf).replace(/\D/g, '') : ""; // Remove tudo que não for número
+  const newCpf = body.cpf ? String(body.cpf).replace(/\D/g, '') : "";
 
   for (let i = 1; i < rows.length; i++) {
     const rowEmail = String(rows[i][2]).trim().toLowerCase();
-    const rowCpf = String(rows[i][6]).replace(/\D/g, ''); // Coluna G é o índice 6
+    const rowCpf = String(rows[i][6]).replace(/\D/g, '');
 
     if (rowEmail === newEmail) {
       throw new Error("Email já cadastrado.");
@@ -207,7 +203,7 @@ function createUser(body) {
   const newId = Utilities.getUuid();
   const initialStatus = 'PENDING';
   const selectedPlan = body.plan || 'FREE';
-  const selectedCycle = body.billingCycle || 'MONTHLY'; // Recebe do frontend ou default
+  const selectedCycle = body.billingCycle || 'MONTHLY';
 
   sheet.appendRow([
     newId, 
@@ -218,8 +214,8 @@ function createUser(body) {
     body.phone || "", 
     body.cpf || "",
     initialStatus,
-    selectedPlan, // Coluna I (Indice 8)
-    selectedCycle // Coluna J (Indice 9) - Salva o ciclo escolhido
+    selectedPlan,
+    selectedCycle
   ]);
   
   return { 
@@ -255,7 +251,6 @@ function getAllUsers() {
   return users;
 }
 
-// ... (Funções de Transações, Investimentos, Calendar permanecem iguais)
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
   const sheet = getSpreadsheet().getSheetByName('Transactions');
@@ -266,14 +261,16 @@ function getTransactions(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[6]).toLowerCase() === String(userEmail).toLowerCase()) {
+    // userEmail agora é a coluna H (indice 7)
+    if (String(row[7]).toLowerCase() === String(userEmail).toLowerCase()) {
       transactions.push({
         id: row[0],
         description: row[1],
         amount: Number(row[2]),
         date: formatDate(row[3]), 
         type: row[4],
-        category: row[5]
+        category: row[5],
+        currency: row[6] || 'BRL' // Coluna G (indice 6)
       });
     }
   }
@@ -296,7 +293,8 @@ function createTransaction(body, userEmail) {
     dateStr,
     body.type,
     body.category,
-    userEmail
+    body.currency || 'BRL', // Coluna G
+    userEmail               // Coluna H
   ]);
   
   return body;
@@ -311,7 +309,8 @@ function deleteTransaction(id, userEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && String(row[6]).toLowerCase() == targetEmail) {
+    // userEmail é a coluna H (indice 7)
+    if (String(row[0]) == String(id) && String(row[7]).toLowerCase() == targetEmail) {
       sheet.deleteRow(i + 1); 
       return { success: true, message: "Transação excluída." };
     }
@@ -329,13 +328,15 @@ function getInvestments(encodedEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[5]).toLowerCase() === String(userEmail).toLowerCase()) {
+    // userEmail agora é a coluna G (indice 6)
+    if (String(row[6]).toLowerCase() === String(userEmail).toLowerCase()) {
       investments.push({
         id: row[0],
         name: row[1],
         initialAmount: Number(row[2]),
         currentValue: Number(row[3]),
-        yieldRate: Number(row[4])
+        yieldRate: Number(row[4]),
+        currency: row[5] || 'BRL' // Coluna F (indice 5)
       });
     }
   }
@@ -354,12 +355,14 @@ function createInvestment(body, userEmail) {
     body.initialAmount,
     body.currentValue,
     body.yieldRate,
-    userEmail
+    body.currency || 'BRL', // Coluna F
+    userEmail               // Coluna G
   ]);
   
   createTransaction({
     description: `Aplicação: ${body.name}`,
     amount: body.initialAmount,
+    currency: body.currency || 'BRL',
     date: new Date().toISOString().split('T')[0],
     type: 'Despesa',
     category: 'Investimentos'
@@ -377,12 +380,13 @@ function deleteInvestment(id, userEmail) {
   
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[0]) == String(id) && String(row[5]).toLowerCase() == targetEmail) {
+    // userEmail é a coluna G (indice 6)
+    if (String(row[0]) == String(id) && String(row[6]).toLowerCase() == targetEmail) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Investimento excluído." };
     }
   }
-  throw new Error("Investimento não encontrado ou sem permissão.");
+  throw new Error("Investimento não encontrada ou sem permissão.");
 }
 
 function getCalendarEvents(encodedEmail) {
@@ -409,7 +413,7 @@ function getCalendarEvents(encodedEmail) {
 
 function createCalendarEvent(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Calendar'); 
-  if (!sheet) throw new Error("Aba 'Calendar' não encontrada. Crie uma aba chamada 'Calendar' na planilha.");
+  if (!sheet) throw new Error("Aba 'Calendar' não encontrada.");
 
   const newId = "CAL" + new Date().getTime(); 
   let dateStr = body.date;
@@ -445,7 +449,7 @@ function toggleCalendarEvent(id, done, userEmail) {
        return { success: true };
     }
   }
-  throw new Error("Evento não encontrada.");
+  throw new Error("Evento não encontrado.");
 }
 
 function deleteCalendarEvent(id, userEmail) {
@@ -500,22 +504,17 @@ function updateAvatar(body, userEmail) {
   throw new Error("Usuário não encontrado.");
 }
 
-// ATUALIZA PLANO E CICLO DE PAGAMENTO
 function updateUserPlan(body, userEmail) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const data = sheet.getDataRange().getValues();
   const targetEmail = String(userEmail).trim().toLowerCase();
   
   for (let i = 1; i < data.length; i++) {
-    // Normaliza o email da planilha para comparar
     const rowEmail = String(data[i][2]).trim().toLowerCase();
     
     if (rowEmail == targetEmail) {
-       // Atualiza a Coluna I (Plano) - Índice 9
        sheet.getRange(i + 1, 9).setValue(body.plan);
-       // Atualiza a Coluna J (Ciclo) - Índice 10 (Novo)
        sheet.getRange(i + 1, 10).setValue(body.billingCycle || 'MONTHLY');
-       // Atualiza a Coluna H (Status) - Índice 8
        sheet.getRange(i + 1, 8).setValue('ACTIVE');
        
        return { success: true, plan: body.plan, billingCycle: body.billingCycle };
@@ -566,18 +565,15 @@ function createAsaasCharge(userEmail) {
      throw new Error("Erro ao criar cliente no Asaas: " + e.toString());
   }
 
-  // --- LÓGICA DE VALOR ATUALIZADA ---
-  let value = 29.90; // Default fallback
-  const cycle = userProfile.billingCycle || 'MONTHLY'; // Lê da coluna J
+  let value = 29.90;
+  const cycle = userProfile.billingCycle || 'MONTHLY';
   const plan = userProfile.plan || 'PRO';
 
-  // Tabela de Preços (Sincronizada com o Frontend)
   if (plan === 'VIP') {
     value = (cycle === 'ANNUAL') ? 799.90 : 79.90;
   } else if (plan === 'PRO') {
     value = (cycle === 'ANNUAL') ? 399.90 : 39.90;
   }
-  // -----------------------------------
   
   const paymentPayload = {
     customer: customerId,

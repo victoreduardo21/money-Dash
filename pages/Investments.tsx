@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Investment } from '../types';
+import { Investment, Currency } from '../types';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { EditIcon } from '../components/icons/EditIcon';
@@ -16,21 +16,30 @@ interface InvestmentsProps {
     onDeleteInvestment: (id: string) => void;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, onSaveInvestment, onDeleteInvestment }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
 
-    const formatCurrency = (value: number) => {
-        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatCurrency = (value: number, currency: Currency = 'BRL') => {
+        if (currency === 'BRL') {
+            return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return `$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
-    const { totalInvested, portfolioValue, totalReturn } = useMemo(() => {
-        const totalInvested = investments.reduce((acc, inv) => acc + inv.initialAmount, 0);
-        const portfolioValue = investments.reduce((acc, inv) => acc + inv.currentValue, 0);
-        const totalReturn = portfolioValue - totalInvested;
-        return { totalInvested, portfolioValue, totalReturn };
+    // CÁLCULOS POR MOEDA
+    const stats = useMemo(() => {
+        const brl = (investments || []).filter(i => i.currency === 'BRL');
+        const usd = (investments || []).filter(i => i.currency === 'USD');
+
+        return {
+            totalBrl: brl.reduce((acc, i) => acc + (i.currentValue || 0), 0),
+            rentabilidadeBrl: brl.reduce((acc, i) => acc + ((i.currentValue || 0) - (i.initialAmount || 0)), 0),
+            totalUsd: usd.reduce((acc, i) => acc + (i.currentValue || 0), 0),
+            rentabilidadeUsd: usd.reduce((acc, i) => acc + ((i.currentValue || 0) - (i.initialAmount || 0)), 0)
+        };
     }, [investments]);
 
     const handleOpenModal = (investment: Investment | null) => {
@@ -52,98 +61,113 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, setInvestments, 
             investment={selectedInvestment}
         />
 
-        <h3 className="text-3xl font-bold text-gray-800 mb-6">Investimentos</h3>
-        
-        {/* Chart & Results - Estilo Branco Puro com Sombra e Borda */}
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200 mb-8">
-            <h4 className="text-xl font-bold text-gray-800 mb-6">Resumo da Carteira</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                <div className="py-2">
-                    <p className="text-sm font-medium text-gray-500">Valor Total Aplicado</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalInvested)}</p>
-                </div>
-                 <div className="py-2">
-                    <p className="text-sm font-medium text-gray-500">Rendimento</p>
-                    <p className={`text-2xl font-bold mt-1 ${totalReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>{formatCurrency(totalReturn)}</p>
-                </div>
-                 <div className="py-2">
-                    <p className="text-sm font-medium text-gray-500">Valor Atual da Carteira</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{formatCurrency(portfolioValue)}</p>
-                </div>
-            </div>
-            {investments.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                   <PieChart>
-                        <Pie
-                            data={investments}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={100}
-                            fill="#8884d8"
-                            dataKey="currentValue"
-                            nameKey="name"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                            {investments.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip 
-                            formatter={(value: number) => formatCurrency(value)} 
-                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.5rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
-                            labelStyle={{color: '#111827', fontWeight: 'bold'}}
-                        />
-                        <Legend />
-                    </PieChart>
-                </ResponsiveContainer>
-            ) : (
-                <div className="h-[250px] flex items-center justify-center text-gray-500">
-                    Adicione um investimento para ver o gráfico de alocação.
-                </div>
-            )}
+        <div className="flex justify-between items-center mb-6">
+            <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Investimentos</h3>
+            <button onClick={() => handleOpenModal(null)} className="flex items-center bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg">
+                <PlusIcon className="h-5 w-5 mr-1" />
+                Novo Ativo
+            </button>
         </div>
         
-        {/* List - Estilo Branco Puro com Sombra e Borda */}
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
-            <div className="flex justify-between items-center mb-6">
-                <h4 className="text-xl font-bold text-gray-800">Minha Carteira</h4>
-                <button onClick={() => handleOpenModal(null)} className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors text-sm font-bold shadow-md hover:shadow-lg">
-                    <PlusIcon className="h-5 w-5 mr-1" />
-                    Adicionar
-                </button>
+        {/* Resumo Consolidado */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                    <span className="text-xl">🇧🇷</span> Carteira Real
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Patrimônio</p>
+                        <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalBrl, 'BRL')}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Rendimento</p>
+                        <p className={`text-xl font-bold ${stats.rentabilidadeBrl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {stats.rentabilidadeBrl >= 0 ? '+' : ''}{formatCurrency(stats.rentabilidadeBrl, 'BRL')}
+                        </p>
+                    </div>
+                </div>
             </div>
-            <ul className="divide-y divide-gray-100">
-                {investments.length > 0 ? investments.map(inv => (
-                    <li key={inv.id} className="py-5 flex items-center justify-between flex-wrap hover:bg-gray-50 transition-colors rounded-lg px-2 -mx-2">
-                        <div className="flex items-center space-x-4 mb-2 sm:mb-0">
-                            <div className="p-3 bg-indigo-50 rounded-xl">
-                                <TrendingUpIcon className="h-6 w-6 text-indigo-600" />
-                            </div>
-                            <div>
-                                <p className="text-md font-bold text-gray-900">{inv.name}</p>
-                                <p className="text-sm text-gray-500">Rendimento: {inv.yieldRate}% do CDI</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center space-x-4 w-full sm:w-auto justify-end">
-                            <div className="text-right">
-                                <p className="text-md font-bold text-gray-900">{formatCurrency(inv.currentValue)}</p>
-                                <p className={`text-sm font-medium ${inv.currentValue - inv.initialAmount >= 0 ? 'text-green-500' : 'text-red-500'}`}>{inv.currentValue - inv.initialAmount >= 0 ? '+' : ''}{formatCurrency(inv.currentValue - inv.initialAmount)}</p>
-                            </div>
-                            <div className="flex space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); handleOpenModal(inv); }} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
-                                    <EditIcon className="h-5 w-5" />
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteInvestment(inv.id); }} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
-                                    <TrashIcon className="h-5 w-5" />
-                                </button>
-                            </div>
-                        </div>
-                    </li>
-                )) : (
-                    <p className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">Nenhum investimento na carteira.</p>
-                )}
-            </ul>
+
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                    <span className="text-xl">🇺🇸</span> Carteira Dólar
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Patrimônio</p>
+                        <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalUsd, 'USD')}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Rendimento</p>
+                        <p className={`text-xl font-bold ${stats.rentabilidadeUsd >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {stats.rentabilidadeUsd >= 0 ? '+' : ''}{formatCurrency(stats.rentabilidadeUsd, 'USD')}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {/* Listagem de Ativos */}
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+            <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6">Meus Ativos</h4>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th className="px-6 py-4">Ativo</th>
+                            <th className="px-6 py-4 text-center">Moeda</th>
+                            <th className="px-6 py-4 text-right">Valor Atual</th>
+                            <th className="px-6 py-4 text-right">Rentabilidade</th>
+                            <th className="px-6 py-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {(investments || []).map(inv => {
+                            const profit = (inv.currentValue || 0) - (inv.initialAmount || 0);
+                            return (
+                                <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                                <TrendingUpIcon className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-900 dark:text-white">{inv.name}</p>
+                                                <p className="text-xs text-gray-500">{inv.yieldRate}% do CDI/Meta</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center font-bold">
+                                        {inv.currency === 'BRL' ? '🇧🇷 BRL' : '🇺🇸 USD'}
+                                    </td>
+                                    <td className="px-6 py-4 text-right font-black text-gray-900 dark:text-white">
+                                        {formatCurrency(inv.currentValue, inv.currency)}
+                                    </td>
+                                    <td className={`px-6 py-4 text-right font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {profit >= 0 ? '+' : ''}{formatCurrency(profit, inv.currency)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
+                                                <EditIcon className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-400 hover:text-red-600 transition-colors">
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {(!investments || investments.length === 0) && (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Nenhum investimento cadastrado.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
   );

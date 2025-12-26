@@ -75,10 +75,10 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             <tr>
               <th scope="col" className="px-6 py-4 font-bold">Descrição</th>
               <th scope="col" className="px-6 py-4 font-bold">Valor</th>
+              <th scope="col" className="px-6 py-4 font-bold">Moeda</th>
               <th scope="col" className="px-6 py-4 font-bold">Data</th>
               <th scope="col" className="px-6 py-4 font-bold">Categoria</th>
-              <th scope="col" className="px-6 py-4 font-bold">Tipo</th>
-              <th scope="col" className="px-6 py-4 font-bold"><span className="sr-only">Ações</span></th>
+              <th scope="col" className="px-6 py-4 font-bold text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -89,7 +89,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                 </td>
                 <td className={`px-6 py-4 font-bold ${transaction.type === TransactionType.Receita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {transaction.type === TransactionType.Despesa && '- '}
-                  R$ {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {transaction.currency === 'BRL' ? 'R$ ' : '$ '}
+                  {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </td>
+                <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold ${transaction.currency === 'USD' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {transaction.currency || 'BRL'}
+                    </span>
                 </td>
                 <td className="px-6 py-4">
                   {new Date(transaction.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
@@ -99,10 +105,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                     {transaction.category}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <TypeBadge type={transaction.type} />
-                </td>
-                <td className="px-6 py-4 text-right overflow-visible">
+                <td className="px-6 py-4 text-right">
                    {onEdit && onDelete && <ActionMenu transaction={transaction} onEdit={onEdit} onDelete={onDelete} />}
                 </td>
               </tr>
@@ -123,23 +126,5 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     </div>
   );
 };
-
-
-const TypeBadge: React.FC<{ type: TransactionType }> = ({ type }) => {
-  const baseClasses = 'px-3 py-1 text-xs font-bold rounded-full inline-block border';
-  let typeClasses = '';
-
-  switch (type) {
-    case TransactionType.Receita:
-      typeClasses = 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
-      break;
-    case TransactionType.Despesa:
-      typeClasses = 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
-      break;
-  }
-
-  return <span className={`${baseClasses} ${typeClasses}`}>{type}</span>;
-};
-
 
 export default TransactionsTable;

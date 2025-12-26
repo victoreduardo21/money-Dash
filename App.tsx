@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -11,9 +11,10 @@ import Settings from './pages/Settings';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
+import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
 import { MenuIcon } from './components/icons/MenuIcon';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Currency } from './types';
 import { api } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
@@ -21,82 +22,54 @@ import Toast, { ToastMessage } from './components/Toast';
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<Page>('Dashboard');
-  
   const [transactions, setTransactions] = useState<PersonalTransaction[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [tasks, setTasks] = useState<CalendarEvent[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
-  
-  // Estado para busca global
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Estado para Notificações (Toast)
   const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  // Load user and token from localStorage if available to persist session on refresh
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
       const savedUser = localStorage.getItem('user_data');
       return savedUser ? JSON.parse(savedUser) : null;
   });
   const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
-
-  // Estado para controlar se mostra a tela de Login ou a Landing Page
   const [isLoginScreen, setIsLoginScreen] = useState(false);
-  // Estado para pre-selecionar o modo de registro no login se vier do botão "Criar Conta" da Landing Page
   const [preSelectRegister, setPreSelectRegister] = useState(false);
-  // Estado para armazenar o plano selecionado na Landing Page
   const [selectedPlan, setSelectedPlan] = useState<Plan>('FREE');
-  // Estado para armazenar o ciclo de pagamento selecionado na Landing Page
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('MONTHLY');
-
-  // Estado do Modal de Seleção de Plano
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-
-  const [cdiRate, setCdiRate] = useState(0);
-
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<PersonalTransaction | null>(null);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    if (token && currentUser) {
-        const fetchData = async () => {
-             // 1. Atualiza Transações (Disponível para todos)
-             const txs = await api.getTransactions(token);
-             if (Array.isArray(txs)) setTransactions(txs);
-             
-             // 2. LÓGICA DE PLANOS: Só busca Investimentos e Agenda se NÃO for FREE
-             if (currentUser.plan !== 'FREE') {
-                 const invs = await api.getInvestments(token);
-                 if (Array.isArray(invs)) setInvestments(invs);
-                 
-                 const userTasks = await api.getCalendarEvents(token);
-                 if (Array.isArray(userTasks)) setTasks(userTasks);
-             } else {
-                 // Se for FREE, garante que os arrays estejam vazios para não mostrar dados antigos
-                 setInvestments([]);
-                 setTasks([]);
-             }
+  // Função centralizada para buscar todos os dados
+  const fetchData = useCallback(async () => {
+    if (!token) return;
+    try {
+      // Busca transações (Sempre disponível)
+      const txs = await api.getTransactions(token);
+      if (Array.isArray(txs)) setTransactions(txs);
 
-             // 4. ATUALIZA DADOS DO PERFIL (Para garantir que Foto, CPF, Tel e Status estejam sincronizados)
-             const userProfile = await api.getMe(token);
-             if (userProfile && !userProfile.error) {
-                 // Mantém o usuário atualizado
-                 setCurrentUser(userProfile);
-                 localStorage.setItem('user_data', JSON.stringify(userProfile));
-             }
-        };
-        fetchData();
+      // Busca investimentos e agenda (Se não for plano Free ou se o usuário tiver acesso)
+      const invs = await api.getInvestments(token);
+      if (Array.isArray(invs)) setInvestments(invs);
+      
+      const userTasks = await api.getCalendarEvents(token);
+      if (Array.isArray(userTasks)) setTasks(userTasks);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
     }
-  }, [token, currentUser?.plan]); // Adicionado currentUser.plan nas dependências
+  }, [token]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
       setToast({ id: Date.now().toString(), message, type });
@@ -117,351 +90,94 @@ const App: React.FC = () => {
     setTransactions([]);
     setInvestments([]);
     setTasks([]);
-    setIsLoginScreen(false); // Volta para a Landing Page ao sair
-  };
-
-  // --- FUNÇÃO PARA ABRIR SELEÇÃO DE PLANO ---
-  const handleOpenPlanSelection = () => {
-      setIsPlanModalOpen(true);
-  };
-
-  // --- FUNÇÃO DE CONFIRMAÇÃO DE UPGRADE ---
-  const handleConfirmUpgrade = async (newPlan: Plan, cycle: BillingCycle) => {
-      if (!token || !currentUser) return;
-      
-      setIsPlanModalOpen(false);
-      showToast(`Processando atualização para ${newPlan} (${cycle === 'MONTHLY' ? 'Mensal' : 'Anual'})...`, "info");
-
-      try {
-          // Chama a API para atualizar no banco
-          const result = await api.updatePlan(newPlan, cycle, token);
-          
-          if (!result.error) {
-              // Atualiza o estado local imediatamente
-              const updatedUser: User = { 
-                  ...currentUser, 
-                  plan: newPlan, 
-                  billingCycle: cycle, 
-                  subscriptionStatus: 'ACTIVE' 
-              };
-              setCurrentUser(updatedUser);
-              localStorage.setItem('user_data', JSON.stringify(updatedUser));
-              
-              showToast(`Parabéns! Você agora é ${newPlan}.`, "success");
-              
-              // Se virou PRO/VIP, já busca os dados extras
-              if (newPlan !== 'FREE') {
-                   const invs = await api.getInvestments(token);
-                   if (Array.isArray(invs)) setInvestments(invs);
-                   
-                   const userTasks = await api.getCalendarEvents(token);
-                   if (Array.isArray(userTasks)) setTasks(userTasks);
-              }
-
-          } else {
-              // Mostra a mensagem exata do erro para facilitar o debug
-              showToast(result.message || "Erro ao atualizar plano.", "error");
-          }
-      } catch (e) {
-          showToast("Erro de conexão com o servidor.", "error");
-      }
+    setIsLoginScreen(false);
   };
 
   const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
     if (!token) return;
-    
-    if (transaction.id) {
-         const txId = transaction.id;
-         setTransactions(prev => prev.map(t => t.id === txId ? { ...transaction, id: txId } as PersonalTransaction : t));
-         showToast("Transação atualizada!", "success");
-    } else {
+    try {
         await api.createTransaction(transaction, token);
-        const txs = await api.getTransactions(token);
-        if (Array.isArray(txs)) setTransactions(txs);
-        showToast("Transação criada com sucesso!", "success");
+        showToast(transaction.id ? "Transação atualizada!" : "Transação criada!", "success");
+        fetchData();
+        setIsTransactionModalOpen(false);
+    } catch (error) {
+        showToast("Erro ao salvar transação", "error");
     }
-    setIsTransactionModalOpen(false);
-    setEditingTransaction(null);
   };
 
-  const handleDeleteTransaction = async (id: string) => {
-     if (!token) return;
-     if (window.confirm("Tem certeza que deseja excluir esta transação permanentemente?")) {
-         // Atualiza UI otimista
-         setTransactions(prev => prev.filter(t => t.id !== id));
-         showToast("Transação removida.", "error");
-         
-         // Chama API
-         const result = await api.deleteTransaction(id, token);
-         if (result.error) {
-             alert(result.message);
-             // Reverte se der erro
-             const txs = await api.getTransactions(token);
-             if (Array.isArray(txs)) setTransactions(txs);
-         }
-     }
+  const handleSaveTransfer = async (data: { fromCurrency: Currency, toCurrency: Currency, amountFrom: number, amountTo: number, rate: number }) => {
+    if (!token) return;
+    const date = new Date().toISOString().split('T')[0];
+    
+    try {
+        // Saída
+        await api.createTransaction({
+            description: `Câmbio: Saída (${data.fromCurrency} -> ${data.toCurrency})`,
+            amount: Number(data.amountFrom.toFixed(2)),
+            currency: data.fromCurrency,
+            type: TransactionType.Despesa,
+            category: 'Câmbio',
+            date
+        }, token);
+
+        // Entrada
+        await api.createTransaction({
+            description: `Câmbio: Entrada (Taxa: ${data.rate.toFixed(4)})`,
+            amount: Number(data.amountTo.toFixed(2)),
+            currency: data.toCurrency,
+            type: TransactionType.Receita,
+            category: 'Câmbio',
+            date
+        }, token);
+
+        showToast("Câmbio realizado com sucesso!", "success");
+        fetchData();
+    } catch (error) {
+        showToast("Erro ao realizar câmbio", "error");
+    }
   };
 
   const handleSaveInvestment = async (investment: Omit<Investment, 'id'> & { id?: string }) => {
-      if (!token) return;
-      // Proteção extra: Bloqueia ação se for Free (caso o usuário tente burlar)
-      if (currentUser?.plan === 'FREE') {
-          showToast("Atualize seu plano para adicionar investimentos!", "error");
-          return;
-      }
-
-      if (investment.id) {
-          const invId = investment.id;
-          setInvestments(prev => prev.map(i => i.id === invId ? { ...investment, id: invId } as Investment : i));
-          showToast("Investimento atualizado!", "success");
-      } else {
-          await api.createInvestment(investment, token);
-          const invs = await api.getInvestments(token);
-          if (Array.isArray(invs)) setInvestments(invs);
-          showToast("Investimento adicionado!", "success");
-      }
-  };
-
-  const handleDeleteInvestment = async (id: string) => {
-      if (!token) return;
-      if (window.confirm("Tem certeza que deseja excluir este investimento permanentemente?")) {
-          setInvestments(prev => prev.filter(i => i.id !== id));
-          showToast("Investimento removido.", "error");
-          
-          const result = await api.deleteInvestment(id, token);
-          if (result.error) {
-              alert(result.message);
-              const invs = await api.getInvestments(token);
-              if (Array.isArray(invs)) setInvestments(invs);
-          }
-      }
-  }
-
-  // --- AGENDA HANDLERS (CALENDAR) ---
-  const handleAddTask = async (task: Omit<CalendarEvent, 'id'>) => {
-      if (!token) return;
-      // Proteção extra
-      if (currentUser?.plan === 'FREE') {
-          showToast("Atualize seu plano para usar a agenda!", "error");
-          return;
-      }
-
-      const tempId = 'temp-' + Date.now();
-      const tempTask = { ...task, id: tempId };
-      
-      setTasks(prev => [...prev, tempTask]);
-      showToast("Lembrete adicionado à agenda!", "success");
-      
-      const response = await api.createCalendarEvent(task, token);
-      
-      if (response && response.id) {
-          setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: response.id } : t));
-      } else {
-          const serverTasks = await api.getCalendarEvents(token);
-          if(Array.isArray(serverTasks)) setTasks(serverTasks);
-      }
-  };
-
-  const handleToggleTask = async (id: string, done: boolean) => {
-      if (!token) return;
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, done } : t));
-      
-      if (done) {
-          showToast("Tarefa concluída! 🎉", "success");
-      } else {
-          showToast("Tarefa reaberta.", "info");
-      }
-
-      await api.toggleCalendarEvent(id, done, token);
-  };
-
-  const handleDeleteTask = async (id: string) => {
-      if (!token) return;
-      if (window.confirm("Excluir lembrete?")) {
-        setTasks(prev => prev.filter(t => t.id !== id));
-        showToast("Lembrete excluído.", "error");
-        await api.deleteCalendarEvent(id, token);
-      }
-  };
-  
-  const handleUpdatePassword = async (current: string, newPass: string) => {
-      if(token) await api.updatePassword({currentPassword: current, newPassword: newPass}, token);
-      showToast("Senha atualizada com sucesso.", "success");
-  };
-
-  const handleUpdateAvatar = async (avatar: string) => {
-      if (token) {
-          await api.updateAvatar({avatar}, token);
-          if (currentUser) {
-              const updatedUser = { ...currentUser, avatar };
-              setCurrentUser(updatedUser);
-              localStorage.setItem('user_data', JSON.stringify(updatedUser));
-              showToast("Foto de perfil atualizada!", "success");
-          }
-      }
-  };
-
-  const handleCreateUser = async (newUser: Omit<User, 'id'>) => {
-     const result = await api.createUser(newUser);
-     if (result.error) {
-         return { success: false, message: result.message || 'Erro ao criar usuário' };
-     }
-     return { success: true, message: 'Usuário criado com sucesso' };
+    if (!token) return;
+    try {
+        await api.createInvestment(investment, token);
+        showToast(investment.id ? "Ativo atualizado!" : "Ativo adicionado!", "success");
+        fetchData();
+    } catch (error) {
+        showToast("Erro ao salvar investimento", "error");
+    }
   };
 
   if (!token) {
-      if (isLoginScreen) {
-          return (
-            <>
-                <LoginPage 
-                    onLogin={handleLogin} 
-                    onBack={() => setIsLoginScreen(false)} 
-                    initialMode={preSelectRegister ? 'register' : 'login'}
-                    selectedPlan={selectedPlan}
-                    selectedBillingCycle={selectedBillingCycle}
-                />
-                <WhatsAppButton />
-            </>
-          );
-      }
-      return (
-          <>
-            <LandingPage 
-                onLogin={() => {
-                    setPreSelectRegister(false);
-                    setIsLoginScreen(true);
-                }}
-                onRegister={(plan, cycle) => {
-                    if (plan) setSelectedPlan(plan);
-                    if (cycle) setSelectedBillingCycle(cycle);
-                    setPreSelectRegister(true);
-                    setIsLoginScreen(true);
-                }}
-            />
-            <WhatsAppButton />
-          </>
-      );
+      if (isLoginScreen) return <LoginPage onLogin={handleLogin} onBack={() => setIsLoginScreen(false)} initialMode={preSelectRegister ? 'register' : 'login'} selectedPlan={selectedPlan} selectedBillingCycle={selectedBillingCycle} />;
+      return <LandingPage onLogin={() => setIsLoginScreen(true)} onRegister={(p, c) => { setSelectedPlan(p); setSelectedBillingCycle(c); setPreSelectRegister(true); setIsLoginScreen(true); }} />;
   }
 
   return (
-    // Sidebar Escura (#020617) + Conteúdo Claro/Escuro
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans relative transition-colors duration-300">
-       {/* Sistema de Notificação (Toast) */}
        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+       <PlanSelectionModal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} onConfirmUpgrade={async (p, c) => { await api.updatePlan(p, c, token); fetchData(); }} currentPlan={currentUser?.plan || 'FREE'} />
+       <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} onSaveTransfer={handleSaveTransfer} />
 
-       {/* Modal de Seleção de Plano */}
-       <PlanSelectionModal 
-           isOpen={isPlanModalOpen}
-           onClose={() => setIsPlanModalOpen(false)}
-           onConfirmUpgrade={handleConfirmUpgrade}
-           currentPlan={currentUser?.plan || 'FREE'}
-       />
+       {isSidebarOpen && <div className="fixed inset-0 z-20 bg-black opacity-50 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} onUpgrade={() => setIsPlanModalOpen(true)} />
 
-       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-20 bg-black opacity-50 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
-      )}
-
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen} 
-        activePage={activePage} 
-        setActivePage={setActivePage} 
-        currentUser={currentUser}
-        onUpgrade={handleOpenPlanSelection} 
-      />
-
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-        <Header 
-            onLogout={handleLogout} 
-            onNewTransaction={() => {
-                setEditingTransaction(null);
-                setIsTransactionModalOpen(true);
-            }}
-            currentUser={currentUser}
-            setActivePage={setActivePage}
-            onSearch={setSearchQuery}
-            tasks={tasks} 
-        >
-             <button
-              className="md:hidden mr-4 text-gray-500 dark:text-gray-300 focus:outline-none"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <MenuIcon className="h-6 w-6" />
-            </button>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onLogout={handleLogout} onNewTransaction={() => { setEditingTransaction(null); setIsTransactionModalOpen(true); }} currentUser={currentUser} setActivePage={setActivePage} onSearch={setSearchQuery} tasks={tasks}>
+             <button className="md:hidden mr-4 text-gray-500" onClick={() => setIsSidebarOpen(true)}><MenuIcon className="h-6 w-6" /></button>
         </Header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative transition-colors duration-300">
-            {activePage === 'Dashboard' && (
-                <Dashboard 
-                    transactions={transactions} 
-                    investments={investments}
-                    setActivePage={setActivePage}
-                    onEditTransaction={(t) => {
-                        setEditingTransaction(t);
-                        setIsTransactionModalOpen(true);
-                    }}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    onNewTransaction={() => {
-                        setEditingTransaction(null);
-                        setIsTransactionModalOpen(true);
-                    }}
-                    searchQuery={searchQuery}
-                />
-            )}
-            {activePage === 'Transações' && (
-                <Transactions 
-                    transactions={transactions}
-                    onOpenModal={(t) => {
-                        setEditingTransaction(t);
-                        setIsTransactionModalOpen(true);
-                    }}
-                    onDeleteTransaction={handleDeleteTransaction}
-                    searchQuery={searchQuery}
-                />
-            )}
-            {activePage === 'Agenda' && (
-                <Agenda 
-                    tasks={tasks}
-                    onAddTask={handleAddTask}
-                    onToggleTask={handleToggleTask}
-                    onDeleteTask={handleDeleteTask}
-                />
-            )}
-            {activePage === 'Investimentos' && (
-                <Investments 
-                    investments={investments}
-                    setInvestments={setInvestments}
-                    cdiRate={cdiRate}
-                    onSaveInvestment={handleSaveInvestment}
-                    onDeleteInvestment={handleDeleteInvestment}
-                />
-            )}
-            {activePage === 'Relatórios' && (
-                <Reports transactions={transactions} />
-            )}
-            {activePage === 'Configurações' && currentUser && (
-                <Settings 
-                    theme={theme} 
-                    setTheme={setTheme}
-                    currentUser={currentUser}
-                    onUpdatePassword={handleUpdatePassword}
-                    onUpdateAvatar={handleUpdateAvatar}
-                    onCreateUser={handleCreateUser}
-                />
-            )}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
+            {activePage === 'Dashboard' && <Dashboard transactions={transactions} investments={investments} setActivePage={setActivePage} onEditTransaction={setEditingTransaction} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} />}
+            {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} searchQuery={searchQuery} />}
+            {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); fetchData(); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); fetchData(); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); fetchData(); }} />}
+            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} cdiRate={13.25} onSaveInvestment={handleSaveInvestment} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); fetchData(); }} />}
+            {activePage === 'Relatórios' && <Reports transactions={transactions} />}
+            {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={api.createUser} />}
         </main>
       </div>
 
-      <TransactionModal
-        isOpen={isTransactionModalOpen}
-        onClose={() => setIsTransactionModalOpen(false)}
-        onSave={handleSaveTransaction}
-        transaction={editingTransaction}
-      />
-
+      <TransactionModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} onSave={handleSaveTransaction} transaction={editingTransaction} />
       <WhatsAppButton />
     </div>
   );

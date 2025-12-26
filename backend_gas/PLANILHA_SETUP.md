@@ -18,6 +18,7 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | **G** | `cpf` | CPF |
 | **H** | `status` | Status Assinatura (`PENDING` ou `ACTIVE`) |
 | **I** | `plan` | Plano (`FREE`, `PRO`, `VIP`) |
+| **J** | `billingCycle`| Ciclo de faturamento (`MONTHLY`, `ANNUAL`) |
 
 ---
 
@@ -27,11 +28,12 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | :--- | :--- | :--- |
 | **A** | `id` | ID da transação |
 | **B** | `description` | Descrição |
-| **C** | `amount` | Valor (R$) |
+| **C** | `amount` | Valor |
 | **D** | `date` | Data (YYYY-MM-DD) - **Formatar como Texto Simples** |
 | **E** | `type` | Receita ou Despesa |
 | **F** | `category` | Categoria |
-| **G** | `userEmail` | Dono da transação |
+| **G** | `currency` | Moeda (`BRL`, `USD`) |
+| **H** | `userEmail` | Dono da transação |
 
 ---
 
@@ -44,7 +46,8 @@ Para que o sistema FinDash funcione corretamente, configure sua Planilha Google 
 | **C** | `initialAmount` | Valor investido |
 | **D** | `currentValue` | Valor atual |
 | **E** | `yieldRate` | Taxa de rendimento |
-| **F** | `userEmail` | Dono do investimento |
+| **F** | `currency` | Moeda (`BRL`, `USD`) |
+| **G** | `userEmail` | Dono do investimento |
 
 ---
 

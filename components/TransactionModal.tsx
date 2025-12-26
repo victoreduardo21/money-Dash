@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PersonalTransaction, TransactionType } from '../types';
+import { PersonalTransaction, TransactionType, Currency } from '../types';
 import { XIcon } from './icons/XIcon';
 
 interface TransactionModalProps {
@@ -10,42 +10,31 @@ interface TransactionModalProps {
     transaction: PersonalTransaction | null;
 }
 
-const CATEGORIES = [
-    "Alimentação",
-    "Moradia",
-    "Transporte",
-    "Saúde",
-    "Lazer",
-    "Educação",
-    "Salário",
-    "Aporte", 
-    "Investimentos",
-    "Serviços",
-    "Outros"
-];
+const CATEGORIES = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Educação", "Salário", "Aporte", "Investimentos", "Câmbio", "Serviços", "Outros"];
 
 const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, onSave, transaction }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState(0);
+    const [currency, setCurrency] = useState<Currency>('BRL');
     const [date, setDate] = useState('');
     const [type, setType] = useState<TransactionType>(TransactionType.Despesa);
     const [category, setCategory] = useState('');
-    
-    // Estado para controlar o loading e desabilitar botão
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setIsSubmitting(false); // Reseta o estado ao abrir
+            setIsSubmitting(false);
             if (transaction) {
                 setDescription(transaction.description);
                 setAmount(transaction.amount);
+                setCurrency(transaction.currency || 'BRL');
                 setDate(transaction.date);
                 setType(transaction.type);
                 setCategory(transaction.category);
             } else {
                 setDescription('');
                 setAmount(0);
+                setCurrency('BRL');
                 setDate(new Date().toISOString().split('T')[0]);
                 setType(TransactionType.Despesa);
                 setCategory('');
@@ -55,29 +44,19 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!description || !amount || !date || !category) {
-            alert("Por favor, preencha todos os campos.");
-            return;
-        }
-
-        // Previne duplo clique
         if (isSubmitting) return;
-
         setIsSubmitting(true);
-
         try {
             await onSave({
                 id: transaction?.id,
                 description,
                 amount,
+                currency,
                 date,
                 type,
                 category,
             });
-            // O modal será fechado pelo componente pai (App.tsx), 
-            // mas caso haja erro no pai que não feche o modal, removemos o loading.
         } catch (error) {
-            console.error(error);
             setIsSubmitting(false);
         }
     };
@@ -85,78 +64,61 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" aria-modal="true" role="dialog">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md m-4">
+        <div className="fixed inset-0 bg-black/60 z-40 flex justify-center items-center backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md animate-fade-in">
                 <form onSubmit={handleSubmit}>
                     <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-                            {transaction ? 'Editar Transação' : 'Adicionar Transação'}
+                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+                            {transaction ? 'Editar Movimentação' : 'Nova Movimentação'}
                         </h3>
-                        <button type="button" onClick={onClose} disabled={isSubmitting} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50">
+                        <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                             <XIcon className="h-6 w-6" />
                         </button>
                     </div>
                     <div className="p-6 space-y-4">
-                        <div>
-                            <label htmlFor="trans-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</label>
-                            <select id="trans-type" value={type} onChange={e => setType(e.target.value as TransactionType)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200">
-                                <option value={TransactionType.Despesa}>Despesa</option>
-                                <option value={TransactionType.Receita}>Receita</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="trans-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-                            <input type="text" id="trans-description" value={description} onChange={e => setDescription(e.target.value)} required placeholder="Ex: Mercado, Salário" className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
-                        </div>
-                        <div>
-                            <label htmlFor="trans-amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
-                            <input type="number" step="0.01" id="trans-amount" value={amount} onChange={e => setAmount(Number(e.target.value))} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
-                        </div>
-                        <div>
-                            <label htmlFor="trans-category" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Categoria</label>
-                            <div className="relative">
-                                <input 
-                                    type="text" 
-                                    id="trans-category" 
-                                    list="category-suggestions"
-                                    value={category} 
-                                    onChange={e => setCategory(e.target.value)} 
-                                    required 
-                                    placeholder="Selecione ou digite..."
-                                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" 
-                                />
-                                <datalist id="category-suggestions">
-                                    {CATEGORIES.map(cat => (
-                                        <option key={cat} value={cat} />
-                                    ))}
-                                </datalist>
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tipo</label>
+                                <select value={type} onChange={e => setType(e.target.value as TransactionType)} className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                    <option value={TransactionType.Despesa}>Despesa</option>
+                                    <option value={TransactionType.Receita}>Receita</option>
+                                </select>
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Moeda</label>
+                                <select value={currency} onChange={e => setCurrency(e.target.value as Currency)} className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold">
+                                    <option value="BRL">🇧🇷 Real (BRL)</option>
+                                    <option value="USD">🇺🇸 Dólar (USD)</option>
+                                </select>
                             </div>
                         </div>
-                         <div>
-                            <label htmlFor="trans-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Data</label>
-                            <input type="date" id="trans-date" value={date} onChange={e => setDate(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-200" />
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descrição</label>
+                            <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400">{currency === 'BRL' ? 'R$' : '$'}</span>
+                                <input type="number" step="0.01" value={amount} onChange={e => setAmount(Number(e.target.value))} required className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-bold" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
+                                <input list="cats" value={category} onChange={e => setCategory(e.target.value)} required className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                                <datalist id="cats">{CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
+                                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                            </div>
                         </div>
                     </div>
-                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} disabled={isSubmitting} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 font-semibold text-sm disabled:opacity-50">
-                            Cancelar
-                        </button>
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Salvando...
-                                </>
-                            ) : (
-                                'Salvar'
-                            )}
+                    <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-bold text-gray-500">Cancelar</button>
+                        <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50">
+                            {isSubmitting ? 'Salvando...' : 'Salvar'}
                         </button>
                     </div>
                 </form>

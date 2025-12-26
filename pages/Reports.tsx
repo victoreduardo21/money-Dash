@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { PersonalTransaction, TransactionType } from '../types';
+import { PersonalTransaction, TransactionType, Currency } from '../types';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
@@ -10,64 +10,61 @@ interface ReportsProps {
     transactions: PersonalTransaction[];
 }
 
-// Cores definidas pelo usuário
 const COLOR_RECEITA = '#10B981'; // Verde
 const COLOR_DESPESA = '#EF4444'; // Vermelho
-const COLOR_APORTE = '#3B82F6'; // Azul (Antes Investimento)
+const COLOR_APORTE = '#6366F1';  // Indigo/Azul
 
 const Reports: React.FC<ReportsProps> = ({ transactions }) => {
-    // Estado alterado para Mês (YYYY-MM), igual ao Dashboard
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
 
     const formatCurrency = (value: number) => {
-        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (selectedCurrency === 'BRL') {
+            return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return `$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
-    // Helper para identificar categorias de aporte
-    // FIX: Proteção contra categoria nula/undefined
     const isInvestmentCategory = (category: string) => {
         if (!category) return false;
         const cat = category.toLowerCase().trim();
         return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
     };
 
-    // Extrai o ano do mês selecionado para o gráfico de evolução
     const selectedYear = selectedMonth.split('-')[0];
 
-    // 1. Totais do MÊS SELECIONADO (Para Cards e Gráfico de Pizza)
+    // 1. TOTAIS DO MÊS SELECIONADO (Filtrado por Moeda)
     const monthTotals = useMemo(() => {
         let rec = 0;
         let desp = 0;
         let inv = 0;
 
         transactions.forEach(t => {
-            if (t.date.startsWith(selectedMonth)) {
+            if (t.date.startsWith(selectedMonth) && t.currency === selectedCurrency) {
+                const amount = Number(t.amount) || 0;
                 if (t.type === TransactionType.Receita) {
-                    rec += (t.amount || 0);
+                    rec += amount;
                 } else {
                     if (isInvestmentCategory(t.category)) {
-                        inv += (t.amount || 0);
+                        inv += amount;
                     } else {
-                        desp += (t.amount || 0);
+                        desp += amount;
                     }
                 }
             }
         });
 
-        return { rec, desp, inv, saldo: rec - desp - inv };
-    }, [transactions, selectedMonth]);
+        return { rec, desp, inv, saldoDisponivel: rec - desp - inv, fluxoLiquido: rec - desp };
+    }, [transactions, selectedMonth, selectedCurrency]);
 
-    // 2. Dados para Tabela de Categorias (Filtrado pelo MÊS SELECIONADO)
+    // 2. DISTRIBUIÇÃO DE GASTOS POR CATEGORIA (Excluindo Investimentos e Filtrado por Moeda)
     const categoryData = useMemo(() => {
         const categories: Record<string, number> = {};
         
         transactions.forEach(t => {
-            if (t.type === TransactionType.Despesa && t.date.startsWith(selectedMonth) && !isInvestmentCategory(t.category)) {
-                const catName = t.category || 'Outros'; // Fallback para categoria
-                if (!categories[catName]) {
-                    categories[catName] = 0;
-                }
-                categories[catName] += (t.amount || 0);
+            if (t.type === TransactionType.Despesa && t.date.startsWith(selectedMonth) && !isInvestmentCategory(t.category) && t.currency === selectedCurrency) {
+                const catName = t.category || 'Outros';
+                categories[catName] = (categories[catName] || 0) + (Number(t.amount) || 0);
             }
         });
 
@@ -75,233 +72,215 @@ const Reports: React.FC<ReportsProps> = ({ transactions }) => {
             name: key,
             value: categories[key]
         })).sort((a, b) => b.value - a.value); 
-    }, [transactions, selectedMonth]);
+    }, [transactions, selectedMonth, selectedCurrency]);
 
-    // 3. Dados para Gráfico de Evolução Mensal (Contexto do ANO TODO do mês selecionado)
+    // 3. EVOLUÇÃO MENSAL NO ANO (Filtrado por Moeda)
     const monthlyData = useMemo(() => {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const data = months.map(m => ({ name: m, Receitas: 0, Despesas: 0, Aportes: 0, Saldo: 0 }));
+        const data = months.map(m => ({ name: m, Receitas: 0, Despesas: 0, Aportes: 0 }));
 
         transactions.forEach(t => {
-            if (!t.date) return;
-            
-            if (t.date.startsWith(selectedYear)) {
-                const parts = t.date.split('-');
-                if (parts.length < 2) return;
-
-                const monthIndex = parseInt(parts[1]) - 1;
+            if (t.date.startsWith(selectedYear) && t.currency === selectedCurrency) {
+                const monthIndex = parseInt(t.date.split('-')[1]) - 1;
                 if (monthIndex >= 0 && monthIndex < 12) {
-                    const amount = t.amount || 0;
+                    const amount = Number(t.amount) || 0;
                     if (t.type === TransactionType.Receita) {
                         data[monthIndex].Receitas += amount;
+                    } else if (isInvestmentCategory(t.category)) {
+                        data[monthIndex].Aportes += amount;
                     } else {
-                        if (isInvestmentCategory(t.category)) {
-                            data[monthIndex].Aportes += amount;
-                        } else {
-                            data[monthIndex].Despesas += amount;
-                        }
+                        data[monthIndex].Despesas += amount;
                     }
                 }
             }
         });
         
-        return data.map(d => ({
-            ...d,
-            Saldo: d.Receitas - d.Despesas - d.Aportes
-        }));
+        return data;
+    }, [transactions, selectedYear, selectedCurrency]);
 
-    }, [transactions, selectedYear]);
-
-    // 4. Dados para o Gráfico de Pizza (Baseado nos totais do MÊS)
+    // 4. DADOS PARA O GRÁFICO DE PIZZA
     const pieData = useMemo(() => {
         return [
             { name: 'Receitas', value: monthTotals.rec, color: COLOR_RECEITA },
-            { name: 'Aportes', value: monthTotals.inv, color: COLOR_APORTE }, // Label alterada para Aportes
-            { name: 'Despesas', value: monthTotals.desp, color: COLOR_DESPESA }
+            { name: 'Aportes', value: monthTotals.inv, color: COLOR_APORTE },
+            { name: 'Custo de Vida', value: monthTotals.desp, color: COLOR_DESPESA }
         ].filter(item => item.value > 0); 
     }, [monthTotals]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios Avançados</h3>
+                <div>
+                    <h3 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios Avançados</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Análise profunda do seu fluxo financeiro em {selectedCurrency}</p>
+                </div>
                 
-                {/* Filtro igual ao do Dashboard */}
-                <div className="bg-white dark:bg-gray-800 p-2 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 flex items-center">
-                    <label htmlFor="month-filter-reports" className="mr-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                        Período:
-                    </label>
-                    <input 
-                        type="month" 
-                        id="month-filter-reports"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 outline-none"
-                    />
+                <div className="flex items-center gap-3">
+                    {/* Seletor de Moeda */}
+                    <div className="bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex gap-1">
+                        <button 
+                            onClick={() => setSelectedCurrency('BRL')}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        >
+                            BRL
+                        </button>
+                        <button 
+                            onClick={() => setSelectedCurrency('USD')}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        >
+                            USD
+                        </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex items-center">
+                        <input 
+                            type="month" 
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-transparent border-none text-gray-700 dark:text-white text-sm font-bold p-1 focus:ring-0 outline-none cursor-pointer"
+                        />
+                    </div>
                 </div>
             </div>
 
-            {/* Cards de Resumo MENSAL */}
+            {/* Cards de Resumo */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-green-100 dark:border-green-900/30">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg text-green-600 dark:text-green-400">
-                            <ArrowUpIcon className="w-5 h-5" />
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Receita (Mês)</span>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-2 text-green-600">
+                        <ArrowUpIcon className="w-5 h-5" />
+                        <span className="text-xs font-black uppercase tracking-wider">Receitas</span>
                     </div>
-                    <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(monthTotals.rec)}</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.rec)}</p>
                 </div>
                 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-red-100 dark:border-red-900/30">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg text-red-600 dark:text-red-400">
-                            <ArrowDownIcon className="w-5 h-5" />
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Despesas (Mês)</span>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-2 text-red-600">
+                        <ArrowDownIcon className="w-5 h-5" />
+                        <span className="text-xs font-black uppercase tracking-wider">Custo de Vida</span>
                     </div>
-                    <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(monthTotals.desp)}</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.desp)}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">*Exclui investimentos</p>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-blue-100 dark:border-blue-900/30">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">
-                            <TrendingUpIcon className="w-5 h-5" />
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Aportes (Mês)</span>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-2 text-indigo-600">
+                        <TrendingUpIcon className="w-5 h-5" />
+                        <span className="text-xs font-black uppercase tracking-wider">Aportes</span>
                     </div>
-                    <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(monthTotals.inv)}</p>
+                    <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.inv)}</p>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-                            <ArrowUpIcon className="w-5 h-5" />
-                        </div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Saldo (Mês)</span>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-2 text-blue-600">
+                        <ArrowUpIcon className="w-5 h-5" />
+                        <span className="text-xs font-black uppercase tracking-wider">Margem Líquida</span>
                     </div>
-                    <p className={`text-xl font-bold ${monthTotals.saldo >= 0 ? 'text-gray-800 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>
-                        {formatCurrency(monthTotals.saldo)}
+                    <p className={`text-2xl font-black ${monthTotals.fluxoLiquido >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {formatCurrency(monthTotals.fluxoLiquido)}
                     </p>
+                    <p className="text-[10px] text-gray-400 mt-1">Sobra p/ investir</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Gráfico de Área */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                    <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Evolução em {selectedYear}</h4>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Gráfico de Evolução */}
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Evolução ({selectedYear} - {selectedCurrency})</h4>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={monthlyData}>
                                 <defs>
                                     <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={COLOR_RECEITA} stopOpacity={0.8}/>
+                                        <stop offset="5%" stopColor={COLOR_RECEITA} stopOpacity={0.3}/>
                                         <stop offset="95%" stopColor={COLOR_RECEITA} stopOpacity={0}/>
                                     </linearGradient>
                                     <linearGradient id="colorDesp" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={COLOR_DESPESA} stopOpacity={0.8}/>
+                                        <stop offset="5%" stopColor={COLOR_DESPESA} stopOpacity={0.3}/>
                                         <stop offset="95%" stopColor={COLOR_DESPESA} stopOpacity={0}/>
                                     </linearGradient>
-                                    <linearGradient id="colorAporte" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={COLOR_APORTE} stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor={COLOR_APORTE} stopOpacity={0}/>
-                                    </linearGradient>
                                 </defs>
-                                <XAxis dataKey="name" stroke="#9CA3AF" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
                                 <YAxis hide />
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#9CA3AF" opacity={0.3} />
                                 <Tooltip 
-                                    formatter={(value: number) => formatCurrency(value)}
-                                    contentStyle={{
-                                        backgroundColor: '#fff', 
-                                        border: '1px solid #e5e7eb', 
-                                        borderRadius: '0.5rem',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                        color: '#000'
-                                    }}
+                                    formatter={(v: number) => formatCurrency(v)}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                 />
-                                <Area type="monotone" dataKey="Receitas" stroke={COLOR_RECEITA} fillOpacity={1} fill="url(#colorRec)" name="Receitas" />
-                                <Area type="monotone" dataKey="Despesas" stroke={COLOR_DESPESA} fillOpacity={1} fill="url(#colorDesp)" name="Despesas" />
-                                <Area type="monotone" dataKey="Aportes" stroke={COLOR_APORTE} fillOpacity={1} fill="url(#colorAporte)" name="Aportes" />
                                 <Legend />
+                                <Area type="monotone" dataKey="Receitas" stroke={COLOR_RECEITA} fillOpacity={1} fill="url(#colorRec)" strokeWidth={3} />
+                                <Area type="monotone" dataKey="Despesas" stroke={COLOR_DESPESA} fillOpacity={1} fill="url(#colorDesp)" strokeWidth={3} />
+                                <Area type="monotone" dataKey="Aportes" stroke={COLOR_APORTE} fillOpacity={0.5} fill={COLOR_APORTE} strokeWidth={3} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* Gráfico de Pizza */}
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                    <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Distribuição em {new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long' })}</h4>
-                    {pieData.length > 0 ? (
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={pieData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {pieData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip 
-                                        formatter={(value: number) => formatCurrency(value)}
-                                        contentStyle={{
-                                            backgroundColor: '#fff', 
-                                            border: '1px solid #e5e7eb', 
-                                            borderRadius: '0.5rem',
-                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                            color: '#000'
-                                        }} 
-                                    />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        <div className="h-[300px] flex items-center justify-center text-gray-400 dark:text-gray-500">
-                            Sem dados suficientes neste mês.
-                        </div>
-                    )}
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Composição do Fluxo ({selectedCurrency})</h4>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={90}
+                                    paddingAngle={8}
+                                    dataKey="value"
+                                >
+                                    {pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                                <Legend verticalAlign="bottom" height={36}/>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
 
-             {/* Tabela Detalhada de Categorias */}
-             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-300">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-                    <h4 className="text-lg font-bold text-gray-800 dark:text-white">Detalhamento de Gastos (Por Categoria)</h4>
+            {/* Ranking de Despesas */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white">Gastos de Consumo em {selectedCurrency}</h4>
+                    <span className="text-xs font-bold text-gray-400 uppercase">Top Categorias</span>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th className="px-6 py-3">Categoria</th>
-                                <th className="px-6 py-3 text-right">Valor Total</th>
-                                <th className="px-6 py-3 text-right">% das Despesas</th>
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-700/50 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                <th className="px-8 py-4">Categoria</th>
+                                <th className="px-8 py-4 text-right">Valor Acumulado</th>
+                                <th className="px-8 py-4 text-right">Representatividade</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-gray-900 dark:text-white">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                             {categoryData.map((cat, idx) => {
                                 const percentage = monthTotals.desp > 0 ? ((cat.value / monthTotals.desp) * 100).toFixed(1) : '0';
                                 return (
-                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <td className="px-6 py-4 font-medium flex items-center">
-                                            <div className="w-3 h-3 rounded-full mr-3 bg-gray-400 dark:bg-gray-500"></div>
+                                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                        <td className="px-8 py-4 font-bold text-gray-800 dark:text-white flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                                             {cat.name}
                                         </td>
-                                        <td className="px-6 py-4 text-right">{formatCurrency(cat.value)}</td>
-                                        <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400">{percentage}%</td>
+                                        <td className="px-8 py-4 text-right font-black text-gray-900 dark:text-white">{formatCurrency(cat.value)}</td>
+                                        <td className="px-8 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-3">
+                                                <div className="w-24 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                                    <div className="bg-indigo-500 h-full" style={{ width: `${percentage}%` }}></div>
+                                                </div>
+                                                <span className="text-xs font-bold text-gray-500 min-w-[40px]">{percentage}%</span>
+                                            </div>
+                                        </td>
                                     </tr>
                                 );
                             })}
-                             {categoryData.length === 0 && (
+                            {categoryData.length === 0 && (
                                 <tr>
-                                    <td colSpan={3} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Nenhum dado de despesa neste mês.</td>
+                                    <td colSpan={3} className="px-8 py-12 text-center text-gray-400">Nenhuma despesa registrada em {selectedCurrency} para este mês.</td>
                                 </tr>
                             )}
                         </tbody>

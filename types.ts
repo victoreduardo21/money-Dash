@@ -3,6 +3,7 @@ export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | '
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
+export type Currency = 'BRL' | 'USD';
 
 export enum TransactionType {
   Receita = 'Receita',
@@ -13,6 +14,7 @@ export interface PersonalTransaction {
   id: string;
   description: string;
   amount: number;
+  currency: Currency;
   date: string;
   type: TransactionType;
   category: string;
@@ -24,6 +26,7 @@ export interface Investment {
     initialAmount: number;
     currentValue: number;
     yieldRate: number; // Percentage
+    currency: Currency;
 }
 
 export interface CalendarEvent {
