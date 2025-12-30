@@ -1,186 +1,71 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language } from '../types';
 
-// URL atualizada e correta (versão /exec)
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WbdPuvqgK32yOyn76CBItcB-d3zmcBcZq70cBwafSZJgqyA61685U1plUtfc4qri/exec';
 
-// Helper para montar a URL com query params
 const getUrl = (route: string, token?: string) => {
     let url = `${GOOGLE_SCRIPT_URL}?route=${route}`;
-    if (token) {
-        url += `&token=${encodeURIComponent(token)}`;
-    }
+    if (token) url += `&token=${encodeURIComponent(token)}`;
     return url;
 };
 
-// Helper para fazer POST request evitando CORS Preflight complexo
-// Enviamos como text/plain, mas o body é JSON string.
 const postData = async (route: string, data: any) => {
     try {
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?route=${route}`, {
             method: 'POST',
-            redirect: "follow", // Importante para seguir o redirect do Google
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8", // Truque para evitar Preflight
-            },
+            redirect: "follow",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(data)
         });
-
         const text = await response.text();
-        
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            console.error("Erro ao fazer parse do JSON vindo do Google:", text);
-            return { error: true, message: "Erro de comunicação com o servidor. Tente novamente." };
-        }
+        return JSON.parse(text);
     } catch (error) {
-        console.error("Erro de rede:", error);
         return { error: true, message: "Erro de conexão." };
     }
 };
 
 export const api = {
-    // Autenticação
-    login: async (credentials: any) => {
-        return postData('auth/login', credentials);
-    },
-
-    createUser: async (user: Omit<User, 'id'>) => {
-        // Envia o plano junto com os dados do usuário
-        return postData('users', user);
-    },
-
-    // Buscar Perfil Atualizado (Novo)
+    login: async (credentials: any) => postData('auth/login', credentials),
+    createUser: async (user: Omit<User, 'id'>) => postData('users', user),
     getMe: async (token: string) => {
-        try {
-            const response = await fetch(getUrl('users/me', token));
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch {
-                return null;
-            }
-        } catch (e) {
-            return null;
-        }
+        const response = await fetch(getUrl('users/me', token));
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return null; }
     },
-
-    // Admin - Listar todos usuários
-    getAllUsers: async (token: string) => {
-        try {
-            const response = await fetch(getUrl('users', token));
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch {
-                return [];
-            }
-        } catch (e) {
-            return [];
-        }
+    updateLanguage: async (language: Language, token: string) => {
+        return postData('users/me/language', { language, token });
     },
-
-    // ASSINATURA / PLANOS
-    // Atualiza plano e ciclo (Mensal/Anual)
-    updatePlan: async (plan: Plan, cycle: BillingCycle, token: string) => {
-        const payload = { plan, billingCycle: cycle, token };
-        return postData('users/me/plan', payload);
-    },
-
-    createSubscriptionCharge: async (token: string) => {
-        const payload = { token };
-        return postData('subscription/pay', payload);
-    },
-
-    // Transações
+    updatePlan: async (plan: Plan, cycle: BillingCycle, token: string) => postData('users/me/plan', { plan, billingCycle: cycle, token }),
     getTransactions: async (token: string) => {
-        try {
-            const response = await fetch(getUrl('transactions', token));
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch {
-                return [];
-            }
-        } catch (e) {
-            return [];
-        }
+        const response = await fetch(getUrl('transactions', token));
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return []; }
     },
-
-    createTransaction: async (transaction: Omit<PersonalTransaction, 'id'>, token: string) => {
-        const payload = { ...transaction, token }; 
-        return postData('transactions', payload);
-    },
-
-    deleteTransaction: async (id: string, token: string) => {
-        const payload = { id, token };
-        return postData('transactions/delete', payload);
-    },
-
-    // Investimentos
+    createTransaction: async (transaction: Omit<PersonalTransaction, 'id'>, token: string) => postData('transactions', { ...transaction, token }),
+    deleteTransaction: async (id: string, token: string) => postData('transactions/delete', { id, token }),
     getInvestments: async (token: string) => {
-        try {
-            const response = await fetch(getUrl('investments', token));
-            const text = await response.text();
-             try {
-                return JSON.parse(text);
-            } catch {
-                return [];
-            }
-        } catch (e) {
-            return [];
-        }
+        const response = await fetch(getUrl('investments', token));
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return []; }
     },
-    
-    createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => {
-        const payload = { ...investment, token };
-        return postData('investments', payload);
-    },
-
-    deleteInvestment: async (id: string, token: string) => {
-        const payload = { id, token };
-        return postData('investments/delete', payload);
-    },
-    
-    // AGENDA (CALENDAR)
+    createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => postData('investments', { ...investment, token }),
+    deleteInvestment: async (id: string, token: string) => postData('investments/delete', { id, token }),
     getCalendarEvents: async (token: string) => {
-        try {
-            const response = await fetch(getUrl('calendar', token));
-            const text = await response.text();
-            try {
-                return JSON.parse(text);
-            } catch {
-                return [];
-            }
-        } catch (e) {
-            return [];
-        }
+        const response = await fetch(getUrl('calendar', token));
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return []; }
     },
-
-    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => {
-        const payload = { ...event, token };
-        return postData('calendar', payload);
+    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => postData('calendar', { ...event, token }),
+    toggleCalendarEvent: async (id: string, done: boolean, token: string) => postData('calendar/toggle', { id, done, token }),
+    deleteCalendarEvent: async (id: string, token: string) => postData('calendar/delete', { id, token }),
+    updatePassword: async (data: {currentPassword: string, newPassword: string}, token: string) => postData('users/me/password', { ...data, token }),
+    updateAvatar: async (data: {avatar: string}, token: string) => postData('users/me/avatar', { ...data, token }),
+    getAllUsers: async (token: string) => {
+        const response = await fetch(getUrl('users', token));
+        const text = await response.text();
+        try { return JSON.parse(text); } catch { return []; }
     },
-
-    toggleCalendarEvent: async (id: string, done: boolean, token: string) => {
-        const payload = { id, done, token };
-        return postData('calendar/toggle', payload);
-    },
-
-    deleteCalendarEvent: async (id: string, token: string) => {
-        const payload = { id, token };
-        return postData('calendar/delete', payload);
-    },
-
-    // Usuário
-    updatePassword: async (data: {currentPassword: string, newPassword: string}, token: string) => {
-         const payload = { ...data, token };
-         return postData('users/me/password', payload);
-    },
-
-    updateAvatar: async (data: {avatar: string}, token: string) => {
-         const payload = { ...data, token };
-         return postData('users/me/avatar', payload);
+    toggleUserStatus: async (email: string, status: 'ACTIVE' | 'PENDING', token: string) => {
+        return postData('users/me/status', { targetEmail: email, status, token });
     }
 };

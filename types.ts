@@ -4,6 +4,8 @@ export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
 export type Currency = 'BRL' | 'USD';
+// Added Language type to fix missing export errors
+export type Language = 'pt-BR' | 'en-US';
 
 export enum TransactionType {
   Receita = 'Receita',
@@ -45,5 +47,7 @@ export interface User {
   cpf?: string;
   subscriptionStatus?: 'ACTIVE' | 'PENDING' | 'OVERDUE';
   plan: Plan;
-  billingCycle?: BillingCycle; // Mensal ou Anual
+  billingCycle?: BillingCycle;
+  // Added language property to User interface
+  language?: Language;
 }

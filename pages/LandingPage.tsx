@@ -2,11 +2,13 @@
 import React, { useState } from 'react';
 import { RocketLaunchIcon } from '../components/icons/RocketLaunchIcon';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
-import { DashboardIcon } from '../components/icons/DashboardIcon';
 import { UsersIcon } from '../components/icons/UsersIcon';
 import { CheckCircleIcon } from '../components/icons/CheckCircleIcon';
-import { Plan, BillingCycle } from '../types';
+import { CalendarIcon } from '../components/icons/CalendarIcon';
+import { ChartPieIcon } from '../components/icons/ChartPieIcon';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
+import { Plan, BillingCycle, Currency, Language } from '../types';
+import { useTranslation } from '../translations';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -15,26 +17,71 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
+  const [displayCurrency, setDisplayCurrency] = useState<Currency>(() => (localStorage.getItem('selected_currency') as Currency) || 'BRL');
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language) || 'pt-BR');
+  
+  const t = useTranslation(language);
 
-  // Lógica de Preços
-  const prices = {
-      PRO: billingCycle === 'MONTHLY' ? '39,90' : '399,90',
-      VIP: billingCycle === 'MONTHLY' ? '79,90' : '799,90'
+  const toggleLanguage = (lang: Language) => {
+      setLanguage(lang);
+      localStorage.setItem('language', lang);
   };
 
-  const periodLabel = billingCycle === 'MONTHLY' ? '/mês' : '/ano';
+  const toggleCurrency = (curr: Currency) => {
+      setDisplayCurrency(curr);
+      localStorage.setItem('selected_currency', curr);
+  };
+
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const prices = {
+      BRL: {
+          PRO: billingCycle === 'MONTHLY' ? '39,90' : '399,90',
+          VIP: billingCycle === 'MONTHLY' ? '79,90' : '799,90',
+          symbol: 'R$',
+          period: billingCycle === 'MONTHLY' ? '/mês' : '/ano'
+      },
+      USD: {
+          PRO: billingCycle === 'MONTHLY' ? '9.90' : '99.90',
+          VIP: billingCycle === 'MONTHLY' ? '19.90' : '199.90',
+          symbol: '$',
+          period: billingCycle === 'MONTHLY' ? '/mo' : '/yr'
+      }
+  };
+
+  const currentPrices = prices[displayCurrency];
 
   return (
-    <div className="font-sans text-slate-600 bg-white overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 scroll-smooth">
+    <div className="font-sans text-slate-600 bg-white overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
       <style>{`
         html { scroll-behavior: smooth; }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
+        .perspective-1000 { perspective: 1000px; }
       `}</style>
 
       {/* --- NAVBAR --- */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
               <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-200">
                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
@@ -43,26 +90,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               <span className="text-xl font-bold tracking-tight text-slate-900">Fin<span className="text-blue-600">Dash</span></span>
             </div>
 
-            {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-                <a href="#features" className="hover:text-blue-600 transition-colors cursor-pointer">Funcionalidades</a>
-                <a href="#beneficios" className="hover:text-blue-600 transition-colors cursor-pointer">Benefícios</a>
-                <a href="#planos" className="hover:text-blue-600 transition-colors cursor-pointer">Planos</a>
+                <a href="#features" onClick={(e) => scrollToSection(e, 'features')} className="hover:text-blue-600 transition-colors">{t('features')}</a>
+                <a href="#beneficios" onClick={(e) => scrollToSection(e, 'beneficios')} className="hover:text-blue-600 transition-colors">{t('benefits')}</a>
+                <a href="#planos" onClick={(e) => scrollToSection(e, 'planos')} className="hover:text-blue-600 transition-colors">{t('plans')}</a>
             </div>
 
-            {/* Auth Buttons */}
             <div className="flex items-center gap-4">
-              <button 
-                onClick={onLogin}
-                className="hidden md:block text-slate-600 hover:text-blue-600 font-bold text-sm transition-colors"
-              >
-                Entrar
+              <div className="hidden sm:flex items-center bg-slate-100 rounded-full p-1 border border-slate-200">
+                  <button onClick={() => toggleLanguage('pt-BR')} className={`px-2 py-1 rounded-full text-[10px] font-bold ${language === 'pt-BR' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}>PT</button>
+                  <button onClick={() => toggleLanguage('en-US')} className={`px-2 py-1 rounded-full text-[10px] font-bold ${language === 'en-US' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}>EN</button>
+              </div>
+              
+              <button onClick={onLogin} className="hidden md:block text-slate-600 hover:text-blue-600 font-bold text-sm transition-colors ml-2">
+                {language === 'pt-BR' ? 'Entrar' : 'Sign In'}
               </button>
-              <button 
-                onClick={() => onRegister('FREE', 'MONTHLY')}
-                className="bg-slate-900 text-white px-5 py-2.5 rounded-full font-bold text-xs md:text-sm hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                Começar Grátis
+              <button onClick={() => onRegister('FREE', 'MONTHLY')} className="bg-slate-900 text-white px-5 py-2.5 rounded-full font-bold text-xs md:text-sm hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                {language === 'pt-BR' ? 'Começar Grátis' : 'Start Free'}
               </button>
             </div>
         </div>
@@ -71,98 +115,89 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       {/* --- HERO SECTION --- */}
       <section className="relative pt-40 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-white">
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[600px] h-[600px] bg-blue-50 rounded-full blur-[80px] -z-10 opacity-60"></div>
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[400px] h-[400px] bg-indigo-50 rounded-full blur-[80px] -z-10 opacity-60"></div>
-
         <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-8 hover:bg-blue-100 transition-colors cursor-default">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-8">
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                Suporte Multi-moedas (BRL/USD) Liberado
+                {language === 'pt-BR' ? 'Suporte Multi-moedas (BRL/USD) Liberado' : 'Multi-currency Support (USD/BRL) Enabled'}
             </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6">
-                Gestão Financeira <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sem Fronteiras.</span>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6 animate-fade-in-up">
+                {language === 'pt-BR' ? (
+                  <>Gestão Financeira <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Sem Fronteiras.</span></>
+                ) : (
+                  <>Financial Management <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Without Borders.</span></>
+                )}
             </h1>
 
-            <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500 mb-10 leading-relaxed">
-                Controle seu patrimônio no Brasil e no exterior em um único lugar. Separe custo de vida de aportes e veja sua riqueza crescer de forma inteligente.
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500 mb-10 leading-relaxed animate-fade-in-up">
+                {language === 'pt-BR' 
+                    ? 'Controle seu patrimônio no Brasil e no exterior em um único lugar. Separe custo de vida de aportes e veja sua riqueza crescer.'
+                    : 'Track your wealth in multiple currencies and countries in one place. Separate expenses from investments and watch your net worth grow.'}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-                <button 
-                    onClick={() => onRegister('FREE', 'MONTHLY')}
-                    className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-sm md:text-base hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2"
-                >
-                    Criar Conta Gratuita <span className="text-blue-200">-></span>
-                </button>
-                <button 
-                    onClick={onLogin} 
-                    className="px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-full font-bold text-sm md:text-base hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md"
-                >
-                    Acessar Sistema
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20 animate-fade-in-up">
+                <button onClick={() => onRegister('FREE', 'MONTHLY')} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-sm md:text-base hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 hover:scale-105 flex items-center justify-center gap-2">
+                    {language === 'pt-BR' ? 'Criar Conta Gratuita' : 'Start Free Today'} <span className="text-blue-200">-></span>
                 </button>
             </div>
 
-            {/* --- MOCKUP DO SISTEMA --- */}
-            <div className="relative mx-auto max-w-6xl group perspective-1000">
-                <div className="absolute -inset-4 bg-gradient-to-b from-blue-100/50 to-white rounded-[2rem] -z-10 blur-xl"></div>
-                <div className="relative rounded-2xl bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 overflow-hidden aspect-[16/9] flex flex-col ring-1 ring-slate-900/5">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
-                        <div className="flex gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                            <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+            {/* --- MOCKUP DO SISTEMA (AJUSTADO PARA A IMAGEM) --- */}
+            <div className="relative mx-auto max-w-6xl animate-fade-in-up px-4">
+                <div className="relative rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden aspect-[16/10] flex flex-col transition-transform duration-500 hover:scale-[1.01]">
+                    {/* Barra do Navegador */}
+                    <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-slate-100">
+                        <div className="flex gap-2">
+                            <div className="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                            <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
                         </div>
                         <div className="flex-1 flex justify-center">
-                            <div className="px-3 py-1 bg-white border border-slate-200 rounded text-[10px] text-slate-400 font-mono flex items-center gap-1 w-64 justify-center shadow-sm">
-                                🔒 app.findash.com/dashboard/brl-usd
+                            <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-400 font-medium flex items-center gap-2 w-full max-w-md justify-center">
+                                <span className="opacity-50">🔒</span> app.findash.com/dashboard/global
                             </div>
                         </div>
                     </div>
 
                     <div className="flex-1 flex bg-[#f8fafc] overflow-hidden">
-                        <div className="hidden md:flex w-56 bg-slate-900 flex-col p-4 border-r border-slate-800">
-                             <div className="flex items-center gap-2 mb-8 px-2">
-                                <div className="bg-blue-600 p-1 rounded-md">
-                                  <div className="w-3 h-3 bg-white rounded-full opacity-50"></div>
+                        {/* Sidebar Mockup */}
+                        <div className="hidden md:flex w-64 bg-[#0a0f1e] flex-col p-6">
+                             <div className="flex items-center gap-3 mb-10 px-2">
+                                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                                    <div className="w-4 h-4 bg-white/40 rounded-full"></div>
                                 </div>
-                                <span className="text-white font-bold text-lg">FinDash</span>
+                                <span className="text-white font-bold text-xl tracking-tight">FinDash</span>
                              </div>
-                             <div className="space-y-1 opacity-40">
-                                 <div className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-xs font-medium gap-3">
-                                     <div className="w-4 h-4 bg-white/20 rounded"></div> Dashboard
+                             <div className="space-y-2">
+                                 <div className="flex items-center px-4 py-3 bg-blue-600/20 text-blue-400 rounded-xl text-xs font-bold gap-3 border border-blue-600/20">
+                                     <div className="w-4 h-4 bg-blue-400/20 rounded-md"></div> Painel
                                  </div>
-                                 <div className="flex items-center px-3 py-2 text-slate-400 rounded-md text-xs font-medium gap-3">
-                                     <div className="w-4 h-4 border border-slate-700 rounded"></div> Transações
+                                 <div className="flex items-center px-4 py-3 text-slate-500 rounded-xl text-xs font-bold gap-3">
+                                     <div className="w-4 h-4 border border-slate-800 rounded-md"></div> Transações
                                  </div>
                              </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
-                            <div className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6">
-                                <div className="flex gap-2">
-                                     <div className="w-12 h-6 bg-slate-900 rounded text-[8px] flex items-center justify-center text-white font-bold">BRL</div>
-                                     <div className="w-12 h-6 bg-slate-100 rounded text-[8px] flex items-center justify-center text-slate-400 font-bold">USD</div>
+                        {/* Content Area Mockup */}
+                        <div className="flex-1 flex flex-col bg-[#f8fafc]">
+                            <div className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8">
+                                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                                     <div className="px-4 py-1.5 bg-[#0a0f1e] rounded-md text-[10px] flex items-center justify-center text-white font-black">USD</div>
+                                     <div className="px-4 py-1.5 rounded-md text-[10px] flex items-center justify-center text-slate-400 font-black">BRL</div>
                                 </div>
-                                <div className="w-24 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-[10px] text-white font-bold">Câmbio</div>
+                                <div className="px-6 py-2 bg-indigo-600 rounded-xl flex items-center justify-center text-[10px] text-white font-black shadow-lg shadow-indigo-100 uppercase tracking-widest">Transferir</div>
                             </div>
 
-                            <div className="p-6">
-                                <div className="grid grid-cols-4 gap-4 mb-6">
+                            <div className="p-8">
+                                <div className="grid grid-cols-4 gap-6 mb-8">
                                     {[1,2,3,4].map(i => (
-                                        <div key={i} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                            <div className="w-8 h-2 bg-slate-100 rounded mb-2"></div>
-                                            <div className="w-16 h-4 bg-slate-200 rounded"></div>
+                                        <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-24">
+                                            <div className="w-8 h-2 bg-slate-100 rounded mb-4"></div>
+                                            <div className="w-16 h-4 bg-slate-50 rounded"></div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-48 flex items-end justify-between gap-2 px-10">
-                                     {[60, 40, 80, 50, 90, 30, 70, 45, 85].map((h, i) => (
-                                         <div key={i} className="flex gap-1 items-end w-full">
-                                            <div style={{height: `${h}%`}} className="w-full bg-blue-500 rounded-t-sm"></div>
-                                            <div style={{height: `${h*0.4}%`}} className="w-full bg-red-400 rounded-t-sm"></div>
-                                         </div>
-                                     ))}
+                                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm h-64">
+                                     <div className="w-full h-full bg-slate-50/50 rounded-2xl border border-dashed border-slate-100"></div>
                                 </div>
                             </div>
                         </div>
@@ -172,31 +207,94 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
         </div>
       </section>
 
-      {/* --- FEATURES GRID --- */}
-      <section id="features" className="py-24 bg-white relative">
-          <div className="max-w-7xl mx-auto px-6">
-              <div className="text-center mb-16">
-                  <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">A inteligência que seu dinheiro merece</h2>
-                  <p className="text-slate-500 max-w-2xl mx-auto text-lg">Desenvolvemos as ferramentas certas para quem busca liberdade financeira real.</p>
-              </div>
+      {/* --- FEATURES SECTION --- */}
+      <section id="features" className="py-24 bg-white border-t border-slate-100">
+          <div className="max-w-7xl mx-auto px-6 text-center">
+              <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4">{t('features')}</h2>
+              <p className="text-slate-500 max-w-2xl mx-auto mb-16 text-lg">{t('feature4Desc')}</p>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {[
-                      { icon: <SwitchHorizontalIcon className="w-6 h-6 text-blue-600" />, title: 'Gestão Multimoedas', desc: 'Acompanhe saldos e investimentos em BRL e USD com conversão integrada.' },
-                      { icon: <DashboardIcon className="w-6 h-6 text-blue-600" />, title: 'Patrimônio vs Custo', desc: 'Saiba exatamente quanto do seu dinheiro é gasto e quanto é investido.' },
-                      { icon: <UsersIcon className="w-6 h-6 text-blue-600" />, title: 'Relatórios Geográficos', desc: 'Análise profunda de despesas reais vs aportes financeiros internacionais.' },
-                      { icon: <TrendingUpIcon className="w-6 h-6 text-blue-600" />, title: 'Evolução Anual', desc: 'Gráficos de área que mostram o crescimento real do seu patrimônio no tempo.' },
-                      { icon: <CheckCircleIcon className="w-6 h-6 text-blue-600" />, title: 'Agenda Inteligente', desc: 'Lembretes de pagamentos e aportes agendados para não perder oportunidades.' },
-                      { icon: <RocketLaunchIcon className="w-6 h-6 text-blue-600" />, title: 'Assistente VIP WhatsApp', desc: 'Mande um áudio e registre seus gastos. A nossa IA cuida de tudo para você.' },
-                  ].map((feature, idx) => (
-                      <div key={idx} className="bg-slate-50 border border-slate-100 p-8 rounded-2xl hover:bg-white hover:shadow-xl hover:shadow-blue-100/50 hover:border-blue-100 transition-all duration-300 group">
-                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                              {feature.icon}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-2xl transition-all group text-left">
+                      <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-6 group-hover:scale-110 transition-transform"><SwitchHorizontalIcon className="w-8 h-8" /></div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{t('feature1Title')}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">{t('feature1Desc')}</p>
+                  </div>
+                  <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 hover:border-indigo-200 hover:bg-white hover:shadow-2xl transition-all group text-left">
+                      <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 group-hover:scale-110 transition-transform"><TrendingUpIcon className="w-8 h-8" /></div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{t('feature2Title')}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">{t('feature2Desc')}</p>
+                  </div>
+                  <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 hover:border-emerald-200 hover:bg-white hover:shadow-2xl transition-all group text-left">
+                      <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform"><CalendarIcon className="w-8 h-8" /></div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{t('feature3Title')}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">{t('feature3Desc')}</p>
+                  </div>
+                  <div className="p-8 bg-slate-50 rounded-3xl border border-slate-100 hover:border-purple-200 hover:bg-white hover:shadow-2xl transition-all group text-left">
+                      <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 transition-transform"><ChartPieIcon className="w-8 h-8" /></div>
+                      <h3 className="text-xl font-bold text-slate-900 mb-3">{t('feature4Title')}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">{t('feature4Desc')}</p>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      {/* --- BENEFITS SECTION (AJUSTADO PARA A IMAGEM) --- */}
+      <section id="beneficios" className="py-32 bg-[#020617] text-white overflow-hidden relative">
+          {/* Luz de fundo sutil */}
+          <div className="absolute top-1/2 left-1/4 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-[150px] pointer-events-none"></div>
+          
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+              <div className="flex flex-col lg:flex-row items-center gap-24">
+                  <div className="lg:w-1/2">
+                      <h2 className="text-4xl md:text-6xl font-extrabold mb-12 leading-tight tracking-tight">
+                          {language === 'pt-BR' ? 'Por que escolher o FinDash?' : 'Why choose FinDash?'}
+                      </h2>
+                      <div className="space-y-12">
+                          <div className="flex gap-8 group">
+                              <div className="flex-shrink-0 w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-blue-400 border border-white/10 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                                  <RocketLaunchIcon className="w-6 h-6" />
+                              </div>
+                              <div>
+                                  <h4 className="text-2xl font-bold mb-3">{t('benefit1Title')}</h4>
+                                  <p className="text-slate-400 text-lg leading-relaxed">{t('benefit1Desc')}</p>
+                              </div>
                           </div>
-                          <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
-                          <p className="text-slate-500 text-sm leading-relaxed">{feature.desc}</p>
+                          <div className="flex gap-8 group">
+                              <div className="flex-shrink-0 w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-indigo-400 border border-white/10 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                                  <UsersIcon className="w-6 h-6" />
+                              </div>
+                              <div>
+                                  <h4 className="text-2xl font-bold mb-3">{t('benefit2Title')}</h4>
+                                  <p className="text-slate-400 text-lg leading-relaxed">{t('benefit2Desc')}</p>
+                              </div>
+                          </div>
                       </div>
-                  ))}
+                  </div>
+
+                  <div className="lg:w-1/2 relative w-full flex justify-center lg:justify-end">
+                      {/* Glass Container da Imagem */}
+                      <div className="relative p-12 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl overflow-hidden group">
+                           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent opacity-50"></div>
+                           
+                           {/* Card de Investimento (O da imagem) */}
+                           <div className="relative bg-[#0a0f1e]/80 p-8 rounded-3xl border border-white/10 shadow-2xl min-w-[320px] md:min-w-[450px] transform transition-transform group-hover:translate-y-[-10px]">
+                               <div className="flex justify-between items-center gap-12">
+                                   <div className="flex items-center gap-5">
+                                       <div className="w-12 h-12 bg-green-500/10 text-green-500 rounded-xl flex items-center justify-center font-black text-lg border border-green-500/20 shadow-lg shadow-green-500/5">$$</div>
+                                       <div>
+                                           <p className="text-xl font-bold text-white tracking-tight">Investimentos</p>
+                                       </div>
+                                   </div>
+                                   <div className="text-right">
+                                       <span className="text-2xl font-black text-[#22c55e] drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">R$ 15.000,00</span>
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* Elementos decorativos */}
+                           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-600/20 rounded-full blur-[60px]"></div>
+                      </div>
+                  </div>
               </div>
           </div>
       </section>
@@ -204,107 +302,83 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       {/* --- PRICING SECTION --- */}
       <section id="planos" className="py-24 bg-slate-50">
           <div className="max-w-7xl mx-auto px-6">
-              <div className="text-center mb-10">
-                  <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">Planos que acompanham seu crescimento</h2>
-                  
-                  {/* Seletor Mensal / Anual */}
-                  <div className="flex justify-center mt-8">
-                        <div className="bg-slate-200 p-1.5 rounded-full flex relative inline-flex">
-                            <button 
-                                onClick={() => setBillingCycle('MONTHLY')}
-                                className={`px-6 py-2 text-sm font-bold rounded-full transition-all duration-300 ${billingCycle === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Mensal
-                            </button>
-                            <button 
-                                onClick={() => setBillingCycle('ANNUAL')}
-                                className={`px-6 py-2 text-sm font-bold rounded-full transition-all duration-300 flex items-center ${billingCycle === 'ANNUAL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Anual
-                                <span className="ml-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
-                                    -16% OFF
-                                </span>
-                            </button>
-                        </div>
+              <div className="text-center mb-16">
+                  <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">{language === 'pt-BR' ? 'Pronto para evoluir?' : 'Ready to evolve?'}</h2>
+                  <div className="flex flex-col items-center gap-6">
+                      <div className="bg-slate-200 p-1 rounded-full flex relative inline-flex">
+                          <button onClick={() => setBillingCycle('MONTHLY')} className={`px-8 py-2 text-sm font-bold rounded-full transition-all duration-300 ${billingCycle === 'MONTHLY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{language === 'pt-BR' ? 'Mensal' : 'Monthly'}</button>
+                          <button onClick={() => setBillingCycle('ANNUAL')} className={`px-8 py-2 text-sm font-bold rounded-full transition-all duration-300 ${billingCycle === 'ANNUAL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{language === 'pt-BR' ? 'Anual' : 'Annual'}</button>
+                      </div>
+                      
+                      <div className="flex gap-4">
+                        <button onClick={() => toggleCurrency('BRL')} className={`text-xs font-black tracking-widest ${displayCurrency === 'BRL' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>BRL (R$)</button>
+                        <button onClick={() => toggleCurrency('USD')} className={`text-xs font-black tracking-widest ${displayCurrency === 'USD' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>USD ($)</button>
+                      </div>
                   </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-end">
-                  {/* FREE */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-slate-300 hover:shadow-xl transition-all duration-300">
-                      <div className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">FREE</div>
-                      <h3 className="text-3xl font-bold text-slate-900 mb-4">Grátis</h3>
-                      <p className="text-slate-500 text-sm mb-6">Organização básica em Real.</p>
-                      <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Fluxo de Caixa (BRL)</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-green-500" /> Cadastro de Transações</li>
-                          <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Suporte USD</li>
-                          <li className="flex items-center gap-2 text-slate-400"><CheckCircleIcon className="w-4 h-4" /> Sem Relatórios de Patrimônio</li>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                  {/* LIVRE (FREE) */}
+                  <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col items-start text-left">
+                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">LIVRE</span>
+                      <h3 className="text-5xl font-black text-slate-900 mb-3">{language === 'pt-BR' ? 'Grátis' : 'Free'}</h3>
+                      <p className="text-slate-400 text-sm font-medium mb-10">{language === 'pt-BR' ? 'Organização básica' : 'Basic Organization'}</p>
+                      
+                      <ul className="space-y-4 mb-12 flex-grow">
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-green-500" /> {language === 'pt-BR' ? 'Fluxo de Caixa' : 'Cash Flow'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-green-500" /> {language === 'pt-BR' ? 'Cadastro de Transações' : 'Transaction Logging'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-300 font-medium"><div className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center text-[10px]">✕</div> {language === 'pt-BR' ? 'Sem medida Multi-moeda' : 'No Multi-currency'}</li>
                       </ul>
-                      <button onClick={() => onRegister('FREE', 'MONTHLY')} className="w-full py-3 border-2 border-slate-200 text-slate-700 rounded-lg font-bold text-sm hover:border-slate-900 hover:text-slate-900 transition-colors">
-                          Começar Agora
-                      </button>
+                      
+                      <button onClick={() => onRegister('FREE', 'MONTHLY')} className="w-full py-4 px-6 border border-slate-200 text-slate-900 rounded-xl font-bold text-base hover:bg-slate-50 transition-colors">{language === 'pt-BR' ? 'Começar agora' : 'Get Started'}</button>
                   </div>
 
-                  {/* PRO */}
-                  <div className="bg-white border-2 border-blue-600 rounded-2xl p-8 relative transform md:-translate-y-4 shadow-2xl shadow-blue-100">
-                      <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg tracking-widest">PATRIMONIAL</div>
-                      <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-2">PRO</div>
-                      <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ {prices.PRO}</span>
-                          <span className="text-slate-500">{periodLabel}</span>
+                  {/* PRÓ (PRO) - HIGHLIGHTED */}
+                  <div className="bg-white rounded-3xl p-10 border-[3px] border-blue-600 shadow-2xl shadow-blue-100 relative transform md:-translate-y-4 flex flex-col items-start text-left z-10">
+                      <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-bl-2xl rounded-tr-xl tracking-widest shadow-lg">GLOBAL</div>
+                      <span className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4">PRÓ</span>
+                      <div className="flex items-baseline gap-1 mb-3">
+                          <h3 className="text-5xl font-black text-slate-900">{currentPrices.symbol} {currentPrices.PRO}</h3>
+                          <span className="text-slate-300 text-3xl">/</span>
                       </div>
-                      <p className="text-slate-500 text-sm mb-6">Controle total Real & Dólar.</p>
-                      <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-blue-600" /> <strong>Gestão Multimoedas (BRL/USD)</strong></li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-blue-600" /> Relatórios Custo vs Aporte</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-blue-600" /> Dashboard de Evolução Anual</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-blue-600" /> Carteira de Investimentos</li>
+                      <p className="text-slate-400 text-sm font-medium mb-10">{language === 'pt-BR' ? 'Total BRL/USD' : 'Full BRL/USD Control'}</p>
+                      <ul className="space-y-4 mb-12 flex-grow">
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-bold"><CheckCircleIcon className="w-5 h-5 text-blue-600" /> {language === 'pt-BR' ? 'Gestão Multimoedas' : 'Multi-currency Management'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-blue-600" /> {language === 'pt-BR' ? 'Relatórios de Patrimônio' : 'Net Worth Reports'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-blue-600" /> {language === 'pt-BR' ? 'Carteira de Investimentos' : 'Investment Portfolio'}</li>
                       </ul>
-                      <button onClick={() => onRegister('PRO', billingCycle)} className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
-                          Assinar PRO
-                      </button>
+                      <button onClick={() => onRegister('PRO', billingCycle)} className="w-full py-4 px-6 bg-blue-600 text-white rounded-xl font-bold text-base hover:bg-blue-700 transition-all shadow-xl shadow-blue-200">{language === 'pt-BR' ? 'Assinar PRÓ' : 'Subscribe PRO'}</button>
                   </div>
 
                   {/* VIP */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-8 hover:border-purple-200 hover:shadow-xl transition-all duration-300">
-                      <div className="text-sm font-bold text-purple-600 uppercase tracking-wider mb-2">VIP</div>
-                      <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-4xl font-bold text-slate-900">R$ {prices.VIP}</span>
-                          <span className="text-slate-500">{periodLabel}</span>
+                  <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col items-start text-left">
+                      <span className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4">VIP</span>
+                      <div className="flex items-baseline gap-1 mb-3">
+                          <h3 className="text-5xl font-black text-slate-900">{currentPrices.symbol} {currentPrices.VIP}</h3>
+                          <span className="text-slate-300 text-3xl">/</span>
                       </div>
-                      <p className="text-slate-500 text-sm mb-6">Comodidade e IA via WhatsApp.</p>
-                      <ul className="space-y-3 mb-8 text-sm text-slate-600">
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Tudo do plano PRO</strong></li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> <strong>Integração via WhatsApp</strong></li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Assistente Financeiro IA</li>
-                          <li className="flex items-center gap-2"><CheckCircleIcon className="w-4 h-4 text-purple-600" /> Suporte Prioritário</li>
+                      <p className="text-slate-400 text-sm font-medium mb-10">{language === 'pt-BR' ? 'Especializado' : 'Concierge Support'}</p>
+                      <ul className="space-y-4 mb-12 flex-grow">
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-purple-600" /> {language === 'pt-BR' ? 'Tudo do plano PRO' : 'Everything in PRO'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-purple-600" /> {language === 'pt-BR' ? 'Assistente WhatsApp' : 'WhatsApp Concierge'}</li>
+                          <li className="flex items-center gap-3 text-sm text-slate-600 font-medium"><CheckCircleIcon className="w-5 h-5 text-purple-600" /> {language === 'pt-BR' ? 'pagar Prioritário' : 'Priority Payouts'}</li>
                       </ul>
-                      <button onClick={() => onRegister('VIP', billingCycle)} className="w-full py-3 border-2 border-purple-100 text-purple-600 hover:bg-purple-50 hover:border-purple-200 rounded-lg font-bold text-sm transition-colors">
-                          Assinar VIP
-                      </button>
+                      <button onClick={() => onRegister('VIP', billingCycle)} className="w-full py-4 px-6 border border-purple-200 text-purple-600 rounded-xl font-bold text-base hover:bg-purple-50 transition-colors">{language === 'pt-BR' ? 'Assinar VIP' : 'Get VIP Access'}</button>
                   </div>
               </div>
           </div>
       </section>
 
       {/* --- FOOTER --- */}
-      <footer className="bg-slate-900 text-slate-400 py-16">
+      <footer className="bg-[#020617] text-slate-400 py-16">
           <div className="max-w-7xl mx-auto px-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-8">
                   <div className="bg-blue-600 p-1.5 rounded-lg">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                    </svg>
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                   </div>
                   <span className="text-xl font-bold text-white">FinDash</span>
               </div>
-              <p className="max-w-md mx-auto text-sm mb-8">
-                  Sua central global de patrimônio. Desenvolvido para quem busca clareza financeira em Real e Dólar.
-              </p>
-              <div className="border-t border-slate-800 pt-8 text-xs">
-                  <p>© 2025 FinDash. Powered by <span className="text-blue-500 font-bold">GTS AI</span> - Global Tech Software.</p>
-              </div>
+              <p className="text-xs">© 2025 FinDash. Powered by <span className="text-blue-500 font-bold">GTS AI</span>.</p>
           </div>
       </footer>
     </div>

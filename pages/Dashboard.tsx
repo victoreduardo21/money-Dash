@@ -7,9 +7,10 @@ import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
-import { PersonalTransaction, TransactionType, Investment, Page, Currency } from '../types';
+import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language } from '../types';
 import WelcomeBanner from '../components/WelcomeBanner';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
+import { useTranslation } from '../translations';
 
 interface DashboardProps {
     transactions: PersonalTransaction[];
@@ -20,36 +21,28 @@ interface DashboardProps {
     onNewTransaction: () => void;
     onOpenTransfer: () => void;
     searchQuery: string;
+    language: Language;
+    selectedCurrency: Currency;
+    onCurrencyChange: (currency: Currency) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction, onOpenTransfer, searchQuery }) => {
-    
+const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction, onOpenTransfer, searchQuery, language, selectedCurrency, onCurrencyChange }) => {
+  const t = useTranslation(language);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>('BRL');
 
-  const formatCurrency = (value: number, currency: Currency = selectedCurrency) => {
-    const safeValue = Math.abs(value) < 0.005 ? 0 : value;
-    if (currency === 'BRL') {
-        return `R$ ${safeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return `$ ${safeValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  const formatCompactCurrency = (value: number) => {
-      return new Intl.NumberFormat('pt-BR', {
-          notation: "compact",
-          compactDisplay: "short",
-          maximumFractionDigits: 1,
-      }).format(value);
-  }
-
-  const isInvestmentCategory = (category: string) => {
-      if (!category) return false;
-      const cat = category.toLowerCase().trim();
-      return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
+  const isInvestment = (category: string) => {
+    if (!category) return false;
+    const cat = category.toLowerCase().trim();
+    return cat === 'investimentos' || cat === 'investimento' || cat === 'aporte' || cat === 'aportes';
   };
 
-  // 1. SALDO DISPONÍVEL (Filtrado pela moeda selecionada)
+  const formatCurrency = (value: number, currency: Currency = selectedCurrency) => {
+    if (currency === 'BRL') {
+        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
   const saldoDisponivel = useMemo(() => {
     const txs = transactions.filter(t => t.currency === selectedCurrency);
     const receitas = txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
@@ -57,97 +50,96 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
     return receitas - despesas;
   }, [transactions, selectedCurrency]);
 
-  // 2. INVESTIMENTO (Filtrado pela moeda selecionada)
   const totalInvestido = useMemo(() => {
-      const invList = Array.isArray(investments) ? investments : [];
-      return invList
+      return (investments || [])
         .filter(i => i.currency === selectedCurrency)
         .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
   }, [investments, selectedCurrency]);
 
-  // 3. PATRIMÔNIO TOTAL
   const patrimonioTotal = useMemo(() => saldoDisponivel + totalInvestido, [saldoDisponivel, totalInvestido]);
 
-  // 4. FLUXO MENSAL (Ajustado para ignorar investimentos nas despesas e filtrar moeda)
   const fluxoMensal = useMemo(() => {
-      const txsMesMoeda = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
+      const txsMes = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
+      const receitas = txsMes.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       
-      const receitas = txsMesMoeda
-        .filter(t => t.type === TransactionType.Receita)
+      // AJUSTE: Despesas agora ignora a categoria Investimentos
+      const despesasCustoVida = txsMes
+        .filter(t => t.type === TransactionType.Despesa && !isInvestment(t.category))
         .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-        
-      const despesasReais = txsMesMoeda
-        .filter(t => t.type === TransactionType.Despesa && !isInvestmentCategory(t.category))
+      
+      const aportes = txsMes
+        .filter(t => t.type === TransactionType.Despesa && isInvestment(t.category))
         .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-        
-      return { receitas, despesas: despesasReais };
+
+      return { receitas, despesas: despesasCustoVida, aportes };
   }, [transactions, selectedMonth, selectedCurrency]);
 
-  // FILTRO DE PESQUISA AJUSTADO: Agora foca apenas em texto visível para evitar confusão com o Tipo
   const filteredTransactions = useMemo(() => {
       const query = (searchQuery || '').trim().toLowerCase();
-      
       return transactions.filter(t => {
-          const matchCurrency = t.currency === selectedCurrency;
           const matchMonth = t.date.startsWith(selectedMonth);
-          
-          if (!query) return matchCurrency && matchMonth;
-
-          // Busca apenas em campos de texto e valor, removendo o tipo da busca
+          const matchCurrency = t.currency === selectedCurrency;
+          if (!query) return matchMonth && matchCurrency;
           const descriptionMatch = (t.description || '').toLowerCase().includes(query);
           const categoryMatch = (t.category || '').toLowerCase().includes(query);
-          const amountMatch = (t.amount || 0).toString().includes(query);
-          
-          return matchCurrency && matchMonth && (descriptionMatch || categoryMatch || amountMatch);
+          return matchMonth && matchCurrency && (descriptionMatch || categoryMatch);
       });
   }, [transactions, selectedMonth, selectedCurrency, searchQuery]);
 
   const monthlyChartData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const data = months.map(month => ({ name: month, Receitas: 0, Despesas: 0 }));
+    const months = language === 'pt-BR' 
+        ? ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const data = months.map(month => ({ name: month, income: 0, expense: 0, investment: 0 }));
     
     transactions.forEach(transaction => {
-      if (!transaction.date || transaction.currency !== selectedCurrency) return;
+      if (transaction.currency !== selectedCurrency) return;
+      
       const dateParts = transaction.date.split('-');
       const year = parseInt(dateParts[0]);
-      const selectedYear = parseInt(selectedMonth.split('-')[0]);
+      const currentYear = new Date().getFullYear();
 
-      if (year === selectedYear) {
+      if (year === currentYear) {
           const monthIndex = parseInt(dateParts[1]) - 1; 
           if (monthIndex >= 0 && monthIndex < 12) {
             const amount = Number(transaction.amount) || 0;
             if (transaction.type === TransactionType.Receita) {
-                data[monthIndex].Receitas += amount;
-            } else if (!isInvestmentCategory(transaction.category)) {
-                data[monthIndex].Despesas += amount;
+                data[monthIndex].income += amount;
+            } else {
+                if (isInvestment(transaction.category)) {
+                    data[monthIndex].investment += amount;
+                } else {
+                    data[monthIndex].expense += amount;
+                }
             }
           }
       }
     });
     return data;
-  }, [transactions, selectedMonth, selectedCurrency]);
+  }, [transactions, selectedCurrency, language]);
     
   return (
     <div className="pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
-            <h3 className="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">Painel Financeiro</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Gestão de saldo, patrimônio e fluxo em {selectedCurrency}</p>
+            <h3 className="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">{t('dashboard')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('summary')} em {selectedCurrency}</p>
           </div>
           
           <div className="flex items-center gap-3">
-              <div className="bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex gap-1">
+              <div className="bg-white dark:bg-gray-800 p-1 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex">
                   <button 
-                      onClick={() => setSelectedCurrency('BRL')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    onClick={() => onCurrencyChange('BRL')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
-                      BRL
+                    BRL
                   </button>
                   <button 
-                      onClick={() => setSelectedCurrency('USD')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    onClick={() => onCurrencyChange('USD')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                   >
-                      USD
+                    USD
                   </button>
               </div>
 
@@ -156,7 +148,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
                 className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg"
               >
                   <SwitchHorizontalIcon className="w-4 h-4" />
-                  Câmbio
+                  {t('exchange')}
               </button>
 
               <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
@@ -174,89 +166,95 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
         <WelcomeBanner onActionClick={onNewTransaction} />
       ) : (
         <>
-          <div className="mb-4">
-            <h4 className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">Visão Geral ({selectedCurrency})</h4>
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                <MetricCard
-                  title="Saldo em Conta"
-                  value={formatCurrency(saldoDisponivel)}
-                  icon={<span className="text-2xl">{selectedCurrency === 'BRL' ? '🇧🇷' : '🇺🇸'}</span>}
-                  valueClassName={saldoDisponivel < 0 ? "text-red-600 dark:text-red-500" : "text-gray-900 dark:text-white"}
-                />
-                <MetricCard
-                  title="Total Investido"
-                  value={formatCurrency(totalInvestido)}
-                  icon={<TrendingUpIcon className="h-8 w-8 text-indigo-500" />}
-                  valueClassName="text-indigo-600 dark:text-indigo-400"
-                />
-                <MetricCard
-                  title="Receitas (Mês)"
-                  value={formatCurrency(fluxoMensal.receitas)}
-                  icon={<ArrowUpIcon className="h-8 w-8 text-green-500" />}
-                  valueClassName="text-green-600 dark:text-green-400"
-                />
-                <MetricCard
-                  title="Gastos Reais (Mês)"
-                  value={formatCurrency(fluxoMensal.despesas)}
-                  icon={<ArrowDownIcon className="h-8 w-8 text-red-500" />}
-                  valueClassName="text-red-600 dark:text-red-400"
-                />
-            </div>
-          </div>
-
-          <div className="mb-8 mt-6">
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-                <MetricCard
-                  title="Patrimônio Total"
-                  value={formatCurrency(patrimonioTotal)}
-                  icon={<CreditCardIcon className="h-8 w-8 text-blue-600" />}
-                  valueClassName="text-slate-900 dark:text-white font-black text-3xl"
-                />
-                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-2xl shadow-xl flex items-center justify-between text-white">
-                    <div>
-                        <p className="text-xs font-black uppercase opacity-80 tracking-widest">Margem de Investimento</p>
-                        <p className="text-3xl font-black mt-1">
-                            {fluxoMensal.receitas > 0 
-                                ? (((fluxoMensal.receitas - fluxoMensal.despesas) / fluxoMensal.receitas) * 100).toFixed(1)
-                                : '0'}%
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-[10px] opacity-70 uppercase font-bold">Líquido Mensal</p>
-                        <p className="text-xl font-bold">{formatCurrency(fluxoMensal.receitas - fluxoMensal.despesas)}</p>
-                    </div>
-                </div>
-            </div>
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
+              <MetricCard
+                title={t('availableBalance')}
+                value={formatCurrency(saldoDisponivel)}
+                icon={<CreditCardIcon className="h-8 w-8 text-blue-500" />}
+                valueClassName={saldoDisponivel < 0 ? "text-red-600" : ""}
+              />
+              <MetricCard
+                title={t('totalInvested')}
+                value={formatCurrency(totalInvestido)}
+                icon={<TrendingUpIcon className="h-8 w-8 text-indigo-500" />}
+              />
+              <MetricCard
+                title={t('monthlyIncome')}
+                value={formatCurrency(fluxoMensal.receitas)}
+                icon={<ArrowUpIcon className="h-8 w-8 text-green-500" />}
+              />
+              <MetricCard
+                title={t('monthlyExpenses')}
+                value={formatCurrency(fluxoMensal.despesas)}
+                icon={<ArrowDownIcon className="h-8 w-8 text-red-500" />}
+              />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-3 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Fluxo de Caixa ({selectedCurrency})</h4>
+            <div className="xl:col-span-2 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+                <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">{t('cashFlow')} {t('annual')} ({selectedCurrency})</h4>
                  <ResponsiveContainer width="100%" height={320}>
                     <BarChart data={monthlyChartData}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" strokeOpacity={0.5} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
-                        <YAxis width={50} axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={formatCompactCurrency} />
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <YAxis hide />
+                        <Tooltip 
+                            formatter={(value: number) => formatCurrency(value)}
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                            labelStyle={{ fontWeight: 'bold' }}
+                        />
                         <Legend />
-                        <Bar dataKey="Receitas" fill="#22C55E" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                        <Bar dataKey="Despesas" fill="#EF4444" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="income" name={t('income')} fill="#22C55E" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="expense" name={t('expense')} fill="#EF4444" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="investment" name={t('investments')} fill="#6366F1" radius={[6, 6, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
+            </div>
+
+            <div className="bg-[#0a0f1e] p-8 rounded-3xl shadow-2xl text-white flex flex-col justify-between border border-white/5 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-blue-600/20"></div>
+                <div>
+                    <h4 className="text-sm font-black opacity-40 uppercase tracking-[0.2em] mb-2">{t('netWorth')}</h4>
+                    <p className="text-5xl font-black tracking-tighter text-white">{formatCurrency(patrimonioTotal)}</p>
+                </div>
+                <div className="mt-12 pt-8 border-t border-white/10">
+                    <div className="flex justify-between items-end mb-4">
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('investmentMargin')}</p>
+                            <p className="text-3xl font-black text-[#22c55e] mt-1 drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]">
+                                {fluxoMensal.receitas > 0 
+                                    ? (((fluxoMensal.receitas - fluxoMensal.despesas) / fluxoMensal.receitas) * 100).toFixed(1)
+                                    : '0'}%
+                            </p>
+                        </div>
+                        <div className="text-right">
+                             <p className="text-[10px] font-bold text-slate-500 uppercase">{t('monthlyIncome')}</p>
+                             <p className="text-sm font-bold text-white opacity-80">{formatCurrency(fluxoMensal.receitas)}</p>
+                        </div>
+                    </div>
+                    <div className="w-full bg-white/5 rounded-full h-3 p-0.5 border border-white/5">
+                        <div 
+                            className="bg-gradient-to-r from-blue-600 to-[#22c55e] h-full rounded-full shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all duration-1000" 
+                            style={{width: `${Math.min(100, (fluxoMensal.receitas > 0 ? ((fluxoMensal.receitas - fluxoMensal.despesas) / fluxoMensal.receitas) * 100 : 0))}%`}}
+                        ></div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-4 leading-relaxed font-medium">
+                        Sua margem indica quanto da sua renda sobra após o custo de vida básico. Invista o máximo possível dessa diferença.
+                    </p>
+                </div>
             </div>
           </div>
 
           <div className="mt-8">
-            <div className="rounded-2xl shadow-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <TransactionsTable 
-                    transactions={filteredTransactions} 
-                    title={searchQuery ? `Resultado da busca (${selectedCurrency})` : `Histórico: ${new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}
-                    showViewAllLink={true}
-                    onViewAll={() => setActivePage('Transações')}
-                    onEdit={onEditTransaction}
-                    onDelete={onDeleteTransaction}
-                />
-            </div>
+            <TransactionsTable 
+                transactions={filteredTransactions} 
+                title={`${t('history')} (${selectedCurrency})`}
+                onEdit={onEditTransaction}
+                onDelete={onDeleteTransaction}
+                showViewAllLink
+                onViewAll={() => setActivePage('Transações')}
+                language={language}
+            />
           </div>
         </>
       )}

@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { PersonalTransaction, TransactionType } from '../types';
+import { PersonalTransaction, TransactionType, Language } from '../types';
 import { MoreVerticalIcon } from './icons/MoreVerticalIcon';
 import { EditIcon } from './icons/EditIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { useTranslation } from '../translations';
+
 
 interface TransactionsTableProps {
   transactions: PersonalTransaction[];
@@ -12,9 +14,11 @@ interface TransactionsTableProps {
   onDelete?: (id: string) => void;
   onViewAll?: () => void;
   showViewAllLink?: boolean;
+  language?: Language;
 }
 
-const ActionMenu: React.FC<{ transaction: PersonalTransaction; onEdit: any; onDelete: any; }> = ({ transaction, onEdit, onDelete }) => {
+const ActionMenu: React.FC<{ transaction: PersonalTransaction; onEdit: any; onDelete: any; language: Language }> = ({ transaction, onEdit, onDelete, language }) => {
+    const t = useTranslation(language);
     const [isOpen, setIsOpen] = React.useState(false);
     const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -42,13 +46,13 @@ const ActionMenu: React.FC<{ transaction: PersonalTransaction; onEdit: any; onDe
                         onClick={(e) => { e.stopPropagation(); onEdit(transaction); setIsOpen(false); }} 
                         className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                        <EditIcon className="h-4 w-4 mr-2" /> Editar
+                        <EditIcon className="h-4 w-4 mr-2" /> {t('edit')}
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onDelete(transaction.id); setIsOpen(false); }} 
                         className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                     >
-                        <TrashIcon className="h-4 w-4 mr-2" /> Excluir
+                        <TrashIcon className="h-4 w-4 mr-2" /> {t('delete')}
                     </button>
                 </div>
             )}
@@ -63,7 +67,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     onDelete,
     onViewAll,
     showViewAllLink = false,
+    language = 'pt-BR'
 }) => {
+  // Use a strictly typed local constant to fix Language type assignment errors.
+  // Casting helps resolve potential inference issues when using destructuring default values with union types.
+  const currentLanguage = language as Language;
+  const t = useTranslation(currentLanguage);
+  
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-none transition-colors duration-300">
       <div className="p-6 border-b border-gray-100 dark:border-gray-700">
@@ -73,12 +83,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
           <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-700">
             <tr>
-              <th scope="col" className="px-6 py-4 font-bold">Descrição</th>
-              <th scope="col" className="px-6 py-4 font-bold">Valor</th>
-              <th scope="col" className="px-6 py-4 font-bold">Moeda</th>
-              <th scope="col" className="px-6 py-4 font-bold">Data</th>
-              <th scope="col" className="px-6 py-4 font-bold">Categoria</th>
-              <th scope="col" className="px-6 py-4 font-bold text-right">Ações</th>
+              <th scope="col" className="px-6 py-4 font-bold">{t('description')}</th>
+              <th scope="col" className="px-6 py-4 font-bold">{t('value')}</th>
+              {/* Compare translated string to determine current locale context for column header */}
+              <th scope="col" className="px-6 py-4 font-bold">{t('language') === 'Idioma' ? 'Moeda' : 'Currency'}</th>
+              <th scope="col" className="px-6 py-4 font-bold">{t('date')}</th>
+              <th scope="col" className="px-6 py-4 font-bold">{t('category')}</th>
+              <th scope="col" className="px-6 py-4 font-bold text-right">{t('actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -90,7 +101,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                 <td className={`px-6 py-4 font-bold ${transaction.type === TransactionType.Receita ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {transaction.type === TransactionType.Despesa && '- '}
                   {transaction.currency === 'BRL' ? 'R$ ' : '$ '}
-                  {transaction.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {transaction.amount.toLocaleString(currentLanguage, { minimumFractionDigits: 2 })}
                 </td>
                 <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded text-[10px] font-bold ${transaction.currency === 'USD' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -98,7 +109,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                     </span>
                 </td>
                 <td className="px-6 py-4">
-                  {new Date(transaction.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
+                  {new Date(transaction.date).toLocaleDateString(currentLanguage, {timeZone: 'UTC'})}
                 </td>
                 <td className="px-6 py-4">
                   <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-600">
@@ -106,13 +117,13 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                   {onEdit && onDelete && <ActionMenu transaction={transaction} onEdit={onEdit} onDelete={onDelete} />}
+                   {onEdit && onDelete && <ActionMenu transaction={transaction} onEdit={onEdit} onDelete={onDelete} language={currentLanguage} />}
                 </td>
               </tr>
             ))}
              {transactions.length === 0 && (
                 <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">Nenhuma transação encontrada.</td>
+                    <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">{t('noTransactions')}</td>
                 </tr>
             )}
           </tbody>
@@ -120,7 +131,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       </div>
       {showViewAllLink && onViewAll && (
         <div className="p-4 text-center border-t border-gray-100 dark:border-gray-700">
-            <button onClick={onViewAll} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">Ver todas as transações</button>
+            <button onClick={onViewAll} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">{t('viewAll')}</button>
         </div>
       )}
     </div>
