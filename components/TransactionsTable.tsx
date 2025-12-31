@@ -60,6 +60,15 @@ const ActionMenu: React.FC<{ transaction: PersonalTransaction; onEdit: any; onDe
     );
 };
 
+const getCategoryColor = (category: string) => {
+    const cat = category.toLowerCase().trim();
+    if (cat.includes('invest') || cat === 'aporte') return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800';
+    if (cat.includes('alimen') || cat.includes('food')) return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border-orange-200 dark:border-orange-800';
+    if (cat.includes('lazer') || cat.includes('leisure')) return 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-400 border-pink-200 dark:border-pink-800';
+    if (cat.includes('saúde') || cat.includes('health')) return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-red-200 dark:border-red-800';
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600';
+}
+
 const TransactionsTable: React.FC<TransactionsTableProps> = ({ 
     transactions, 
     title = "Transações",
@@ -69,8 +78,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     showViewAllLink = false,
     language = 'pt-BR'
 }) => {
-  // Use a strictly typed local constant to fix Language type assignment errors.
-  // Casting helps resolve potential inference issues when using destructuring default values with union types.
   const currentLanguage = language as Language;
   const t = useTranslation(currentLanguage);
   
@@ -85,7 +92,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             <tr>
               <th scope="col" className="px-6 py-4 font-bold">{t('description')}</th>
               <th scope="col" className="px-6 py-4 font-bold">{t('value')}</th>
-              {/* Compare translated string to determine current locale context for column header */}
               <th scope="col" className="px-6 py-4 font-bold">{t('language') === 'Idioma' ? 'Moeda' : 'Currency'}</th>
               <th scope="col" className="px-6 py-4 font-bold">{t('date')}</th>
               <th scope="col" className="px-6 py-4 font-bold">{t('category')}</th>
@@ -112,7 +118,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                   {new Date(transaction.date).toLocaleDateString(currentLanguage, {timeZone: 'UTC'})}
                 </td>
                 <td className="px-6 py-4">
-                  <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-600">
+                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-tighter ${getCategoryColor(transaction.category)}`}>
                     {transaction.category}
                   </span>
                 </td>
