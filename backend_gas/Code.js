@@ -1,6 +1,6 @@
 
 // ============================================================================
-// BACKEND DO FINDASH - GOOGLE APPS SCRIPT (MULTILANGUAGE & MULTICURRENCY)
+// BACKEND DO FINDASH - GOOGLE APPS SCRIPT (FIX: DUPLICIDADE E LOGICA DE CAMBIO)
 // ============================================================================
 
 const ASAAS_API_KEY = '$aact_...'; 
@@ -47,30 +47,23 @@ function doPost(e) {
   let data = {};
 
   try {
+    const userEmail = getUserEmailFromToken(e, requestBody);
+
     if (route === 'auth/login') {
       data = loginUser(requestBody);
-    } else if (route === 'users') {
-      data = createUser(requestBody);
     } else if (route === 'transactions') {
-      const userEmail = getUserEmailFromToken(e, requestBody); 
-      data = createTransaction(requestBody, userEmail);
+      data = saveTransaction(requestBody, userEmail);
     } else if (route === 'transactions/delete') {
-      const userEmail = getUserEmailFromToken(e, requestBody);
       data = deleteTransaction(requestBody.id, userEmail);
     } else if (route === 'investments') {
-      const userEmail = getUserEmailFromToken(e, requestBody);
       data = createInvestment(requestBody, userEmail);
     } else if (route === 'investments/delete') {
-      const userEmail = getUserEmailFromToken(e, requestBody);
       data = deleteInvestment(requestBody.id, userEmail);
-    } else if (route === 'users/me/language') { // NOVA ROTA
-      const userEmail = getUserEmailFromToken(e, requestBody);
+    } else if (route === 'users/me/language') {
       data = updateUserLanguage(requestBody.language, userEmail);
     } else if (route === 'users/me/password') {
-      const userEmail = getUserEmailFromToken(e, requestBody);
       data = updatePassword(requestBody, userEmail);
     } else if (route === 'users/me/plan') { 
-       const userEmail = getUserEmailFromToken(e, requestBody);
        data = updateUserPlan(requestBody, userEmail);
     } else {
       return responseError('Rota não encontrada.', 404);
@@ -81,65 +74,44 @@ function doPost(e) {
   }
 }
 
-function loginUser(body) {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+/**
+ * Salva ou Atualiza uma transação (Evita duplicação)
+ */
+function saveTransaction(body, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Transactions');
   const rows = sheet.getDataRange().getValues();
-  const targetEmail = String(body.email).trim().toLowerCase();
+  const transactionId = body.id;
   
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (String(row[2]).trim().toLowerCase() == targetEmail && String(row[3]).trim() == String(body.password).trim()) { 
-      return {
-        token: Utilities.base64Encode(body.email),
-        user: {
-          name: row[1],
-          email: row[2],
-          avatar: row[4], 
-          subscriptionStatus: row[7] || 'PENDING',
-          plan: row[8] || 'FREE', 
-          billingCycle: row[9] || 'MONTHLY',
-          language: row[10] || 'pt-BR' // Coluna K (Índice 10)
-        }
-      };
+  // Se tem ID, tenta encontrar para atualizar
+  if (transactionId) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(transactionId) && String(rows[i][7]).toLowerCase() === userEmail.toLowerCase()) {
+        const rowNum = i + 1;
+        sheet.getRange(rowNum, 2).setValue(body.description);
+        sheet.getRange(rowNum, 3).setValue(body.amount);
+        sheet.getRange(rowNum, 4).setValue(body.date);
+        sheet.getRange(rowNum, 5).setValue(body.type);
+        sheet.getRange(rowNum, 6).setValue(body.category);
+        sheet.getRange(rowNum, 7).setValue(body.currency || 'BRL');
+        return { success: true, message: "Atualizado", id: transactionId };
+      }
     }
   }
-  throw new Error("Email ou senha inválidos.");
-}
 
-function getUserProfile(encodedEmail) {
-  const userEmail = decodeToken(encodedEmail);
-  const sheet = getSpreadsheet().getSheetByName('Users');
-  const rows = sheet.getDataRange().getValues();
-  const targetEmail = String(userEmail).trim().toLowerCase();
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (String(row[2]).trim().toLowerCase() == targetEmail) {
-      return {
-          name: row[1],
-          email: row[2],
-          subscriptionStatus: row[7] || 'PENDING',
-          plan: row[8] || 'FREE',
-          billingCycle: row[9] || 'MONTHLY',
-          language: row[10] || 'pt-BR'
-      };
-    }
-  }
-  throw new Error("Usuário não encontrado.");
-}
-
-function updateUserLanguage(lang, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Users');
-  const data = sheet.getDataRange().getValues();
-  const targetEmail = String(userEmail).trim().toLowerCase();
+  // Se não tem ID ou não encontrou, cria novo
+  const newId = transactionId || ("TRX" + new Date().getTime());
+  sheet.appendRow([
+    newId,
+    body.description,
+    body.amount,
+    body.date,
+    body.type,
+    body.category,
+    body.currency || 'BRL',
+    userEmail
+  ]);
   
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][2]).trim().toLowerCase() == targetEmail) {
-       sheet.getRange(i + 1, 11).setValue(lang); // Coluna K
-       return { success: true, language: lang };
-    }
-  }
-  return { success: false };
+  return { success: true, message: "Criado", id: newId };
 }
 
 function getTransactions(encodedEmail) {
@@ -165,27 +137,32 @@ function getTransactions(encodedEmail) {
   return transactions.reverse();
 }
 
-function createTransaction(body, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Transactions');
-  const newId = "TRX" + new Date().getTime();
-  sheet.appendRow([
-    newId,
-    body.description,
-    body.amount,
-    body.date,
-    body.type,
-    body.category,
-    body.currency || 'BRL',
-    userEmail
-  ]);
-  return body;
+// Funções de apoio
+function loginUser(body) {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  const rows = sheet.getDataRange().getValues();
+  const targetEmail = String(body.email).trim().toLowerCase();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[2]).trim().toLowerCase() == targetEmail && String(row[3]).trim() == String(body.password).trim()) { 
+      return {
+        token: Utilities.base64Encode(body.email),
+        user: {
+          name: row[1], email: row[2], avatar: row[4], 
+          subscriptionStatus: row[7] || 'PENDING', plan: row[8] || 'FREE', 
+          billingCycle: row[9] || 'MONTHLY', language: row[10] || 'pt-BR'
+        }
+      };
+    }
+  }
+  throw new Error("Email ou senha inválidos.");
 }
 
 function responseJSON(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function responseError(message, code) {
+function responseError(message) {
   return ContentService.createTextOutput(JSON.stringify({ error: true, message: message })).setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -206,4 +183,16 @@ function formatDate(dateObj) {
   if (!dateObj) return "";
   try { return Utilities.formatDate(new Date(dateObj), Session.getScriptTimeZone(), "yyyy-MM-dd"); }
   catch(e) { return String(dateObj); }
+}
+
+function deleteTransaction(id, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Transactions');
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id) && String(rows[i][7]).toLowerCase() === userEmail.toLowerCase()) {
+      sheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+  throw new Error("Transação não encontrada.");
 }

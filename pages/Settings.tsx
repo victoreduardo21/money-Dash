@@ -62,7 +62,8 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
       
       if (window.confirm(confirmMsg)) {
           try {
-              await api.toggleUserStatus(user.email, newStatus, btoa(currentUser.email));
+              // Fix: Correcting the arguments passed to api.toggleUserStatus to match its signature {targetEmail, status}, token
+              await api.toggleUserStatus({ targetEmail: user.email, status: newStatus }, btoa(currentUser.email));
               loadAdminData(); // Recarrega a lista
           } catch (error) {
               alert("Erro ao alterar status.");

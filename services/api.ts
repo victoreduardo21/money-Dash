@@ -41,7 +41,9 @@ export const api = {
         const text = await response.text();
         try { return JSON.parse(text); } catch { return []; }
     },
-    createTransaction: async (transaction: Omit<PersonalTransaction, 'id'>, token: string) => postData('transactions', { ...transaction, token }),
+    createTransaction: async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }, token: string) => {
+        return postData('transactions', { ...transaction, token });
+    },
     deleteTransaction: async (id: string, token: string) => postData('transactions/delete', { id, token }),
     getInvestments: async (token: string) => {
         const response = await fetch(getUrl('investments', token));
@@ -65,7 +67,7 @@ export const api = {
         const text = await response.text();
         try { return JSON.parse(text); } catch { return []; }
     },
-    toggleUserStatus: async (email: string, status: 'ACTIVE' | 'PENDING', token: string) => {
-        return postData('users/me/status', { targetEmail: email, status, token });
+    toggleUserStatus: async (data: {targetEmail: string, status: string}, token: string) => {
+        return postData('users/me/status', { ...data, token });
     }
 };
