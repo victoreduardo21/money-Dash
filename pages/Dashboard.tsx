@@ -75,8 +75,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       const despesasCustoVida = txsMes
         .filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category))
         .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+      
+      // Aportes do mês para o card de investimento
+      const aportesMes = txsMes
+        .filter(t => t.type === TransactionType.Despesa && isInternalTransfer(t.category))
+        .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
 
-      return { receitas, despesas: despesasCustoVida };
+      return { receitas, despesas: despesasCustoVida, aportes: aportesMes };
   }, [transactions, selectedMonth, selectedCurrency]);
 
   const filteredTransactions = useMemo(() => {
