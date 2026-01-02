@@ -122,11 +122,22 @@ const App: React.FC = () => {
     if (!token) return;
     try {
         await api.createTransaction(transaction, token);
-        showToast("Transação salva!", "success");
+        showToast(transaction.id ? "Transação atualizada!" : "Transação salva!", "success");
         fetchData();
         setIsTransactionModalOpen(false);
     } catch (error) {
         showToast("Erro ao salvar transação", "error");
+    }
+  };
+
+  const handleWithdrawInvestment = async (id: string) => {
+    if (!token) return;
+    try {
+        await api.withdrawInvestment(id, token);
+        showToast("Investimento resgatado e valor adicionado ao saldo!", "success");
+        fetchData();
+    } catch (error) {
+        showToast("Erro ao resgatar investimento", "error");
     }
   };
 
@@ -151,7 +162,7 @@ const App: React.FC = () => {
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
             {activePage === 'Dashboard' && <Dashboard transactions={transactions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
-            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} onSaveInvestment={async (i) => { await api.createInvestment(i, token); fetchData(); }} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); fetchData(); }} language={language} />}
+            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} onSaveInvestment={async (i) => { await api.createInvestment(i, token); fetchData(); }} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); fetchData(); }} onWithdrawInvestment={handleWithdrawInvestment} language={language} />}
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); fetchData(); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); fetchData(); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); fetchData(); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={handleCreateUser} language={language} onLanguageChange={setLanguage} />}

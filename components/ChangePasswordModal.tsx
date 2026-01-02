@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { XIcon } from './icons/XIcon';
+import { Language } from '../types';
 
 interface ChangePasswordModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (currentPassword: string, newPassword: string) => Promise<void> | void;
+    // Added missing language prop
+    language: Language;
 }
 
-const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose, onSave }) => {
+const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose, onSave, language }) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');

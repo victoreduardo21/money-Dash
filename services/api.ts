@@ -51,6 +51,7 @@ export const api = {
         try { return JSON.parse(text); } catch { return []; }
     },
     createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => postData('investments', { ...investment, token }),
+    withdrawInvestment: async (id: string, token: string) => postData('investments/withdraw', { id, token }),
     deleteInvestment: async (id: string, token: string) => postData('investments/delete', { id, token }),
     getCalendarEvents: async (token: string) => {
         const response = await fetch(getUrl('calendar', token));

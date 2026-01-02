@@ -5,6 +5,7 @@ import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { EditIcon } from '../components/icons/EditIcon';
 import { TrashIcon } from '../components/icons/TrashIcon';
+import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import InvestmentModal from '../components/InvestmentModal';
 import { useTranslation } from '../translations';
 
@@ -13,10 +14,11 @@ interface InvestmentsProps {
     setInvestments: React.Dispatch<React.SetStateAction<Investment[]>>;
     onSaveInvestment: (investment: Omit<Investment, 'id'> & { id?: string }) => void;
     onDeleteInvestment: (id: string) => void;
+    onWithdrawInvestment: (id: string) => void;
     language: Language;
 }
 
-const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment, onDeleteInvestment, language }) => {
+const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment, onDeleteInvestment, onWithdrawInvestment, language }) => {
     const t = useTranslation(language);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
@@ -43,6 +45,16 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
     const handleOpenModal = (investment: Investment | null) => {
         setSelectedInvestment(investment);
         setIsModalOpen(true);
+    };
+
+    const handleWithdraw = (inv: Investment) => {
+        const confirmMsg = language === 'pt-BR' 
+            ? `Deseja retirar ${formatCurrency(inv.currentValue, inv.currency)} de "${inv.name}"? O valor será adicionado ao seu saldo disponível.`
+            : `Do you want to withdraw ${formatCurrency(inv.currentValue, inv.currency)} from "${inv.name}"? The amount will be added to your available balance.`;
+        
+        if (window.confirm(confirmMsg)) {
+            onWithdrawInvestment(inv.id);
+        }
     };
 
     return (
@@ -141,6 +153,14 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
+                                            <button 
+                                                onClick={() => handleWithdraw(inv)} 
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all border border-green-100 dark:border-green-800"
+                                                title="Resgatar Valor"
+                                            >
+                                                <ArrowDownIcon className="w-3 h-3" />
+                                                Retirar
+                                            </button>
                                             <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
                                                 <EditIcon className="w-5 h-5" />
                                             </button>

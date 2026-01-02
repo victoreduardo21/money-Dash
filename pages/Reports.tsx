@@ -1,11 +1,13 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { PersonalTransaction, TransactionType, Currency, Language, Investment } from '../types';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
+import { CalendarIcon } from '../components/icons/CalendarIcon';
+import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
 import { useTranslation } from '../translations';
 
 interface ReportsProps {
@@ -24,6 +26,7 @@ const COLOR_SALDO = '#3B82F6';
 const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, selectedCurrency, onCurrencyChange }) => {
     const t = useTranslation(language);
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    const monthInputRef = useRef<HTMLInputElement>(null);
 
     const formatCurrency = (value: number) => {
         if (selectedCurrency === 'BRL') {
@@ -32,8 +35,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         return `$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
-    // Função padronizada para identificar o que é INVESTIMENTO/CÂMBIO/APORTE
-    // Isso garante que esses valores saiam do "Custo de Vida" (Despesa Real)
     const isInternalTransfer = (category: string) => {
         if (!category) return false;
         const cat = category.toLowerCase().trim();
@@ -47,11 +48,10 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
 
     const selectedYear = selectedMonth.split('-')[0];
 
-    // Cálculos do Mês Selecionado
     const monthTotals = useMemo(() => {
-        let rec = 0; // Receitas
-        let despReal = 0; // Custo de Vida (Despesas que não são investimentos)
-        let aportesMes = 0; // Aportes realizados no mês (Transações do tipo Despesa marcadas como investimento)
+        let rec = 0; 
+        let despReal = 0; 
+        let aportesMes = 0; 
         
         transactions.forEach(t => {
             const txCurrency = t.currency || 'BRL';
@@ -68,11 +68,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 }
             }
         });
-
-        // Saldo disponível gerado no mês: O que sobrou na conta (Receita - Tudo que saiu, incluindo aportes)
         const saldoGeradoMes = rec - (despReal + aportesMes);
-
-        // Patrimônio Total (Soma de todos os ativos da aba Investimentos)
         const patrimonioTotalAtivos = (investments || [])
             .filter(i => (i.currency || 'BRL') === selectedCurrency)
             .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
@@ -80,7 +76,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         return { rec, despReal, aportesMes, saldoGeradoMes, patrimonioTotalAtivos };
     }, [transactions, investments, selectedMonth, selectedCurrency]);
 
-    // Dados para o Gráfico de Evolução Anual
     const monthlyData = useMemo(() => {
         const months = language === 'pt-BR' 
             ? ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -106,8 +101,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 }
             }
         });
-
-        // Calcula o saldo de cada mês para o gráfico
         return data.map(d => ({
             ...d,
             balance: d.income - (d.expense + d.investment)
@@ -122,6 +115,14 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         ].filter(item => item.value > 0); 
     }, [monthTotals, t]);
 
+    const triggerMonthPicker = () => {
+        if (monthInputRef.current && 'showPicker' in monthInputRef.current) {
+            (monthInputRef.current as any).showPicker();
+        } else if (monthInputRef.current) {
+            monthInputRef.current.focus();
+        }
+    };
+
     return (
         <div className="space-y-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -129,20 +130,38 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     <h3 className="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">{t('reports')}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Visão Geral Detalhada ({selectedCurrency})</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex gap-1">
                         <button onClick={() => onCurrencyChange('BRL')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>BRL</button>
                         <button onClick={() => onCurrencyChange('USD')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>USD</button>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
-                        <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="bg-transparent border-none text-gray-700 dark:text-white text-sm font-bold p-1 outline-none cursor-pointer" />
+                    
+                    <div 
+                        onClick={triggerMonthPicker}
+                        className="group relative bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:border-blue-400 transition-all active:scale-95"
+                    >
+                        <CalendarIcon className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                        <div className="flex flex-col min-w-[120px]">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none mb-1">Mês de Análise</span>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-gray-700 dark:text-white capitalize">
+                                    {new Date(selectedMonth + '-02').toLocaleDateString(language, { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                                </span>
+                                <ChevronDownIcon className="w-4 h-4 text-gray-400 ml-2" />
+                            </div>
+                        </div>
+                        <input 
+                            ref={monthInputRef}
+                            type="month" 
+                            value={selectedMonth} 
+                            onChange={(e) => setSelectedMonth(e.target.value)} 
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                        />
                     </div>
                 </div>
             </div>
 
-            {/* CARDS DE MÉTRICAS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Receita Total */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
                     <div className="flex items-center gap-3 mb-2 text-green-600">
                         <ArrowUpIcon className="w-5 h-5" />
@@ -152,7 +171,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     <p className="text-[10px] text-gray-400 mt-1">Total recebido no mês</p>
                 </div>
                 
-                {/* Custo de Vida (Gasto Real) */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
                     <div className="flex items-center gap-3 mb-2 text-red-600">
                         <ArrowDownIcon className="w-5 h-5" />
@@ -162,7 +180,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     <p className="text-[10px] text-gray-400 mt-1">Despesas fixas e variáveis</p>
                 </div>
 
-                {/* Aportes Mensais */}
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
                     <div className="flex items-center gap-3 mb-2 text-indigo-600">
                         <TrendingUpIcon className="w-5 h-5" />
@@ -172,7 +189,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     <p className="text-[10px] text-gray-400 mt-1">Total aportado no mês</p>
                 </div>
 
-                {/* Saldo Final (Em Conta) */}
                 <div className="bg-blue-600 p-6 rounded-2xl shadow-xl text-white hover:scale-[1.02] transition-transform">
                     <div className="flex items-center gap-3 mb-2 opacity-80">
                         <CreditCardIcon className="w-5 h-5" />
@@ -185,9 +201,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 </div>
             </div>
 
-            {/* SEÇÃO DE GRÁFICOS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Evolução de Fluxo */}
                 <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
                     <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Evolução de Fluxo ({selectedYear} - {selectedCurrency})</h4>
                     <div className="h-[320px]">
@@ -201,7 +215,8 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" strokeOpacity={0.5} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
                                 <YAxis hide />
-                                <Tooltip formatter={(v: number) => formatCurrency(v)} labelStyle={{ fontWeight: 'bold' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none' }} />
+                                {/* Fix: changed 'shadow' to 'boxShadow' in contentStyle */}
+                                <Tooltip formatter={(v: number) => formatCurrency(v)} labelStyle={{ fontWeight: 'bold' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'none' }} />
                                 <Legend verticalAlign="top" height={36}/>
                                 <Area type="monotone" name={t('income')} dataKey="income" stroke={COLOR_RECEITA} fill="url(#colorRec)" strokeWidth={3} />
                                 <Area type="monotone" name={t('costOfLiving')} dataKey="expense" stroke={COLOR_DESPESA} fill="url(#colorDesp)" strokeWidth={3} />
@@ -211,7 +226,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     </div>
                 </div>
                 
-                {/* Composição das Despesas */}
                 <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
                     <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Onde seu dinheiro está indo? ({selectedCurrency})</h4>
                     <div className="h-[320px]">

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CalendarEvent, Language } from '../types';
 import { PlusIcon } from '../components/icons/PlusIcon';
 import { TrashIcon } from '../components/icons/TrashIcon';
@@ -22,6 +22,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
     const [newTaskDesc, setNewTaskDesc] = useState('');
     const [newTaskDate, setNewTaskDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const dateInputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,6 +40,14 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
             } finally {
                 setIsSubmitting(false);
             }
+        }
+    };
+
+    const triggerDatePicker = () => {
+        if (dateInputRef.current && 'showPicker' in dateInputRef.current) {
+            (dateInputRef.current as any).showPicker();
+        } else if (dateInputRef.current) {
+            dateInputRef.current.focus();
         }
     };
 
@@ -126,14 +135,23 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('whatToDo')}</label>
                                 <input type="text" value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-900 dark:text-white"
+                                    className="w-full px-4 py-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-900 dark:text-white font-medium"
+                                    placeholder="Ex: Pagar fatura do cartão"
                                     required />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">{t('when')}</label>
-                                <input type="date" value={newTaskDate} onChange={(e) => setNewTaskDate(e.target.value)}
-                                    className="w-full px-4 py-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-900 dark:text-white"
-                                    required />
+                                <div onClick={triggerDatePicker} className="relative group cursor-pointer">
+                                    <input 
+                                        ref={dateInputRef}
+                                        type="date" 
+                                        value={newTaskDate} 
+                                        onChange={(e) => setNewTaskDate(e.target.value)}
+                                        className="w-full pl-4 pr-10 py-2 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-900 dark:text-white font-medium"
+                                        required 
+                                    />
+                                    <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+                                </div>
                             </div>
                             <div className="flex justify-end pt-4 gap-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">{t('cancel')}</button>

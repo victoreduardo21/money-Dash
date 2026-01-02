@@ -1,33 +1,33 @@
 
 // ============================================================================
-// BACKEND DO FINDASH - GOOGLE APPS SCRIPT (FIX: DUPLICIDADE E LOGICA DE CAMBIO)
+// BACKEND DO FINDASH - GOOGLE APPS SCRIPT
 // ============================================================================
-
-const ASAAS_API_KEY = '$aact_...'; 
-const ASAAS_URL = 'https://www.asaas.com/api/v3'; 
 
 function getSpreadsheet() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+/**
+ * GET - Roteamento principal para leitura de dados
+ */
 function doGet(e) {
   const route = e.parameter.route;
   const token = e.parameter.token;
-  let data = {};
   
   try {
+    if (!token && route !== 'auth/login') return responseError("Token obrigatório", 401);
+    
+    let data = [];
     if (route === 'transactions') {
       data = getTransactions(token);
     } else if (route === 'investments') {
       data = getInvestments(token);
     } else if (route === 'calendar') { 
       data = getCalendarEvents(token);
-    } else if (route === 'users') {
-      data = getAllUsers();
     } else if (route === 'users/me') {
       data = getUserProfile(token);
-    } else {
-      return responseJSON([]); 
+    } else if (route === 'users') {
+      data = getAllUsers();
     }
     return responseJSON(data);
   } catch (error) {
@@ -35,6 +35,9 @@ function doGet(e) {
   }
 }
 
+/**
+ * POST - Roteamento principal para escrita de dados
+ */
 function doPost(e) {
   let requestBody = {};
   try {
@@ -44,14 +47,23 @@ function doPost(e) {
   } catch (err) { requestBody = {}; }
 
   const route = e.parameter.route;
-  let data = {};
-
+  
   try {
-    const userEmail = getUserEmailFromToken(e, requestBody);
-
+    // Rotas Públicas (Não precisam de Token)
     if (route === 'auth/login') {
-      data = loginUser(requestBody);
-    } else if (route === 'transactions') {
+      return responseJSON(loginUser(requestBody));
+    }
+    if (route === 'users' && !requestBody.token) {
+      return responseJSON(createUser(requestBody));
+    }
+
+    // Rotas Privadas (Exigem Token)
+    const userEmail = getUserEmailFromToken(e, requestBody);
+    if (!userEmail) return responseError("Sessão expirada", 401);
+
+    let data = { success: false };
+
+    if (route === 'transactions') {
       data = saveTransaction(requestBody, userEmail);
     } else if (route === 'transactions/delete') {
       data = deleteTransaction(requestBody.id, userEmail);
@@ -59,60 +71,27 @@ function doPost(e) {
       data = createInvestment(requestBody, userEmail);
     } else if (route === 'investments/delete') {
       data = deleteInvestment(requestBody.id, userEmail);
+    } else if (route === 'investments/withdraw') {
+      data = withdrawInvestment(requestBody.id, userEmail);
+    } else if (route === 'calendar') {
+      data = saveCalendarEvent(requestBody, userEmail);
+    } else if (route === 'calendar/toggle') {
+      data = toggleCalendarEvent(requestBody, userEmail);
+    } else if (route === 'calendar/delete') {
+      data = deleteCalendarEvent(requestBody.id, userEmail);
     } else if (route === 'users/me/language') {
       data = updateUserLanguage(requestBody.language, userEmail);
-    } else if (route === 'users/me/password') {
-      data = updatePassword(requestBody, userEmail);
     } else if (route === 'users/me/plan') { 
-       data = updateUserPlan(requestBody, userEmail);
-    } else {
-      return responseError('Rota não encontrada.', 404);
+      data = updateUserPlan(requestBody, userEmail);
     }
+
     return responseJSON(data);
   } catch (error) {
     return responseError(error.toString());
   }
 }
 
-/**
- * Salva ou Atualiza uma transação (Evita duplicação)
- */
-function saveTransaction(body, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Transactions');
-  const rows = sheet.getDataRange().getValues();
-  const transactionId = body.id;
-  
-  // Se tem ID, tenta encontrar para atualizar
-  if (transactionId) {
-    for (let i = 1; i < rows.length; i++) {
-      if (String(rows[i][0]) === String(transactionId) && String(rows[i][7]).toLowerCase() === userEmail.toLowerCase()) {
-        const rowNum = i + 1;
-        sheet.getRange(rowNum, 2).setValue(body.description);
-        sheet.getRange(rowNum, 3).setValue(body.amount);
-        sheet.getRange(rowNum, 4).setValue(body.date);
-        sheet.getRange(rowNum, 5).setValue(body.type);
-        sheet.getRange(rowNum, 6).setValue(body.category);
-        sheet.getRange(rowNum, 7).setValue(body.currency || 'BRL');
-        return { success: true, message: "Atualizado", id: transactionId };
-      }
-    }
-  }
-
-  // Se não tem ID ou não encontrou, cria novo
-  const newId = transactionId || ("TRX" + new Date().getTime());
-  sheet.appendRow([
-    newId,
-    body.description,
-    body.amount,
-    body.date,
-    body.type,
-    body.category,
-    body.currency || 'BRL',
-    userEmail
-  ]);
-  
-  return { success: true, message: "Criado", id: newId };
-}
+// --- FUNÇÕES DE BUSCA ---
 
 function getTransactions(encodedEmail) {
   const userEmail = decodeToken(encodedEmail);
@@ -122,7 +101,7 @@ function getTransactions(encodedEmail) {
   let transactions = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[7]).toLowerCase() === String(userEmail).toLowerCase()) {
+    if (String(row[7]).toLowerCase() === userEmail.toLowerCase()) {
       transactions.push({
         id: row[0],
         description: row[1],
@@ -137,34 +116,163 @@ function getTransactions(encodedEmail) {
   return transactions.reverse();
 }
 
-// Funções de apoio
+function getInvestments(encodedEmail) {
+  const userEmail = decodeToken(encodedEmail);
+  const sheet = getSpreadsheet().getSheetByName('Investments');
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  let investments = [];
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][6]).toLowerCase() === userEmail.toLowerCase()) {
+      investments.push({
+        id: rows[i][0],
+        name: rows[i][1],
+        initialAmount: Number(rows[i][2]),
+        currentValue: Number(rows[i][3]),
+        yieldRate: Number(rows[i][4]),
+        currency: rows[i][5] || 'BRL'
+      });
+    }
+  }
+  return investments;
+}
+
+function getCalendarEvents(encodedEmail) {
+  const userEmail = decodeToken(encodedEmail);
+  const sheet = getSpreadsheet().getSheetByName('Calendar');
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  let events = [];
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][4]).toLowerCase() === userEmail.toLowerCase()) {
+      events.push({
+        id: rows[i][0],
+        description: rows[i][1],
+        date: formatDate(rows[i][2]),
+        done: !!rows[i][3]
+      });
+    }
+  }
+  return events;
+}
+
+function getUserProfile(encodedEmail) {
+  const email = decodeToken(encodedEmail).toLowerCase();
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][2]).toLowerCase() === email) {
+      return {
+        name: rows[i][1],
+        email: rows[i][2],
+        plan: rows[i][8] || 'FREE',
+        subscriptionStatus: rows[i][7] || 'PENDING',
+        language: rows[i][10] || 'pt-BR'
+      };
+    }
+  }
+  return null;
+}
+
+function getAllUsers() {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  if (!sheet) return [];
+  const rows = sheet.getDataRange().getValues();
+  let users = [];
+  for (let i = 1; i < rows.length; i++) {
+    users.push({
+      id: rows[i][0],
+      name: rows[i][1],
+      email: rows[i][2],
+      subscriptionStatus: rows[i][7],
+      plan: rows[i][8]
+    });
+  }
+  return users;
+}
+
+// --- FUNÇÕES DE ESCRITA ---
+
 function loginUser(body) {
   const sheet = getSpreadsheet().getSheetByName('Users');
   const rows = sheet.getDataRange().getValues();
-  const targetEmail = String(body.email).trim().toLowerCase();
+  const email = String(body.email).trim().toLowerCase();
+  const password = String(body.password).trim();
+
   for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (String(row[2]).trim().toLowerCase() == targetEmail && String(row[3]).trim() == String(body.password).trim()) { 
+    if (String(rows[i][2]).toLowerCase() === email && String(rows[i][3]) === password) {
       return {
-        token: Utilities.base64Encode(body.email),
+        token: Utilities.base64Encode(email),
         user: {
-          name: row[1], email: row[2], avatar: row[4], 
-          subscriptionStatus: row[7] || 'PENDING', plan: row[8] || 'FREE', 
-          billingCycle: row[9] || 'MONTHLY', language: row[10] || 'pt-BR'
+          name: rows[i][1],
+          email: rows[i][2],
+          plan: rows[i][8] || 'FREE',
+          subscriptionStatus: rows[i][7] || 'PENDING',
+          language: rows[i][10] || 'pt-BR'
         }
       };
     }
   }
-  throw new Error("Email ou senha inválidos.");
+  throw new Error("Usuário ou senha inválidos.");
 }
 
-function responseJSON(data) {
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+function saveTransaction(body, userEmail) {
+  const sheet = getSpreadsheet().getSheetByName('Transactions');
+  const rows = sheet.getDataRange().getValues();
+  const transactionId = body.id;
+
+  if (transactionId) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(transactionId)) {
+        const rowNum = i + 1;
+        sheet.getRange(rowNum, 2, 1, 6).setValues([[
+          body.description,
+          body.amount,
+          body.date,
+          body.type,
+          body.category,
+          body.currency || 'BRL'
+        ]]);
+        return { success: true, id: transactionId };
+      }
+    }
+  }
+
+  const newId = "TRX" + new Date().getTime();
+  sheet.appendRow([newId, body.description, body.amount, body.date, body.type, body.category, body.currency || 'BRL', userEmail]);
+  return { success: true, id: newId };
 }
 
-function responseError(message) {
-  return ContentService.createTextOutput(JSON.stringify({ error: true, message: message })).setMimeType(ContentService.MimeType.JSON);
+function withdrawInvestment(id, userEmail) {
+  const invSheet = getSpreadsheet().getSheetByName('Investments');
+  const invRows = invSheet.getDataRange().getValues();
+  
+  for (let i = 1; i < invRows.length; i++) {
+    if (String(invRows[i][0]) === String(id)) {
+      const name = invRows[i][1];
+      const amount = invRows[i][3]; 
+      const currency = invRows[i][5] || 'BRL';
+      
+      invSheet.deleteRow(i + 1);
+      
+      const txSheet = getSpreadsheet().getSheetByName('Transactions');
+      txSheet.appendRow([
+        "WDR" + new Date().getTime(),
+        "Resgate: " + name,
+        amount,
+        Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
+        "Receita",
+        "Investimentos",
+        currency,
+        userEmail
+      ]);
+      return { success: true };
+    }
+  }
+  throw new Error("Ativo não encontrado.");
 }
+
+// --- UTILITÁRIOS ---
 
 function decodeToken(token) {
   try {
@@ -175,7 +283,7 @@ function decodeToken(token) {
 
 function getUserEmailFromToken(e, body) {
   let token = e.parameter.token || (body && body.token);
-  if (!token) throw new Error("Auth token missing.");
+  if (!token) return null;
   return decodeToken(token);
 }
 
@@ -185,14 +293,10 @@ function formatDate(dateObj) {
   catch(e) { return String(dateObj); }
 }
 
-function deleteTransaction(id, userEmail) {
-  const sheet = getSpreadsheet().getSheetByName('Transactions');
-  const rows = sheet.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(id) && String(rows[i][7]).toLowerCase() === userEmail.toLowerCase()) {
-      sheet.deleteRow(i + 1);
-      return { success: true };
-    }
-  }
-  throw new Error("Transação não encontrada.");
+function responseJSON(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function responseError(msg, code = 500) {
+  return ContentService.createTextOutput(JSON.stringify({ error: true, message: msg, code: code })).setMimeType(ContentService.MimeType.JSON);
 }

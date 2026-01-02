@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, Language } from '../types';
 import { XIcon } from './icons/XIcon';
 
 interface CreateUserModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCreate: (newUser: Omit<User, 'id'>) => Promise<{success: boolean, message: string}>;
+    // Added missing language prop
+    language: Language;
 }
 
-const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCreate }) => {
+const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onCreate, language }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
