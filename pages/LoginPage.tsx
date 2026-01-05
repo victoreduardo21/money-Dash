@@ -44,7 +44,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             }
         } else {
             if (password.length < 6) return setError("A senha deve ter no mínimo 6 caracteres.");
-            const res = await api.createUser({ name, email: email.trim().toLowerCase(), password, phone, cpf, plan: selectedPlan, billingCycle: selectedBillingCycle });
+            // Added explicit type assertions to Plan and BillingCycle to satisfy the User interface requirements
+            const res = await api.createUser({ 
+                name, 
+                email: email.trim().toLowerCase(), 
+                password, 
+                phone, 
+                cpf, 
+                plan: selectedPlan as Plan, 
+                billingCycle: selectedBillingCycle as BillingCycle 
+            });
             if (res.error) {
                 setError(res.message || 'Erro ao criar conta.');
             } else {
@@ -60,11 +69,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     }
   };
 
-  // Classes forçadas para branco para evitar conflitos de tema
-  const inputClasses = "w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all shadow-sm font-medium";
+  // Classes forçadas com ! para garantir branco puro e texto preto
+  const inputClasses = "w-full px-4 py-3 rounded-lg border border-gray-300 !bg-white !text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm font-medium";
 
   return (
-    <div className="flex min-h-screen bg-white font-sans">
+    <div className="flex min-h-screen bg-white font-sans overflow-hidden">
         <div className="hidden md:flex md:w-1/2 bg-[#020617] flex-col justify-center px-24 relative overflow-hidden">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px]"></div>
             <button onClick={onBack} className="absolute top-8 left-8 flex items-center text-gray-400 hover:text-white transition-colors z-20">
@@ -81,19 +90,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
         </div>
 
         <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800">
-            <div className="w-full max-w-md space-y-8">
+            <div className="w-full max-w-md space-y-8 animate-fade-in-up">
                 <div className="text-left">
-                    <h2 className="text-3xl font-bold text-gray-900">{isLoginMode ? 'Bem-vindo de volta' : 'Crie sua conta'}</h2>
-                    <p className="mt-2 text-sm text-gray-500">{isLoginMode ? 'Acesse sua conta para continuar.' : 'Comece a organizar suas finanças hoje.'}</p>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">{isLoginMode ? 'Bem-vindo de volta' : 'Crie sua conta'}</h2>
+                    <p className="mt-2 text-sm text-gray-500 font-medium">{isLoginMode ? 'Acesse sua conta para continuar.' : 'Comece a organizar suas finanças hoje.'}</p>
                 </div>
 
                 <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
                     {!isLoginMode && (
                         <div className="space-y-4">
-                            <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Nome Completo" className={inputClasses} />
+                            <div>
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Nome Completo</label>
+                                <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Seu nome" className={inputClasses} />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <input type="text" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="Telefone" className={inputClasses} />
-                                <input type="text" value={cpf} onChange={e => setCpf(e.target.value)} required placeholder="CPF" className={inputClasses} />
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Telefone</label>
+                                    <input type="text" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="(00) 00000-0000" className={inputClasses} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">CPF</label>
+                                    <input type="text" value={cpf} onChange={e => setCpf(e.target.value)} required placeholder="000.000.000-00" className={inputClasses} />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -122,13 +140,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                         />
                     </div>
 
-                    {error && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100 text-center">{error}</div>}
+                    {error && (
+                        <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 text-center animate-shake">
+                            {error}
+                        </div>
+                    )}
 
-                    <button type="submit" disabled={isLoading} className="w-full py-4 bg-[#020617] text-white rounded-lg font-bold hover:bg-black transition-all shadow-xl disabled:opacity-50">
+                    <button type="submit" disabled={isLoading} className="w-full py-4 bg-[#020617] text-white rounded-xl font-bold hover:bg-black transition-all shadow-xl disabled:opacity-50 transform active:scale-95">
                         {isLoading ? 'CARREGANDO...' : (isLoginMode ? 'ENTRAR' : 'CADASTRAR AGORA')}
                     </button>
 
-                    <p className="text-center text-sm font-medium">
+                    <p className="text-center text-sm font-semibold text-gray-500">
                         {isLoginMode ? 'Não tem uma conta?' : 'Já possui conta?'} 
                         <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} className="ml-1 text-blue-600 font-bold hover:underline">
                             {isLoginMode ? 'Registre-se' : 'Faça login'}

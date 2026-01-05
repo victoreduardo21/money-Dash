@@ -29,10 +29,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
     const monthInputRef = useRef<HTMLInputElement>(null);
 
     const formatCurrency = (value: number) => {
+        // Normalização rigorosa para evitar -0,00
+        const normalizedValue = Math.abs(value) < 0.009 ? 0 : value;
         if (selectedCurrency === 'BRL') {
-            return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            return `R$ ${normalizedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
-        return `$ ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `$ ${normalizedValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const isInternalTransfer = (category: string) => {
@@ -68,7 +70,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 }
             }
         });
-        const saldoGeradoMes = rec - (despReal + aportesMes);
+        
+        // Arredondamento para evitar problemas matemáticos de ponto flutuante
+        const saldoGeradoMes = Number((rec - (despReal + aportesMes)).toFixed(2));
         const patrimonioTotalAtivos = (investments || [])
             .filter(i => (i.currency || 'BRL') === selectedCurrency)
             .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
@@ -103,7 +107,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         });
         return data.map(d => ({
             ...d,
-            balance: d.income - (d.expense + d.investment)
+            balance: Number((d.income - (d.expense + d.investment)).toFixed(2))
         }));
     }, [transactions, selectedYear, selectedCurrency, language]);
 
@@ -215,7 +219,6 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" strokeOpacity={0.5} />
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
                                 <YAxis hide />
-                                {/* Fix: changed 'shadow' to 'boxShadow' in contentStyle */}
                                 <Tooltip formatter={(v: number) => formatCurrency(v)} labelStyle={{ fontWeight: 'bold' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'none' }} />
                                 <Legend verticalAlign="top" height={36}/>
                                 <Area type="monotone" name={t('income')} dataKey="income" stroke={COLOR_RECEITA} fill="url(#colorRec)" strokeWidth={3} />

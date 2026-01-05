@@ -41,19 +41,24 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   };
 
   const formatCurrency = (value: number, currency: Currency = selectedCurrency) => {
-    return (currency === 'BRL' ? 'R$ ' : '$ ') + value.toLocaleString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Normalização absoluta: se o valor arredondado for 0, ignore o sinal
+    const roundedValue = Math.abs(value) < 0.009 ? 0 : value;
+    return (currency === 'BRL' ? 'R$ ' : '$ ') + roundedValue.toLocaleString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   const totals = useMemo(() => {
     const txs = transactions.filter(t => t.currency === selectedCurrency);
-    const saldo = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
+    // Arredondamento para evitar problemas de precisão de ponto flutuante (IEEE 754)
+    const rawSaldo = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
+    const saldo = Number(rawSaldo.toFixed(2));
+    
     const investido = (investments || []).filter(i => i.currency === selectedCurrency).reduce((acc, i) => acc + i.currentValue, 0);
     
     const txsMes = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
     const recMes = txsMes.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
     const gastMes = txsMes.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0);
 
-    return { saldo, investido, recMes, gastMes, patrimonio: saldo + investido };
+    return { saldo, investido, recMes, gastMes, patrimonio: Number((saldo + investido).toFixed(2)) };
   }, [transactions, investments, selectedCurrency, selectedMonth]);
 
   const monthlyChartData = useMemo(() => {
@@ -108,7 +113,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       </div>
 
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <MetricCard title={t('availableBalance')} value={formatCurrency(totals.saldo)} icon={<CreditCardIcon className="h-8 w-8 text-blue-500" />} />
+          <MetricCard 
+            title={t('availableBalance')} 
+            value={formatCurrency(totals.saldo)} 
+            icon={<CreditCardIcon className="h-8 w-8 text-blue-500" />} 
+            // Só fica vermelho se for menor ou igual a -0.01 (um centavo negativo)
+            valueClassName={totals.saldo <= -0.01 ? 'text-red-600' : 'text-gray-900 dark:text-white'}
+          />
           <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-8 w-8 text-indigo-500" />} />
           <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-8 w-8 text-green-500" />} />
           <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-8 w-8 text-red-500" />} change={t('costOfLiving')} changeType="decrease" />
