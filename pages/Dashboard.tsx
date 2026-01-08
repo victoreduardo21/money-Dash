@@ -36,7 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   const isInternalTransfer = (category: string) => {
     if (!category) return false;
     const cat = category.toLowerCase().trim();
-    const internalKeywords = ['investimento', 'aporte', 'câmbio', 'transferência', 'investment', 'contribution'];
+    const internalKeywords = ['investimento', 'aporte', 'câmbio', 'transferência', 'investment', 'contribution', 'resgate'];
     return internalKeywords.some(keyword => cat.includes(keyword));
   };
 
@@ -48,14 +48,18 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
 
   const totals = useMemo(() => {
     const txs = transactions.filter(t => t.currency === selectedCurrency);
-    // Arredondamento para evitar problemas de precisão de ponto flutuante (IEEE 754)
+    // O Saldo considera TUDO (Receitas - Despesas), independente da categoria
     const rawSaldo = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
     const saldo = Number(rawSaldo.toFixed(2));
     
     const investido = (investments || []).filter(i => i.currency === selectedCurrency).reduce((acc, i) => acc + i.currentValue, 0);
     
     const txsMes = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
-    const recMes = txsMes.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
+    
+    // Renda Mensal: Ignora transferências internas (como resgates de investimento) para mostrar apenas renda REAL
+    const recMes = txsMes.filter(t => t.type === TransactionType.Receita && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0);
+    
+    // Gastos Mensais: Ignora aplicações em investimento para mostrar apenas custo de vida REAL
     const gastMes = txsMes.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0);
 
     return { saldo, investido, recMes, gastMes, patrimonio: Number((saldo + investido).toFixed(2)) };
@@ -70,9 +74,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       if (t.currency !== selectedCurrency || !t.date.startsWith(currentYear)) return;
       const mIdx = parseInt(t.date.split('-')[1]) - 1;
       if (mIdx < 0 || mIdx > 11) return;
-      if (t.type === TransactionType.Receita) data[mIdx].income += t.amount;
-      else if (isInternalTransfer(t.category)) data[mIdx].investment += t.amount;
-      else data[mIdx].expense += t.amount;
+      
+      if (t.type === TransactionType.Receita) {
+          // Só conta no gráfico de "Renda" se não for transferência interna
+          if (!isInternalTransfer(t.category)) data[mIdx].income += t.amount;
+      } else {
+          // Se for despesa, separa custo de vida de investimento
+          if (isInternalTransfer(t.category)) data[mIdx].investment += t.amount;
+          else data[mIdx].expense += t.amount;
+      }
     });
     return data;
   }, [transactions, selectedCurrency, language, selectedMonth]);
@@ -117,7 +127,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
             title={t('availableBalance')} 
             value={formatCurrency(totals.saldo)} 
             icon={<CreditCardIcon className="h-8 w-8 text-blue-500" />} 
-            // Só fica vermelho se for menor ou igual a -0.01 (um centavo negativo)
             valueClassName={totals.saldo <= -0.01 ? 'text-red-600' : 'text-gray-900 dark:text-white'}
           />
           <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-8 w-8 text-indigo-500" />} />
