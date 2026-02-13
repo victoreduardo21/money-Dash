@@ -41,7 +41,9 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setActivePage, currentUser, onUpgrade, language }) => {
     const t = useTranslation(language);
-    const sidebarClasses = `fixed inset-y-0 left-0 z-30 w-64 bg-[#020617] border-r border-gray-800 shadow-xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
+    
+    // Mudança crítica: lg:relative em vez de md:relative para garantir que em telas médias (tablets) ela ainda seja overlay
+    const sidebarClasses = `fixed inset-y-0 left-0 z-[60] w-64 bg-[#020617] border-r border-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`;
     
     const isFreePlan = currentUser?.plan === 'FREE';
 
@@ -71,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                         </span>
                     </div>
                 </div>
-                 <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                 <button onClick={() => setIsOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
                     <XIcon className="h-6 w-6" />
                 </button>
             </div>
@@ -112,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                 </div>
             </div>
         </div>
-        {isOpen && <div className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setIsOpen(false)}></div>}
+        {isOpen && <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setIsOpen(false)}></div>}
     </>
     );
 };

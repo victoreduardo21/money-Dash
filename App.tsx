@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import BottomNav from './components/BottomNav';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Investments from './pages/Investments';
@@ -13,7 +14,6 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { MenuIcon } from './components/icons/MenuIcon';
 import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency } from './types';
 import { api } from './services/api';
 import WhatsAppButton from './components/WhatsAppButton';
@@ -50,48 +50,27 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    localStorage.setItem('language', language);
-  }, [language]);
-
-  useEffect(() => {
-    localStorage.setItem('selected_currency', selectedCurrency);
-  }, [selectedCurrency]);
-
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
       const txs = await api.getTransactions(token);
       if (Array.isArray(txs)) setTransactions(txs);
-
       const invs = await api.getInvestments(token);
       if (Array.isArray(invs)) setInvestments(invs);
-      
       const userTasks = await api.getCalendarEvents(token);
       if (Array.isArray(userTasks)) setTasks(userTasks);
-
       const me = await api.getMe(token);
-      if (me) {
-        setCurrentUser(prev => prev ? {...prev, ...me} : me);
-        if (me.language) setLanguage(me.language);
-      }
+      if (me) setCurrentUser(prev => prev ? {...prev, ...me} : me);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     }
   }, [token]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-      setToast({ id: Date.now().toString(), message, type });
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleLogin = (user: User, authToken: string) => {
     setCurrentUser(user);
     setToken(authToken);
-    if (user.language) setLanguage(user.language);
     localStorage.setItem('user_data', JSON.stringify(user));
     localStorage.setItem('auth_token', authToken);
   };
@@ -99,57 +78,9 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setCurrentUser(null);
     setToken(null);
-    localStorage.removeItem('user_data');
-    localStorage.removeItem('auth_token');
+    localStorage.clear();
     setIsLoginScreen(false);
     setActivePage('Dashboard');
-  };
-
-  const handleCreateUser = async (userData: Omit<User, 'id'>) => {
-    try {
-      const result = await api.createUser(userData);
-      if (result && !result.error) {
-        showToast("Usuário criado com sucesso!", "success");
-        return { success: true, message: "OK" };
-      }
-      return { success: false, message: result?.message || "Erro ao criar usuário" };
-    } catch (e) {
-      return { success: false, message: "Erro de conexão" };
-    }
-  };
-
-  const handleSaveTransaction = async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }) => {
-    if (!token) return;
-    try {
-        await api.createTransaction(transaction, token);
-        showToast(transaction.id ? "Transação atualizada!" : "Transação salva!", "success");
-        fetchData();
-        setIsTransactionModalOpen(false);
-    } catch (error) {
-        showToast("Erro ao salvar transação", "error");
-    }
-  };
-
-  const handleSaveInvestment = async (investment: Omit<Investment, 'id'> & { id?: string }) => {
-    if (!token) return;
-    try {
-      await api.createInvestment(investment, token);
-      showToast(investment.id ? "Ativo atualizado!" : "Novo investimento registrado! Seu saldo foi atualizado.", "success");
-      fetchData(); // Isso vai puxar a nova transação de despesa criada pelo backend
-    } catch (error) {
-      showToast("Erro ao salvar investimento", "error");
-    }
-  };
-
-  const handleWithdrawInvestment = async (id: string) => {
-    if (!token) return;
-    try {
-        await api.withdrawInvestment(id, token);
-        showToast("Investimento resgatado e valor adicionado ao saldo!", "success");
-        fetchData();
-    } catch (error) {
-        showToast("Erro ao resgatar investimento", "error");
-    }
   };
 
   if (!token) {
@@ -158,29 +89,36 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans relative transition-colors duration-300">
+    <div className="flex h-full w-full max-w-[100vw] bg-[#f8fafc] dark:bg-slate-900 relative overflow-hidden">
        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
-       <PlanSelectionModal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} onConfirmUpgrade={async (p, c) => { await api.updatePlan(p, c, token); fetchData(); }} currentPlan={currentUser?.plan || 'FREE'} />
-       <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} onSaveTransfer={async (d) => { await api.createTransaction({description: `Câmbio: ${d.fromCurrency} -> ${d.toCurrency}`, amount: d.amountFrom, currency: d.fromCurrency, type: TransactionType.Despesa, category: 'Câmbio', date: new Date().toISOString().split('T')[0]}, token); await api.createTransaction({description: `Recebimento Câmbio (Taxa: ${d.rate})`, amount: d.amountTo, currency: d.toCurrency, type: TransactionType.Receita, category: 'Câmbio', date: new Date().toISOString().split('T')[0]}, token); fetchData(); }} />
+       
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} language={language} onUpgrade={() => setIsPlanModalOpen(true)} />
 
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} activePage={activePage} setActivePage={setActivePage} currentUser={currentUser} onUpgrade={() => setIsPlanModalOpen(true)} language={language} />
+      <div className="flex-1 flex flex-col w-full min-w-0 h-full max-w-full overflow-hidden">
+        <Header 
+            onLogout={handleLogout} 
+            onNewTransaction={() => { setEditingTransaction(null); setIsTransactionModalOpen(true); }} 
+            currentUser={currentUser} 
+            setActivePage={setActivePage} 
+            onSearch={setSearchQuery} 
+            tasks={tasks} 
+            language={language} 
+            onLanguageChange={setLanguage}
+            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={handleLogout} onNewTransaction={() => { setEditingTransaction(null); setIsTransactionModalOpen(true); }} currentUser={currentUser} setActivePage={setActivePage} onSearch={setSearchQuery} tasks={tasks} language={language} onLanguageChange={setLanguage}>
-             <button className="md:hidden mr-4 text-gray-500" onClick={() => setIsSidebarOpen(true)} aria-label="Menu"><MenuIcon className="h-6 w-6" /></button>
-        </Header>
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto w-full p-4 md:p-10 pb-28 md:pb-10 no-scrollbar max-w-full">
             {activePage === 'Dashboard' && <Dashboard transactions={transactions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); fetchData(); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
-            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} onSaveInvestment={handleSaveInvestment} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); fetchData(); }} onWithdrawInvestment={handleWithdrawInvestment} language={language} />}
+            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} onSaveInvestment={async (inv) => { await api.createInvestment(inv, token); fetchData(); }} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); fetchData(); }} onWithdrawInvestment={async (id) => { await api.withdrawInvestment(id, token); fetchData(); }} language={language} />}
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); fetchData(); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); fetchData(); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); fetchData(); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
-            {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={handleCreateUser} language={language} onLanguageChange={setLanguage} />}
+            {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
         </main>
       </div>
 
-      <TransactionModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} onSave={handleSaveTransaction} transaction={editingTransaction} language={language} />
+      <BottomNav activePage={activePage} setActivePage={setActivePage} language={language} isFreePlan={currentUser?.plan === 'FREE'} />
+      <TransactionModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} onSave={async (t) => { await api.createTransaction(t, token); fetchData(); setIsTransactionModalOpen(false); }} transaction={editingTransaction} language={language} />
       <WhatsAppButton />
     </div>
   );

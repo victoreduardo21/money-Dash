@@ -10,7 +10,6 @@ import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
 import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language } from '../types';
-import WelcomeBanner from '../components/WelcomeBanner';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
 import { useTranslation } from '../translations';
 
@@ -33,147 +32,134 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const monthInputRef = useRef<HTMLInputElement>(null);
 
-  const isInternalTransfer = (category: string) => {
-    if (!category) return false;
-    const cat = category.toLowerCase().trim();
-    const internalKeywords = ['investimento', 'aporte', 'câmbio', 'transferência', 'investment', 'contribution', 'resgate'];
-    return internalKeywords.some(keyword => cat.includes(keyword));
-  };
-
   const formatCurrency = (value: number, currency: Currency = selectedCurrency) => {
-    // Normalização absoluta: se o valor arredondado for 0, ignore o sinal
     const roundedValue = Math.abs(value) < 0.009 ? 0 : value;
-    return (currency === 'BRL' ? 'R$ ' : '$ ') + roundedValue.toLocaleString(language === 'pt-BR' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (currency === 'BRL' ? 'R$ ' : '$ ') + roundedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   const totals = useMemo(() => {
     const txs = transactions.filter(t => t.currency === selectedCurrency);
-    // O Saldo considera TUDO (Receitas - Despesas), independente da categoria
-    const rawSaldo = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
-    const saldo = Number(rawSaldo.toFixed(2));
-    
+    const saldo = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
     const investido = (investments || []).filter(i => i.currency === selectedCurrency).reduce((acc, i) => acc + i.currentValue, 0);
-    
     const txsMes = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
-    
-    // Renda Mensal: Ignora transferências internas (como resgates de investimento) para mostrar apenas renda REAL
-    const recMes = txsMes.filter(t => t.type === TransactionType.Receita && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0);
-    
-    // Gastos Mensais: Ignora aplicações em investimento para mostrar apenas custo de vida REAL
-    const gastMes = txsMes.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0);
-
-    return { saldo, investido, recMes, gastMes, patrimonio: Number((saldo + investido).toFixed(2)) };
+    const recMes = txsMes.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0);
+    const gastMes = txsMes.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0);
+    return { saldo, investido, recMes, gastMes, patrimonio: saldo + investido };
   }, [transactions, investments, selectedCurrency, selectedMonth]);
 
   const monthlyChartData = useMemo(() => {
-    const months = language === 'pt-BR' ? ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const currentYear = selectedMonth.split('-')[0];
-    const data = months.map(name => ({ name, income: 0, expense: 0, investment: 0 }));
-
-    transactions.forEach(t => {
-      if (t.currency !== selectedCurrency || !t.date.startsWith(currentYear)) return;
-      const mIdx = parseInt(t.date.split('-')[1]) - 1;
-      if (mIdx < 0 || mIdx > 11) return;
-      
-      if (t.type === TransactionType.Receita) {
-          // Só conta no gráfico de "Renda" se não for transferência interna
-          if (!isInternalTransfer(t.category)) data[mIdx].income += t.amount;
-      } else {
-          // Se for despesa, separa custo de vida de investimento
-          if (isInternalTransfer(t.category)) data[mIdx].investment += t.amount;
-          else data[mIdx].expense += t.amount;
-      }
+    return months.map((name, i) => {
+        const mStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+        const txs = transactions.filter(t => t.date.startsWith(mStr) && t.currency === selectedCurrency);
+        return {
+            name,
+            income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0),
+            expense: txs.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0)
+        };
     });
-    return data;
-  }, [transactions, selectedCurrency, language, selectedMonth]);
+  }, [transactions, selectedCurrency, selectedMonth]);
 
   return (
-    <div className="pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="w-full max-w-full pb-10 overflow-x-hidden">
+      {/* HEADER DO DASHBOARD */}
+      <div className="flex flex-col mb-8 gap-6 px-4">
           <div>
-            <h3 className="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">{t('dashboard')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('summary')} em {selectedCurrency}</p>
+            <h3 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">Dashboard</h3>
+            <p className="text-sm text-slate-400 font-medium tracking-wide">Resumo em {selectedCurrency}</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3">
-              <div className="bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex gap-1">
-                  <button onClick={() => onCurrencyChange('BRL')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}>BRL</button>
-                  <button onClick={() => onCurrencyChange('USD')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white' : 'text-gray-500'}`}>USD</button>
+          <div className="flex flex-col gap-4">
+              {/* Seletores Mobile-First */}
+              <div className="flex gap-3 w-full">
+                <div className="flex-1 bg-white dark:bg-gray-800 p-1.5 rounded-2xl flex border border-slate-200 dark:border-gray-700 shadow-sm">
+                    <button onClick={() => onCurrencyChange('BRL')} className={`flex-1 py-3.5 rounded-xl text-sm font-black transition-all ${selectedCurrency === 'BRL' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500'}`}>BRL</button>
+                    <button onClick={() => onCurrencyChange('USD')} className={`flex-1 py-3.5 rounded-xl text-sm font-black transition-all ${selectedCurrency === 'USD' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500'}`}>USD</button>
+                </div>
+                <button onClick={onOpenTransfer} className="bg-indigo-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all flex-shrink-0">
+                    <SwitchHorizontalIcon className="w-7 h-7" />
+                </button>
               </div>
 
               <div 
-                className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 flex items-center gap-3 cursor-pointer hover:border-blue-500 transition-all shadow-sm"
+                className="relative w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-2xl px-5 py-4 flex items-center justify-between cursor-pointer shadow-sm active:scale-[0.97] transition-all"
                 onClick={() => monthInputRef.current?.showPicker()}
               >
-                  <CalendarIcon className="w-5 h-5 text-blue-500" />
-                  <div className="flex flex-col min-w-[120px]">
-                      <span className="text-[9px] font-bold text-gray-400 uppercase">Período</span>
-                      <span className="text-sm font-bold text-gray-700 dark:text-white capitalize">
-                        {new Date(selectedMonth + '-02').toLocaleDateString(language, { month: 'long', year: 'numeric', timeZone: 'UTC' })}
-                      </span>
+                  <div className="flex items-center gap-4">
+                      <CalendarIcon className="w-7 h-7 text-blue-500" />
+                      <div className="flex flex-col text-left">
+                          <span className="text-[10px] font-black text-slate-300 uppercase leading-none mb-1 tracking-widest">Período</span>
+                          <span className="text-base font-bold text-slate-700 dark:text-white capitalize">
+                            {new Date(selectedMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                          </span>
+                      </div>
                   </div>
-                  <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                  <ChevronDownIcon className="w-5 h-5 text-slate-400" />
                   <input ref={monthInputRef} type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
               </div>
-
-              <button onClick={onOpenTransfer} className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg flex items-center gap-2">
-                  <SwitchHorizontalIcon className="w-4 h-4" /> {t('exchange')}
-              </button>
           </div>
       </div>
 
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      {/* CARDS DE MÉTRICAS - FORÇAR 1 COLUNA ATÉ 1024PX (LG) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4 px-4 mb-10">
           <MetricCard 
-            title={t('availableBalance')} 
+            title="Available Balance" 
             value={formatCurrency(totals.saldo)} 
-            icon={<CreditCardIcon className="h-8 w-8 text-blue-500" />} 
-            valueClassName={totals.saldo <= -0.01 ? 'text-red-600' : 'text-gray-900 dark:text-white'}
+            icon={<CreditCardIcon className="h-9 w-9 text-blue-500" />} 
+            valueClassName={totals.saldo < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}
           />
-          <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-8 w-8 text-indigo-500" />} />
-          <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-8 w-8 text-green-500" />} />
-          <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-8 w-8 text-red-500" />} change={t('costOfLiving')} changeType="decrease" />
+          <MetricCard title="Total Invested" value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-9 w-9 text-indigo-500" />} />
+          <MetricCard title="Income (Month)" value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-9 w-9 text-green-500" />} />
+          <MetricCard title="Real Expenses (Month)" value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-9 w-9 text-red-500" />} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-            <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">{t('cashFlow')} {t('annual')}</h4>
-            <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={monthlyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                    <Legend verticalAlign="top" height={36} />
-                    <Bar dataKey="income" name={t('income')} fill="#22C55E" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name={t('costOfLiving')} fill="#EF4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="investment" name={t('investments')} fill="#6366F1" radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
+      <div className="space-y-6 px-4">
+        {/* GRÁFICO */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-gray-700 overflow-hidden">
+            <h4 className="text-xl font-black text-slate-900 dark:text-white mb-8 tracking-tight">Fluxo de Caixa Anual</h4>
+            <div className="h-[300px] w-full -ml-6">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#94a3b8' }} />
+                        <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }} />
+                        <Bar dataKey="income" name="Receita" fill="#22C55E" radius={[4, 4, 0, 0]} barSize={10} />
+                        <Bar dataKey="expense" name="Despesa" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={10} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
         </div>
 
-        <div className="bg-[#0a0f1e] p-8 rounded-3xl shadow-2xl text-white flex flex-col justify-between border border-white/5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-            <div>
-                <h4 className="text-sm font-black opacity-40 uppercase tracking-widest mb-2">{t('netWorth')}</h4>
-                <p className="text-5xl font-black tracking-tighter">{formatCurrency(totals.patrimonio)}</p>
+        {/* PATRIMÔNIO CARD */}
+        <div className="bg-[#0a1122] p-10 rounded-[2.8rem] shadow-2xl text-white flex flex-col justify-between border border-white/5 relative overflow-hidden min-h-[300px]">
+            <div className="absolute top-0 right-0 w-72 h-72 bg-blue-600/15 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+            <div className="relative z-10">
+                <h4 className="text-[11px] font-black opacity-30 uppercase tracking-[0.4em] mb-4">Patrimônio Líquido</h4>
+                <p className="text-4xl md:text-5xl font-black tracking-tighter mb-4">{formatCurrency(totals.patrimonio)}</p>
+                <div className="h-2 w-24 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
             </div>
-            <div className="mt-12 pt-8 border-t border-white/10">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('investmentMargin')}</p>
-                <p className="text-3xl font-black text-[#22c55e] mt-1">
+            <div className="mt-14 pt-10 border-t border-white/10 relative z-10">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Eficiência Financeira</p>
+                <p className="text-4xl font-black text-[#22c55e]">
                     {totals.recMes > 0 ? (((totals.recMes - totals.gastMes) / totals.recMes) * 100).toFixed(1) : '0'}%
                 </p>
-                <div className="w-full bg-white/5 rounded-full h-2 mt-4"><div className="bg-green-500 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, totals.recMes > 0 ? ((totals.recMes - totals.gastMes) / totals.recMes) * 100 : 0))}%` }}></div></div>
+                <div className="w-full bg-white/5 rounded-full h-2.5 mt-6 overflow-hidden">
+                    <div className="bg-green-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(34,197,94,0.4)]" style={{ width: `${Math.min(100, Math.max(0, totals.recMes > 0 ? ((totals.recMes - totals.gastMes) / totals.recMes) * 100 : 0))}%` }}></div>
+                </div>
             </div>
         </div>
-      </div>
 
-      <div className="mt-8">
-        <TransactionsTable 
-            transactions={transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency)} 
-            title={`${t('history')} - ${selectedMonth}`} 
-            onEdit={onEditTransaction} 
-            onDelete={onDeleteTransaction} 
-            language={language} 
-        />
+        {/* TABELA DE TRANSAÇÕES */}
+        <div className="mt-8">
+            <TransactionsTable 
+                transactions={transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency).slice(0, 10)} 
+                title="Histórico Recente" 
+                onEdit={onEditTransaction} 
+                onDelete={onDeleteTransaction} 
+                language={language} 
+            />
+        </div>
       </div>
     </div>
   );

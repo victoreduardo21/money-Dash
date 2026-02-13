@@ -67,45 +67,45 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
             language={language}
         />
 
-        <div className="flex justify-between items-center mb-6">
-            <h3 className="text-3xl font-bold text-gray-800 dark:text-white">{t('investments')}</h3>
-            <button onClick={() => handleOpenModal(null)} className="flex items-center bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">{t('investments')}</h3>
+            <button onClick={() => handleOpenModal(null)} className="w-full md:w-auto flex items-center justify-center bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-md">
                 <PlusIcon className="h-5 w-5 mr-1" />
                 {t('newAsset')}
             </button>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <h4 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <span className="text-xl">🇧🇷</span> {t('brlWallet')}
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('netWorth')}</p>
-                        <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalBrl, 'BRL')}</p>
+                        <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{t('netWorth')}</p>
+                        <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalBrl, 'BRL')}</p>
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yield')}</p>
-                        <p className={`text-xl font-bold ${stats.rentabilidadeBrl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yield')}</p>
+                        <p className={`text-base md:text-xl font-bold ${stats.rentabilidadeBrl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {stats.rentabilidadeBrl >= 0 ? '+' : ''}{formatCurrency(stats.rentabilidadeBrl, 'BRL')}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-                <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <h4 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <span className="text-xl">🇺🇸</span> {t('usdWallet')}
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('netWorth')}</p>
-                        <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalUsd, 'USD')}</p>
+                        <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{t('netWorth')}</p>
+                        <p className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stats.totalUsd, 'USD')}</p>
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yield')}</p>
-                        <p className={`text-xl font-bold ${stats.rentabilidadeUsd >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-wider">{t('yield')}</p>
+                        <p className={`text-base md:text-xl font-bold ${stats.rentabilidadeUsd >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             {stats.rentabilidadeUsd >= 0 ? '+' : ''}{formatCurrency(stats.rentabilidadeUsd, 'USD')}
                         </p>
                     </div>
@@ -113,14 +113,62 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
             </div>
         </div>
         
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
-            <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6">{t('myAssets')}</h4>
-            <div className="overflow-x-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-700">
+                <h4 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white">{t('myAssets')}</h4>
+            </div>
+
+            {/* MOBILE ASSETS VIEW */}
+            <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                {(investments || []).map(inv => {
+                    const profit = (inv.currentValue || 0) - (inv.initialAmount || 0);
+                    return (
+                        <div key={inv.id} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                        <TrendingUpIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 dark:text-white">{inv.name}</p>
+                                        <p className="text-[10px] text-gray-500 uppercase font-black">{inv.currency === 'BRL' ? '🇧🇷 BRL' : '🇺🇸 USD'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400"><EditIcon className="w-5 h-5" /></button>
+                                    <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-400"><TrashIcon className="w-5 h-5" /></button>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-end bg-gray-50 dark:bg-gray-700/30 p-3 rounded-xl">
+                                <div>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('currentValue')}</p>
+                                    <p className="text-lg font-black text-gray-900 dark:text-white">{formatCurrency(inv.currentValue, inv.currency)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('yield')}</p>
+                                    <p className={`text-sm font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {profit >= 0 ? '+' : ''}{formatCurrency(profit, inv.currency)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => handleWithdraw(inv)} 
+                                className="w-full py-2.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl text-xs font-black uppercase tracking-widest border border-green-100 dark:border-green-800"
+                            >
+                                Resgatar Valor
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* DESKTOP ASSETS VIEW */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
                         <tr>
                             <th className="px-6 py-4">{t('asset')}</th>
-                            <th className="px-6 py-4 text-center">{t('language') === 'Idioma' ? 'Moeda' : 'Currency'}</th>
+                            <th className="px-6 py-4 text-center">Moeda</th>
                             <th className="px-6 py-4 text-right">{t('currentValue')}</th>
                             <th className="px-6 py-4 text-right">{t('yield')}</th>
                             <th className="px-6 py-4 text-right">{t('actions')}</th>
@@ -153,20 +201,12 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button 
-                                                onClick={() => handleWithdraw(inv)} 
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all border border-green-100 dark:border-green-800"
-                                                title="Resgatar Valor"
-                                            >
+                                            <button onClick={() => handleWithdraw(inv)} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all border border-green-100 dark:border-green-800">
                                                 <ArrowDownIcon className="w-3 h-3" />
                                                 Retirar
                                             </button>
-                                            <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
-                                                <EditIcon className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-400 hover:text-red-600 transition-colors">
-                                                <TrashIcon className="w-5 h-5" />
-                                            </button>
+                                            <button onClick={() => handleOpenModal(inv)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"><EditIcon className="w-5 h-5" /></button>
+                                            <button onClick={() => onDeleteInvestment(inv.id)} className="p-2 text-gray-400 hover:text-red-600 transition-colors"><TrashIcon className="w-5 h-5" /></button>
                                         </div>
                                     </td>
                                 </tr>

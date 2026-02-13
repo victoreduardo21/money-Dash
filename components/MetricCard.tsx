@@ -9,7 +9,7 @@ interface MetricCardProps {
   icon: React.ReactNode;
   change?: string;
   changeType?: 'increase' | 'decrease';
-  valueClassName?: string; // Propriedade opcional para cor do texto
+  valueClassName?: string;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType, valueClassName }) => {
@@ -17,22 +17,19 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, cha
   const ChangeIcon = isIncrease ? ArrowUpIcon : ArrowDownIcon;
 
   return (
-    // Visual Branco Puro / Escuro com Sombra e Borda
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between transition-transform duration-300 hover:scale-[1.02]">
-      <div className="flex items-center space-x-4">
-        {/* Fundo do ícone suave para contrastar com o branco/escuro */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl shadow-sm">
+    <div className="w-full p-7 bg-white dark:bg-gray-800 rounded-[2.2rem] shadow-sm border border-slate-100 dark:border-gray-700 flex items-center justify-between transition-all duration-300 hover:shadow-md min-h-[130px]">
+      <div className="flex items-center space-x-5 flex-1 min-w-0">
+        <div className="p-4.5 bg-slate-50 dark:bg-gray-700 border border-slate-100 dark:border-gray-600 rounded-2xl shadow-sm flex-shrink-0 flex items-center justify-center">
             {icon}
         </div>
-        <div>
-          <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
-          {/* Aplica a cor customizada se fornecida, senão usa o padrão */}
-          <p className={`text-2xl font-extrabold mt-1 ${valueClassName || 'text-gray-900 dark:text-white'}`}>{value}</p>
+        <div className="text-left flex-1 min-w-0">
+          <p className="text-[11px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-1.5 truncate">{title}</p>
+          <p className={`text-3xl font-black tracking-tighter truncate leading-none ${valueClassName || 'text-slate-900 dark:text-white'}`}>{value}</p>
         </div>
       </div>
       {change && changeType && (
-        <div className={`flex items-center text-sm font-bold px-2 py-1 rounded-lg ${isIncrease ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'}`}>
-            <ChangeIcon className="h-4 w-4 mr-1" />
+        <div className={`ml-3 flex items-center text-[11px] font-black px-3.5 py-2 rounded-full ${isIncrease ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            <ChangeIcon className="h-3.5 w-3.5 mr-1" />
             <span>{change}</span>
         </div>
       )}
