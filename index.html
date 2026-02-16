@@ -1,11 +1,9 @@
 
 <!DOCTYPE html>
-<html lang="pt-BR" class="no-scrollbar">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>FinDash - Gestão Financeira</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -24,39 +22,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --app-height: 100%;
-    }
-    html, body {
-      padding: 0;
-      margin: 0;
-      width: 100vw;
-      min-width: 100vw;
-      max-width: 100vw;
-      height: 100%;
-      overflow-x: hidden;
-      position: relative;
-      background-color: #f8fafc;
-      -webkit-text-size-adjust: 100%;
-      touch-action: manipulation;
-    }
     body {
       font-family: 'Inter', sans-serif;
       -webkit-tap-highlight-color: transparent;
-    }
-    #root {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
+      background-color: #f8fafc;
+      overflow-x: hidden;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* Forçar tabelas a respeitarem o container mobile */
-    .overflow-x-auto {
-      max-width: calc(100vw - 2rem);
-      -webkit-overflow-scrolling: touch;
+    /* Suaviza transições gerais */
+    * {
+      transition-property: background-color, border-color, color, fill, stroke;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 200ms;
     }
   </style>
 <script type="importmap">
