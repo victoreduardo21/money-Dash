@@ -29,12 +29,15 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'email', 'plan']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.email is string && data.email.matches('^.+@.+$') &&
-             data.plan in ['FREE', 'PRO', 'VIP'];
+             data.plan in ['FREE', 'PRO', 'VIP'] &&
+             (data.phone == null || (data.phone is string && data.phone.size() < 20)) &&
+             (data.cpf == null || (data.cpf is string && data.cpf.size() < 20));
     }
     
     function isValidTransaction(data) {
-      return data.keys().hasAll(['description', 'amount', 'currency', 'date', 'type', 'userId']) &&
+      return data.keys().hasAll(['description', 'amount', 'currency', 'date', 'type', 'userId', 'category']) &&
              data.description is string && data.description.size() > 0 && data.description.size() < 255 &&
+             data.category is string && data.category.size() < 100 &&
              data.amount is number &&
              data.currency in ['BRL', 'USD'] &&
              data.type in ['Receita', 'Despesa'] &&

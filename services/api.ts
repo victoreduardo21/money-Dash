@@ -110,8 +110,14 @@ export const api = {
         const uid = token || auth.currentUser?.uid;
         if (!uid) throw new Error("Unauthorized");
         try {
-            const docRef = await addDoc(collection(db, 'transactions'), { ...transaction, userId: uid });
-            return { error: false, id: docRef.id };
+            const { id, ...data } = transaction;
+            if (id) {
+                await updateDoc(doc(db, 'transactions', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'transactions'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
         } catch (error) {
             handleFirestoreError(error, OperationType.CREATE, 'transactions');
         }
@@ -136,12 +142,18 @@ export const api = {
             return [];
         }
     },
-    createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => {
+    createInvestment: async (investment: Omit<Investment, 'id'> & { id?: string }, token: string) => {
         const uid = token || auth.currentUser?.uid;
         if (!uid) throw new Error("Unauthorized");
         try {
-            const docRef = await addDoc(collection(db, 'investments'), { ...investment, userId: uid });
-            return { error: false, id: docRef.id };
+            const { id, ...data } = investment;
+            if (id) {
+                await updateDoc(doc(db, 'investments', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'investments'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
         } catch (error) {
             handleFirestoreError(error, OperationType.CREATE, 'investments');
         }
@@ -175,12 +187,18 @@ export const api = {
             return [];
         }
     },
-    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => {
+    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'> & { id?: string }, token: string) => {
         const uid = token || auth.currentUser?.uid;
         if (!uid) throw new Error("Unauthorized");
         try {
-            const docRef = await addDoc(collection(db, 'calendar'), { ...event, userId: uid });
-            return { error: false, id: docRef.id };
+            const { id, ...data } = event;
+            if (id) {
+                await updateDoc(doc(db, 'calendar', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'calendar'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
         } catch (error) {
             handleFirestoreError(error, OperationType.CREATE, 'calendar');
         }
@@ -239,6 +257,14 @@ export const api = {
             return { error: true, message: "User not found." };
         } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, 'users (toggleStatus)');
+        }
+    },
+    updateUser: async (uid: string, data: Partial<User>) => {
+        try {
+            await updateDoc(doc(db, 'users', uid), data);
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'users/' + uid);
         }
     }
 };

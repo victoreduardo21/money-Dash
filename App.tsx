@@ -136,6 +136,49 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveTransfer = async (data: { fromCurrency: Currency, toCurrency: Currency, amountFrom: number, amountTo: number, rate: number }) => {
+    if (!token) return;
+    try {
+        const date = new Date().toISOString().split('T')[0];
+        
+        // 1. Débito da conta de origem
+        await api.createTransaction({
+            description: `Transferência (Saída) p/ ${data.toCurrency}`,
+            amount: data.amountFrom,
+            currency: data.fromCurrency,
+            date,
+            type: TransactionType.Despesa,
+            category: 'Câmbio/Transferência'
+        }, token);
+
+        // 2. Crédito na conta de destino
+        await api.createTransaction({
+            description: `Transferência (Entrada) de ${data.fromCurrency}`,
+            amount: data.amountTo,
+            currency: data.toCurrency,
+            date,
+            type: TransactionType.Receita,
+            category: 'Câmbio/Transferência'
+        }, token);
+
+        setToast({ id: Date.now().toString(), message: "Transferência realizada com sucesso!", type: 'success' });
+    } catch (error) {
+        setToast({ id: Date.now().toString(), message: "Erro ao realizar transferência.", type: 'error' });
+    }
+  };
+
+  const handleUpdatePlan = async (plan: Plan, billing: BillingCycle) => {
+    if (!token) return;
+    try {
+        await api.updateUser(token, { plan, billingCycle: billing });
+        setCurrentUser(prev => prev ? { ...prev, plan, billingCycle: billing } : null);
+        setToast({ id: Date.now().toString(), message: `Plano atualizado para ${plan}!`, type: 'success' });
+        setIsPlanModalOpen(false);
+    } catch (error) {
+        setToast({ id: Date.now().toString(), message: "Erro ao atualizar plano.", type: 'error' });
+    }
+  };
+
   if (!isAuthReady) return (
       <div className="flex items-center justify-center h-screen bg-slate-900">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -180,6 +223,8 @@ const App: React.FC = () => {
 
       <BottomNav activePage={activePage} setActivePage={setActivePage} language={language} isFreePlan={currentUser?.plan === 'FREE'} />
       <TransactionModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} onSave={async (t) => { await api.createTransaction(t, token); setIsTransactionModalOpen(false); }} transaction={editingTransaction} language={language} />
+      <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} onSaveTransfer={handleSaveTransfer} />
+      <PlanSelectionModal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} onConfirmUpgrade={handleUpdatePlan} currentPlan={currentUser?.plan || 'FREE'} />
       <WhatsAppButton />
     </div>
   );
