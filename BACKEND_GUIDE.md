@@ -1,6 +1,6 @@
-# Guia de Desenvolvimento do Backend - FinDash
+# Guia de Desenvolvimento do Backend - Money Dashs
 
-Este guia descreve como configurar e desenvolver o backend para o sistema FinDash, utilizando a stack recomendada: **Node.js, Express, TypeScript e Prisma (PostgreSQL)**.
+Este guia descreve como configurar e desenvolver o backend para o sistema Money Dashs, utilizando a stack recomendada: **Node.js, Express, TypeScript e Prisma (PostgreSQL)**.
 
 ## 1. Estrutura Recomendada
 O backend deve ser um projeto separado do frontend (outro repositório ou uma pasta `server/` fora da pasta do frontend).
@@ -16,7 +16,7 @@ O backend deve ser um projeto separado do frontend (outro repositório ou uma pa
 ## 3. Passo a Passo Inicial
 
 ### 3.1. Iniciar o Projeto
-Em uma nova pasta (ex: `findash-api`):
+Em uma nova pasta (ex: `money-dashs-api`):
 ```bash
 npm init -y
 npm install express cors dotenv jsonwebtoken bcryptjs
@@ -31,7 +31,7 @@ npx prisma init
 ```
 2. No arquivo `.env` criado, coloque a URL do seu banco de dados (PostgreSQL local ou na nuvem, ex: Render/Neon/Supabase):
 ```env
-DATABASE_URL="postgresql://usuario:senha@localhost:5432/findash?schema=public"
+DATABASE_URL="postgresql://usuario:senha@localhost:5432/money_dashs?schema=public"
 JWT_SECRET="sua_chave_super_secreta_aqui"
 ```
 
@@ -231,4 +231,4 @@ O Backend (Node.js) deve ser hospedado em serviços como:
 2.  **Railway.app** (Muito fácil de usar).
 3.  **Fly.io**.
 
-Após hospedar o backend, pegue a URL gerada (ex: `https://findash-api.onrender.com`) e configure no frontend.
+Após hospedar o backend, pegue a URL gerada (ex: `https://money-dashs-api.onrender.com`) e configure no frontend.

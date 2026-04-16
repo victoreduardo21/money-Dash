@@ -1,74 +1,244 @@
 
 import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language } from '../types';
+import { db, auth } from './firebase';
+import { 
+    collection, 
+    doc, 
+    getDoc, 
+    getDocs, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    setDoc
+} from 'firebase/firestore';
 
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WbdPuvqgK32yOyn76CBItcB-d3zmcBcZq70cBwafSZJgqyA61685U1plUtfc4qri/exec';
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
-const getUrl = (route: string, token?: string) => {
-    let url = `${GOOGLE_SCRIPT_URL}?route=${route}`;
-    if (token) url += `&token=${encodeURIComponent(token)}`;
-    return url;
-};
-
-const postData = async (route: string, data: any) => {
-    try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?route=${route}`, {
-            method: 'POST',
-            redirect: "follow",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(data)
-        });
-        const text = await response.text();
-        return JSON.parse(text);
-    } catch (error) {
-        return { error: true, message: "Erro de conexão." };
-    }
-};
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export const api = {
-    login: async (credentials: any) => postData('auth/login', credentials),
-    createUser: async (user: Omit<User, 'id'>) => postData('users', user),
-    getMe: async (token: string) => {
-        const response = await fetch(getUrl('users/me', token));
-        const text = await response.text();
-        try { return JSON.parse(text); } catch { return null; }
+    login: async (credentials: any) => {
+        // This is a placeholder as the user will likely use Firebase Auth directly now.
+        // But let's keep it for compatibility if needed.
+        return { error: false, message: "Use Firebase Auth directly." };
+    },
+    createUser: async (user: Omit<User, 'id'>, userId?: string) => {
+        const uid = userId || auth.currentUser?.uid;
+        if (!uid) throw new Error("No user ID provided.");
+        const userRef = doc(db, 'users', uid);
+        try {
+            await setDoc(userRef, { ...user });
+            return { error: false, success: true, message: "Sucesso" };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, 'users/' + uid);
+            return { error: true, success: false, message: "Erro ao criar usuário" };
+        }
+    },
+    getMe: async (token: string): Promise<User | null> => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return null;
+        const userRef = doc(db, 'users', uid);
+        try {
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                return { ...userSnap.data(), id: userSnap.id } as User;
+            }
+            return null;
+        } catch (error) {
+            handleFirestoreError(error, OperationType.GET, 'users/' + uid);
+            return null;
+        }
     },
     updateLanguage: async (language: Language, token: string) => {
-        return postData('users/me/language', { language, token });
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        const userRef = doc(db, 'users', uid);
+        try {
+            await updateDoc(userRef, { language });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'users/' + uid);
+        }
     },
-    updatePlan: async (plan: Plan, cycle: BillingCycle, token: string) => postData('users/me/plan', { plan, billingCycle: cycle, token }),
+    updatePlan: async (plan: Plan, cycle: BillingCycle, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        const userRef = doc(db, 'users', uid);
+        try {
+            await updateDoc(userRef, { plan, billingCycle: cycle });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'users/' + uid);
+        }
+    },
     getTransactions: async (token: string) => {
-        const response = await fetch(getUrl('transactions', token));
-        const text = await response.text();
-        try { return JSON.parse(text); } catch { return []; }
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'transactions'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as PersonalTransaction));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'transactions');
+            return [];
+        }
     },
     createTransaction: async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }, token: string) => {
-        return postData('transactions', { ...transaction, token });
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const docRef = await addDoc(collection(db, 'transactions'), { ...transaction, userId: uid });
+            return { error: false, id: docRef.id };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'transactions');
+        }
     },
-    deleteTransaction: async (id: string, token: string) => postData('transactions/delete', { id, token }),
+    deleteTransaction: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'transactions', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'transactions/' + id);
+        }
+    },
     getInvestments: async (token: string) => {
-        const response = await fetch(getUrl('investments', token));
-        const text = await response.text();
-        try { return JSON.parse(text); } catch { return []; }
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'investments'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Investment));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'investments');
+            return [];
+        }
     },
-    createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => postData('investments', { ...investment, token }),
-    withdrawInvestment: async (id: string, token: string) => postData('investments/withdraw', { id, token }),
-    deleteInvestment: async (id: string, token: string) => postData('investments/delete', { id, token }),
+    createInvestment: async (investment: Omit<Investment, 'id'>, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const docRef = await addDoc(collection(db, 'investments'), { ...investment, userId: uid });
+            return { error: false, id: docRef.id };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'investments');
+        }
+    },
+    withdrawInvestment: async (id: string, token: string) => {
+        // Implement logical withdrawal or just mark as zero
+        try {
+            await updateDoc(doc(db, 'investments', id), { currentValue: 0 });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'investments/' + id);
+        }
+    },
+    deleteInvestment: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'investments', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'investments/' + id);
+        }
+    },
     getCalendarEvents: async (token: string) => {
-        const response = await fetch(getUrl('calendar', token));
-        const text = await response.text();
-        try { return JSON.parse(text); } catch { return []; }
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'calendar'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as CalendarEvent));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'calendar');
+            return [];
+        }
     },
-    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => postData('calendar', { ...event, token }),
-    toggleCalendarEvent: async (id: string, done: boolean, token: string) => postData('calendar/toggle', { id, done, token }),
-    deleteCalendarEvent: async (id: string, token: string) => postData('calendar/delete', { id, token }),
-    updatePassword: async (data: {currentPassword: string, newPassword: string}, token: string) => postData('users/me/password', { ...data, token }),
-    updateAvatar: async (data: {avatar: string}, token: string) => postData('users/me/avatar', { ...data, token }),
+    createCalendarEvent: async (event: Omit<CalendarEvent, 'id'>, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const docRef = await addDoc(collection(db, 'calendar'), { ...event, userId: uid });
+            return { error: false, id: docRef.id };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'calendar');
+        }
+    },
+    toggleCalendarEvent: async (id: string, done: boolean, token: string) => {
+        try {
+            await updateDoc(doc(db, 'calendar', id), { done });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'calendar/' + id);
+        }
+    },
+    deleteCalendarEvent: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'calendar', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'calendar/' + id);
+        }
+    },
+    updatePassword: async (data: {currentPassword: string, newPassword: string}, token: string) => {
+        // In Firebase, password update is done via auth.currentUser.updatePassword
+        // This would require different logic. For now return placeholder or error.
+        return { error: true, message: "Use Firebase Auth to update password." };
+    },
+    updateAvatar: async (data: {avatar: string}, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            await updateDoc(doc(db, 'users', uid), { avatar: data.avatar });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'users/' + uid);
+        }
+    },
     getAllUsers: async (token: string) => {
-        const response = await fetch(getUrl('users', token));
-        const text = await response.text();
-        try { return JSON.parse(text); } catch { return []; }
+        // Admin only?
+        try {
+            const snap = await getDocs(collection(db, 'users'));
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'users');
+            return [];
+        }
     },
     toggleUserStatus: async (data: {targetEmail: string, status: string}, token: string) => {
-        return postData('users/me/status', { ...data, token });
+        // Find user by email
+        const q = query(collection(db, 'users'), where('email', '==', data.targetEmail));
+        try {
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const docRef = doc(db, 'users', snap.docs[0].id);
+                await updateDoc(docRef, { subscriptionStatus: data.status });
+                return { error: false };
+            }
+            return { error: true, message: "User not found." };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, 'users (toggleStatus)');
+        }
     }
 };

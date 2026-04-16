@@ -1,6 +1,6 @@
-# FinDash - Dashboard Financeiro Pessoal
+# Money Dashs - Dashboard Financeiro Pessoal
 
-Bem-vindo ao repositório do **FinDash**, uma aplicação moderna de gestão financeira pessoal desenvolvida com React, TypeScript e TailwindCSS.
+Bem-vindo ao repositório do **Money Dashs**, uma aplicação moderna de gestão financeira pessoal desenvolvida com React, TypeScript e TailwindCSS.
 
 Este projeto é o **Frontend** da aplicação. Ele foi estruturado para ser conectado a uma API Backend.
 

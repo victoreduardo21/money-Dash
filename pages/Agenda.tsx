@@ -47,7 +47,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
         if (dateInputRef.current && 'showPicker' in dateInputRef.current) {
             (dateInputRef.current as any).showPicker();
         } else if (dateInputRef.current) {
-            dateInputRef.current.focus();
+            (dateInputRef.current as any).focus();
         }
     };
 
@@ -61,20 +61,20 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                    <CalendarIcon className="h-8 w-8 text-blue-600" />
+            <div className="flex justify-between items-center mb-5">
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <CalendarIcon className="h-7 w-7 text-blue-600" />
                     {t('agenda')}
                 </h3>
                 <button onClick={() => { setNewTaskDate(getTodayString()); setIsModalOpen(true); setIsSubmitting(false); }} 
-                    className="flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-colors duration-200 text-sm font-bold shadow-md"
+                    className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors duration-200 text-xs font-bold shadow-md"
                 >
-                    <PlusIcon className="h-5 w-5 mr-2" />
+                    <PlusIcon className="h-4 w-4 mr-1.5" />
                     {t('addReminder')}
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700">
                 {sortedTasks.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                         <CalendarIcon className="h-12 w-12 mx-auto text-gray-300 mb-3" />
@@ -88,13 +88,13 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                              const isToday = taskDateStr === todayStr;
                              
                              return (
-                                <li key={task.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 group ${task.done ? 'bg-gray-50 dark:bg-gray-900/40 border-gray-100 dark:border-gray-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md'}`}>
-                                    <div className="flex items-center space-x-4 cursor-pointer flex-grow" onClick={() => onToggleTask(task.id, !task.done)}>
-                                        <div className={`p-2 rounded-full transition-all duration-300 ${task.done ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : 'text-gray-300 bg-gray-50 dark:bg-gray-700 group-hover:text-blue-500'}`}>
-                                            <CheckCircleIcon className="h-6 w-6" />
+                                 <li key={task.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 group ${task.done ? 'bg-gray-50 dark:bg-gray-900/40 border-gray-100 dark:border-gray-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md'}`}>
+                                    <div className="flex items-center space-x-3 cursor-pointer flex-grow" onClick={() => onToggleTask(task.id, !task.done)}>
+                                        <div className={`p-1.5 rounded-full transition-all duration-300 ${task.done ? 'text-green-500 bg-green-50 dark:bg-green-900/20' : 'text-gray-300 bg-gray-50 dark:bg-gray-700 group-hover:text-blue-500'}`}>
+                                            <CheckCircleIcon className="h-5 w-5" />
                                         </div>
-                                        <div className="flex-1 min-w-0 pr-4"> 
-                                            <p className={`font-bold text-lg transition-all duration-300 break-words whitespace-pre-wrap ${task.done ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-800 dark:text-gray-200'}`}>
+                                        <div className="flex-1 min-w-0 pr-3"> 
+                                            <p className={`font-bold text-base transition-all duration-300 break-words whitespace-pre-wrap ${task.done ? 'line-through text-gray-400 dark:text-gray-600' : 'text-gray-800 dark:text-gray-200'}`}>
                                                 {task.description}
                                             </p>
                                             <div className="flex items-center text-sm mt-1">

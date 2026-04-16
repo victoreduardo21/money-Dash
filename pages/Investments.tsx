@@ -67,16 +67,16 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
             language={language}
         />
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">{t('investments')}</h3>
-            <button onClick={() => handleOpenModal(null)} className="w-full md:w-auto flex items-center justify-center bg-indigo-600 text-white px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-md">
-                <PlusIcon className="h-5 w-5 mr-1" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
+            <h3 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{t('investments')}</h3>
+            <button onClick={() => handleOpenModal(null)} className="w-full md:w-auto flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all font-bold text-xs shadow-md">
+                <PlusIcon className="h-4 w-4 mr-1" />
                 {t('newAsset')}
             </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
+            <div className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h4 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <span className="text-xl">🇧🇷</span> {t('brlWallet')}
                 </h4>
@@ -94,7 +94,7 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h4 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                     <span className="text-xl">🇺🇸</span> {t('usdWallet')}
                 </h4>
@@ -167,11 +167,11 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-4">{t('asset')}</th>
-                            <th className="px-6 py-4 text-center">Moeda</th>
-                            <th className="px-6 py-4 text-right">{t('currentValue')}</th>
-                            <th className="px-6 py-4 text-right">{t('yield')}</th>
-                            <th className="px-6 py-4 text-right">{t('actions')}</th>
+                            <th className="px-4 py-3">{t('asset')}</th>
+                            <th className="px-4 py-3 text-center">Moeda</th>
+                            <th className="px-4 py-3 text-right">{t('currentValue')}</th>
+                            <th className="px-4 py-3 text-right">{t('yield')}</th>
+                            <th className="px-4 py-3 text-right">{t('actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -179,27 +179,27 @@ const Investments: React.FC<InvestmentsProps> = ({ investments, onSaveInvestment
                             const profit = (inv.currentValue || 0) - (inv.initialAmount || 0);
                             return (
                                 <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
-                                                <TrendingUpIcon className="w-5 h-5" />
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                                <TrendingUpIcon className="w-4 h-4" />
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-900 dark:text-white">{inv.name}</p>
-                                                <p className="text-xs text-gray-500">{inv.yieldRate}% CDI/Meta</p>
+                                                <p className="text-[10px] text-gray-500">{inv.yieldRate}% CDI/Meta</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-center font-bold">
+                                    <td className="px-4 py-3 text-center font-bold text-xs">
                                         {inv.currency === 'BRL' ? '🇧🇷 BRL' : '🇺🇸 USD'}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-black text-gray-900 dark:text-white">
+                                    <td className="px-4 py-3 text-right font-black text-gray-900 dark:text-white">
                                         {formatCurrency(inv.currentValue, inv.currency)}
                                     </td>
-                                    <td className={`px-6 py-4 text-right font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <td className={`px-4 py-3 text-right font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {profit >= 0 ? '+' : ''}{formatCurrency(profit, inv.currency)}
                                     </td>
-                                    <td className="px-6 py-4 text-right">
+                                    <td className="px-4 py-3 text-right">
                                         <div className="flex justify-end gap-2">
                                             <button onClick={() => handleWithdraw(inv)} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all border border-green-100 dark:border-green-800">
                                                 <ArrowDownIcon className="w-3 h-3" />

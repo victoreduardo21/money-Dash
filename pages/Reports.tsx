@@ -53,36 +53,45 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
     const monthTotals = useMemo(() => {
         let rec = 0; 
         let despReal = 0; 
-        let aportesMes = 0; 
-        let resgatesMes = 0; // Guardamos para o cálculo do saldo gerado
+        let totalRecAteMes = 0;
+        let totalDespAteMes = 0;
         
         transactions.forEach(t => {
             const txCurrency = t.currency || 'BRL';
-            if (t.date.startsWith(selectedMonth) && txCurrency === selectedCurrency) {
+            if (txCurrency === selectedCurrency) {
                 const amount = Number(t.amount) || 0;
-                if (t.type === TransactionType.Receita) {
-                    if (isInternalTransfer(t.category)) {
-                        resgatesMes += amount;
-                    } else {
-                        rec += amount; // Só conta como Renda se for externo (ex: salário)
-                    }
-                } else if (t.type === TransactionType.Despesa) {
-                    if (isInternalTransfer(t.category)) {
-                        aportesMes += amount;
-                    } else {
+                const isInternal = isInternalTransfer(t.category);
+                const txMonth = t.date.substring(0, 7);
+                
+                // Totais do mês selecionado (para os cards de Receita e Custo)
+                if (txMonth === selectedMonth) {
+                    if (t.type === TransactionType.Receita && !isInternal) {
+                        rec += amount; 
+                    } else if (t.type === TransactionType.Despesa && !isInternal) {
                         despReal += amount;
+                    }
+                }
+
+                // Saldo acumulado (Rollover): Tudo até o mês selecionado
+                if (txMonth <= selectedMonth) {
+                    if (t.type === TransactionType.Receita && !isInternal) {
+                        totalRecAteMes += amount;
+                    } else if (t.type === TransactionType.Despesa && !isInternal) {
+                        totalDespAteMes += amount;
                     }
                 }
             }
         });
         
-        // O Saldo em conta considera as entradas reais + resgates - (gastos + aplicações)
-        const saldoGeradoMes = Number(((rec + resgatesMes) - (despReal + aportesMes)).toFixed(2));
+        const saldoTotal = transactions
+            .filter(t => (t.currency || 'BRL') === selectedCurrency)
+            .reduce((acc, t) => acc + (t.type === TransactionType.Receita ? Number(t.amount) : -Number(t.amount)), 0);
+
         const patrimonioTotalAtivos = (investments || [])
             .filter(i => (i.currency || 'BRL') === selectedCurrency)
             .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
 
-        return { rec, despReal, aportesMes, saldoGeradoMes, patrimonioTotalAtivos };
+        return { rec, despReal, saldoTotal, patrimonioTotalAtivos };
     }, [transactions, investments, selectedMonth, selectedCurrency]);
 
     const monthlyData = useMemo(() => {
@@ -90,8 +99,19 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
             ? ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
             : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         
-        const data = months.map(m => ({ name: m, income: 0, expense: 0, investment: 0, balance: 0 }));
+        const data = months.map(m => ({ name: m, income: 0, expense: 0, balance: 0 }));
 
+        // Primeiro, calculamos o saldo inicial (tudo antes do ano atual)
+        let runningBalance = transactions.reduce((acc, t) => {
+            const txCurrency = t.currency || 'BRL';
+            if (txCurrency === selectedCurrency && t.date < `${selectedYear}-01-01`) {
+                const amount = Number(t.amount) || 0;
+                return acc + (t.type === TransactionType.Receita ? amount : -amount);
+            }
+            return acc;
+        }, 0);
+
+        // Depois, preenchemos os meses do ano atual
         transactions.forEach(t => {
             const txCurrency = t.currency || 'BRL';
             if (t.date.startsWith(selectedYear) && txCurrency === selectedCurrency) {
@@ -99,35 +119,37 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 if (monthIndex >= 0 && monthIndex < 12) {
                     const amount = Number(t.amount) || 0;
                     if (t.type === TransactionType.Receita) {
-                        // Só conta no gráfico de performance se não for resgate
                         if (!isInternalTransfer(t.category)) {
                             data[monthIndex].income += amount;
                         }
-                        // O saldo final sempre conta tudo
+                        // O saldo SEMPRE considera tudo (inclusive transferências internas)
                         data[monthIndex].balance += amount;
                     } else if (t.type === TransactionType.Despesa) {
-                        if (isInternalTransfer(t.category)) {
-                            data[monthIndex].investment += amount;
-                        } else {
+                        if (!isInternalTransfer(t.category)) {
                             data[monthIndex].expense += amount;
                         }
-                        // O saldo final sempre conta tudo
+                        // O saldo SEMPRE considera tudo (inclusive transferências internas)
                         data[monthIndex].balance -= amount;
                     }
                 }
             }
         });
-        return data.map(d => ({
-            ...d,
-            balance: Number(d.balance.toFixed(2))
-        }));
+
+        // Por fim, calculamos o saldo acumulado mês a mês para o gráfico
+        return data.map(d => {
+            runningBalance += d.balance; // d.balance aqui é a variação do mês (incluindo internas)
+            return {
+                ...d,
+                balance: Number(runningBalance.toFixed(2))
+            };
+        });
     }, [transactions, selectedYear, selectedCurrency, language]);
 
     const pieData = useMemo(() => {
         return [
             { name: t('income'), value: monthTotals.rec, color: COLOR_RECEITA },
             { name: t('costOfLiving'), value: monthTotals.despReal, color: COLOR_DESPESA },
-            { name: `Aportes Mensais`, value: monthTotals.aportesMes, color: COLOR_APORTE }
+            { name: t('balance'), value: Math.max(0, monthTotals.rec - monthTotals.despReal), color: COLOR_SALDO }
         ].filter(item => item.value > 0); 
     }, [monthTotals, t]);
 
@@ -135,7 +157,7 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         if (monthInputRef.current && 'showPicker' in monthInputRef.current) {
             (monthInputRef.current as any).showPicker();
         } else if (monthInputRef.current) {
-            monthInputRef.current.focus();
+            (monthInputRef.current as any).focus();
         }
     };
 
@@ -143,8 +165,8 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
         <div className="space-y-8 pb-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-3xl font-bold text-gray-800 dark:text-white tracking-tight">{t('reports')}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Visão Geral Detalhada ({selectedCurrency})</p>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">{t('reports')}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Visão Geral Detalhada ({selectedCurrency})</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="bg-white dark:bg-gray-800 p-1.5 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex gap-1">
@@ -177,50 +199,50 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
-                    <div className="flex items-center gap-3 mb-2 text-green-600">
-                        <ArrowUpIcon className="w-5 h-5" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
+                    <div className="flex items-center gap-2 mb-1.5 text-green-600">
+                        <ArrowUpIcon className="w-4 h-4" />
                         <span className="text-[10px] font-black uppercase tracking-wider">{t('income')}</span>
                     </div>
-                    <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.rec)}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Geração de renda real (Salários/Vendas)</p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.rec)}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">Receita total do mês</p>
                 </div>
                 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
-                    <div className="flex items-center gap-3 mb-2 text-red-600">
-                        <ArrowDownIcon className="w-5 h-5" />
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
+                    <div className="flex items-center gap-2 mb-1.5 text-red-600">
+                        <ArrowDownIcon className="w-4 h-4" />
                         <span className="text-[10px] font-black uppercase tracking-wider">{t('costOfLiving')}</span>
                     </div>
-                    <p className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.despReal)}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Despesas fixas e variáveis</p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white">{formatCurrency(monthTotals.despReal)}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">Gastos reais do mês</p>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
-                    <div className="flex items-center gap-3 mb-2 text-indigo-600">
-                        <TrendingUpIcon className="w-5 h-5" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Aportes / Investimentos</span>
+                <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 hover:scale-[1.02] transition-transform">
+                    <div className="flex items-center gap-2 mb-1.5 text-indigo-600">
+                        <TrendingUpIcon className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">{t('totalInvested')}</span>
                     </div>
-                    <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(monthTotals.aportesMes)}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">Total aportado no mês</p>
+                    <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(monthTotals.patrimonioTotalAtivos)}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">Valor total em investimentos</p>
                 </div>
 
-                <div className="bg-blue-600 p-6 rounded-2xl shadow-xl text-white hover:scale-[1.02] transition-transform">
-                    <div className="flex items-center gap-3 mb-2 opacity-80">
-                        <CreditCardIcon className="w-5 h-5" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Saldo Gerado</span>
+                <div className="bg-blue-600 p-5 rounded-xl shadow-xl text-white hover:scale-[1.02] transition-transform">
+                    <div className="flex items-center gap-2 mb-1.5 opacity-80">
+                        <CreditCardIcon className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">{t('balance')}</span>
                     </div>
-                    <p className="text-2xl font-black">
-                        {formatCurrency(monthTotals.saldoGeradoMes)}
+                    <p className="text-xl font-black">
+                        {formatCurrency(monthTotals.saldoTotal)}
                     </p>
-                    <p className="text-[10px] mt-1 opacity-70">Resultado líquido de todas as transações</p>
+                    <p className="text-[9px] mt-0.5 opacity-70">Saldo total disponível em conta</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
-                    <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Fluxo de Renda vs Gastos ({selectedYear})</h4>
-                    <div className="h-[320px]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Fluxo de Renda vs Gastos ({selectedYear})</h4>
+                    <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={monthlyData}>
                                 <defs>
@@ -241,9 +263,9 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                     </div>
                 </div>
                 
-                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
-                    <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-8">Onde seu dinheiro está indo? ({selectedCurrency})</h4>
-                    <div className="h-[320px]">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <h4 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Onde seu dinheiro está indo? ({selectedCurrency})</h4>
+                    <div className="h-[280px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={95} paddingAngle={8} dataKey="value">

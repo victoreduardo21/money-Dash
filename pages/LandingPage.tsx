@@ -87,7 +87,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                  </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900">Fin<span className="text-blue-600">Dash</span></span>
+              <span className="text-xl font-bold tracking-tight text-slate-900">Money <span className="text-blue-600">Dashs</span></span>
             </div>
 
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
@@ -137,7 +137,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20 animate-fade-in-up">
                 <button onClick={() => onRegister('FREE', 'MONTHLY')} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-sm md:text-base hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 hover:scale-105 flex items-center justify-center gap-2">
-                    {language === 'pt-BR' ? 'Criar Conta Gratuita' : 'Start Free Today'} <span className="text-blue-200">-></span>
+                    {language === 'pt-BR' ? 'Criar Conta Gratuita' : 'Start Free Today'} <span className="text-blue-200">&rarr;</span>
                 </button>
             </div>
 
@@ -153,7 +153,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                         </div>
                         <div className="flex-1 flex justify-center">
                             <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-400 font-medium flex items-center gap-2 w-full max-w-md justify-center">
-                                <span className="opacity-50">🔒</span> app.findash.com/dashboard/global
+                                <span className="opacity-50">🔒</span> app.moneydashs.com/dashboard/global
                             </div>
                         </div>
                     </div>
@@ -165,7 +165,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                                     <div className="w-4 h-4 bg-white/40 rounded-full"></div>
                                 </div>
-                                <span className="text-white font-bold text-xl tracking-tight">FinDash</span>
+                                <span className="text-white font-bold text-xl tracking-tight">Money Dashs</span>
                              </div>
                              <div className="space-y-2">
                                  <div className="flex items-center px-4 py-3 bg-blue-600/20 text-blue-400 rounded-xl text-xs font-bold gap-3 border border-blue-600/20">
@@ -246,8 +246,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           <div className="max-w-7xl mx-auto px-6 relative z-10">
               <div className="flex flex-col lg:flex-row items-center gap-24">
                   <div className="lg:w-1/2">
-                      <h2 className="text-4xl md:text-6xl font-extrabold mb-12 leading-tight tracking-tight">
-                          {language === 'pt-BR' ? 'Por que escolher o FinDash?' : 'Why choose FinDash?'}
+                        <h2 className="text-4xl md:text-6xl font-extrabold mb-12 leading-tight tracking-tight">
+                          {language === 'pt-BR' ? 'Por que escolher o Money Dashs?' : 'Why choose Money Dashs?'}
                       </h2>
                       <div className="space-y-12">
                           <div className="flex gap-8 group">
@@ -376,9 +376,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                   <div className="bg-blue-600 p-1.5 rounded-lg">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                   </div>
-                  <span className="text-xl font-bold text-white">FinDash</span>
+                  <span className="text-xl font-bold text-white">Money Dashs</span>
               </div>
-              <p className="text-xs">© 2025 FinDash. Powered by <span className="text-blue-500 font-bold">GTS AI</span>.</p>
+              <p className="text-xs">© 2025 Money Dashs. Powered by <span className="text-blue-500 font-bold">GTS AI</span>.</p>
           </div>
       </footer>
     </div>

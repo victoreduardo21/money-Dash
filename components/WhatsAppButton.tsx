@@ -11,7 +11,7 @@ const WhatsAppButton: React.FC = () => {
     const options = [
         { label: "Falar sobre meu Plano", message: "Olá! Gostaria de falar sobre meu plano atual." },
         { label: "Trocar/Cancelar Assinatura", message: "Olá! Gostaria de tratar sobre a troca ou cancelamento da minha assinatura." },
-        { label: "Suporte Técnico", message: "Olá! Preciso de ajuda técnica com o FinDash." },
+        { label: "Suporte Técnico", message: "Olá! Preciso de ajuda técnica com o Money Dashs." },
         { label: "Dúvidas Gerais", message: "Olá! Tenho uma dúvida sobre o sistema." }
     ];
 

@@ -1,6 +1,6 @@
 
 // ============================================================================
-// BACKEND DO FINDASH - GOOGLE APPS SCRIPT
+// BACKEND DO MONEY DASHS - GOOGLE APPS SCRIPT
 // ============================================================================
 
 function getSpreadsheet() {

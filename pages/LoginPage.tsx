@@ -2,6 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { User, Plan, BillingCycle } from '../types';
 import { api } from '../services/api';
+import { auth } from '../services/firebase';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
+    updateProfile
+} from 'firebase/auth';
 
 const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
@@ -10,7 +16,7 @@ const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 interface LoginPageProps {
-  onLogin: (user: User, token: string) => void;
+  onLogin: (user: User, token: string) => void; // token will be UID
   onBack: () => void;
   initialMode?: 'login' | 'register';
   selectedPlan?: Plan;
@@ -36,34 +42,49 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
 
     try {
         if (isLoginMode) {
-            const response = await api.login({ email: email.trim().toLowerCase(), password });
-            if (response && response.token && response.user) {
-                onLogin(response.user, response.token);
+            const userCredential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+            const user = userCredential.user;
+            // Get user data from Firestore
+            const userData = await api.getMe(user.uid);
+            if (userData) {
+                onLogin(userData, user.uid);
             } else {
-                setError(response?.message || 'E-mail ou senha incorretos.');
+                // If user auth exists but Firestore doc doesn't (shouldn't happen with correct flow)
+                setError('Perfil não encontrado no banco de dados.');
             }
         } else {
-            if (password.length < 6) return setError("A senha deve ter no mínimo 6 caracteres.");
-            // Added explicit type assertions to Plan and BillingCycle to satisfy the User interface requirements
-            const res = await api.createUser({ 
-                name, 
-                email: email.trim().toLowerCase(), 
-                password, 
-                phone, 
-                cpf, 
-                plan: selectedPlan as Plan, 
-                billingCycle: selectedBillingCycle as BillingCycle 
-            });
-            if (res.error) {
-                setError(res.message || 'Erro ao criar conta.');
-            } else {
-                const loginRes = await api.login({ email, password });
-                if (loginRes.token) onLogin(loginRes.user, loginRes.token);
-                else setIsLoginMode(true);
+            if (password.length < 6) {
+                setIsLoading(false);
+                return setError("A senha deve ter no mínimo 6 caracteres.");
             }
+            
+            const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+            const user = userCredential.user;
+            
+            await updateProfile(user, { displayName: name });
+            
+            const newUser: User = {
+                name,
+                email: email.trim().toLowerCase(),
+                phone,
+                cpf,
+                plan: selectedPlan as Plan,
+                billingCycle: selectedBillingCycle as BillingCycle,
+                subscriptionStatus: 'ACTIVE'
+            };
+            
+            await api.createUser(newUser, user.uid);
+            onLogin(newUser, user.uid);
         }
-    } catch (e) {
-        setError('Falha na comunicação com o servidor.');
+    } catch (e: any) {
+        console.error(e);
+        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            setError('E-mail ou senha incorretos.');
+        } else if (e.code === 'auth/email-already-in-use') {
+            setError('Este e-mail já está sendo utilizado.');
+        } else {
+            setError('Falha na comunicação com o Firebase.');
+        }
     } finally {
         setIsLoading(false);
     }
@@ -82,7 +103,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             <div className="relative z-10 text-white">
                 <div className="mb-8 flex items-center gap-3">
                     <div className="bg-blue-600 p-2 rounded-xl shadow-lg"><svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
-                    <span className="text-2xl font-bold">FinDash</span>
+                    <span className="text-2xl font-bold">Money Dashs</span>
                 </div>
                 <h1 className="text-5xl font-bold leading-tight mb-6">Controle Financeiro <br /><span className="text-blue-500">Sem Complicação.</span></h1>
                 <p className="text-gray-400 text-lg max-w-md">Gerencie suas contas, investimentos e planeje seu futuro em um só lugar.</p>
@@ -97,6 +118,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 </div>
 
                 <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+                    <div className="md:hidden text-center mb-6">
+                        <h1 className="text-3xl font-extrabold text-[#020617] flex items-center justify-center gap-2">
+                            <span className="text-blue-600">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            </span>
+                            Money Dashs
+                        </h1>
+                    </div>
                     {!isLoginMode && (
                         <div className="space-y-4">
                             <div>

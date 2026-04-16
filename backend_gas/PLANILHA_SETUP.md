@@ -1,7 +1,7 @@
 
 # Configuração da Planilha Google (Banco de Dados)
 
-Para que o sistema FinDash funcione corretamente, configure sua Planilha Google conforme as tabelas abaixo.
+Para que o sistema Money Dashs funcione corretamente, configure sua Planilha Google conforme as tabelas abaixo.
 
 ### 1. Aba: `Users`
 **Atenção:** A ordem das colunas deve ser exata.

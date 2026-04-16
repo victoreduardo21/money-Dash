@@ -4,6 +4,7 @@ import { DashboardIcon } from './icons/DashboardIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
+import { Sparkles } from 'lucide-react';
 import { Page, Language } from '../types';
 import { useTranslation } from '../translations';
 
@@ -21,6 +22,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activePage, setActivePage, langua
         { page: 'Dashboard', icon: <DashboardIcon className="w-6 h-6" />, label: t('dashboard') },
         { page: 'Transações', icon: <SwitchHorizontalIcon className="w-6 h-6" />, label: t('transactions') },
         { page: 'Agenda', icon: <CalendarIcon className="w-6 h-6" />, label: t('agenda'), protected: true },
+        { page: 'Insights', icon: <Sparkles className="w-6 h-6" />, label: t('insightsIA'), protected: true },
         { page: 'Investimentos', icon: <TrendingUpIcon className="w-6 h-6" />, label: t('investments'), protected: true },
     ];
 

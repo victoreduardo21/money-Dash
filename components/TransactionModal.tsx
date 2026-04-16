@@ -70,7 +70,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
         if (dateInputRef.current && 'showPicker' in dateInputRef.current) {
             (dateInputRef.current as any).showPicker();
         } else if (dateInputRef.current) {
-            dateInputRef.current.focus();
+            (dateInputRef.current as any).focus();
         }
     };
 

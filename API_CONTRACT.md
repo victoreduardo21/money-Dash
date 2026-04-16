@@ -1,4 +1,4 @@
-# Contrato de API - FinDash
+# Contrato de API - Money Dashs
 
 Este documento define a interface de comunicação entre o Frontend (React) e o Backend.
 O Backend deve expor uma API RESTful seguindo as especificações abaixo.

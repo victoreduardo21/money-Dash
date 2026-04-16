@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'plan']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches('^.+@.+$') &&
+             data.plan in ['FREE', 'PRO', 'VIP'];
+    }
+    
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['description', 'amount', 'currency', 'date', 'type', 'userId']) &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 255 &&
+             data.amount is number &&
+             data.currency in ['BRL', 'USD'] &&
+             data.type in ['Receita', 'Despesa'] &&
+             data.userId == request.auth.uid;
+    }
+    
+    function isValidInvestment(data) {
+      return data.keys().hasAll(['name', 'initialAmount', 'currentValue', 'currency', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 255 &&
+             data.initialAmount is number &&
+             data.currentValue is number &&
+             data.currency in ['BRL', 'USD'] &&
+             data.userId == request.auth.uid;
+    }
+    
+    function isValidCalendarEvent(data) {
+      return data.keys().hasAll(['description', 'date', 'done', 'userId']) &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 255 &&
+             data.date is string &&
+             data.done is bool &&
+             data.userId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if false; // Users cannot delete their accounts via the app normally
+    }
+    
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidTransaction(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+    
+    match /investments/{investmentId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidInvestment(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidInvestment(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+    
+    match /calendar/{eventId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCalendarEvent(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCalendarEvent(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+  }
+}
