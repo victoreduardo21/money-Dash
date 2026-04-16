@@ -88,20 +88,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 cpf,
                 plan: selectedPlan as Plan,
                 billingCycle: selectedBillingCycle as BillingCycle,
-                subscriptionStatus: 'ACTIVE'
+                subscriptionStatus: 'ACTIVE',
+                role: 'user'
             };
             
-            await api.createUser(newUser, user.uid);
+            const createRes = await api.createUser(newUser, user.uid);
+            if (createRes && createRes.error) {
+                setError(createRes.message || 'Erro ao salvar perfil no banco de dados.');
+                setIsLoading(false);
+                return;
+            }
             onLogin(newUser, user.uid);
         }
     } catch (e: any) {
-        console.error(e);
-        if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-            setError('E-mail ou senha incorretos.');
-        } else if (e.code === 'auth/email-already-in-use') {
+        console.error("Cadastro Error:", e);
+        if (e.code === 'auth/email-already-in-use') {
             setError('Este e-mail já está sendo utilizado.');
+        } else if (e.code === 'auth/weak-password') {
+            setError('A senha é muito fraca.');
         } else {
-            setError('Falha na comunicação com o Firebase.');
+            setError('Falha no cadastro: ' + (e.message || 'Erro desconhecido'));
         }
     } finally {
         setIsLoading(false);

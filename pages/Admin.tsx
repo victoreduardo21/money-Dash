@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Plan } from '../types';
 import { api } from '../services/api';
+import { db } from '../services/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 const Admin: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
@@ -9,18 +11,17 @@ const Admin: React.FC = () => {
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            setIsLoading(true);
-            try {
-                const fetchedUsers = await api.getAllUsers('');
-                if (fetchedUsers) setUsers(fetchedUsers);
-            } catch (error) {
-                console.error("Erro ao carregar usuários:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchUsers();
+        const q = query(collection(db, 'users'));
+        const unsubscribe = onSnapshot(q, (snap) => {
+            const fetchedUsers = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+            setUsers(fetchedUsers);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Erro ao carregar usuários:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const handleUpdatePlan = async (userId: string, newPlan: Plan) => {
@@ -56,8 +57,10 @@ const Admin: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Painel Administrativo</h1>
-                <p className="text-sm text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">Gerenciamento de usuários e planos</p>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Painel Administrativo</h1>
+                    <p className="text-sm text-gray-500">Gerenciamento de {users.length} usuários cadastrados</p>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -66,6 +69,7 @@ const Admin: React.FC = () => {
                         <thead>
                             <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-gray-700">
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Usuário</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Permissão</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Plano</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
@@ -77,13 +81,18 @@ const Admin: React.FC = () => {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center">
                                             <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs mr-3">
-                                                {user.name.charAt(0)}
+                                                {user.name?.charAt(0) || '?'}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</div>
+                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name || 'Sem nome'}</div>
                                                 <div className="text-xs text-gray-500">{user.email}</div>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`text-xs font-medium ${user.role === 'admin' ? 'text-purple-600' : 'text-gray-600'}`}>
+                                            {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <select 
