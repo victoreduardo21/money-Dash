@@ -106,6 +106,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                 <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-8 mb-4">{t('settings')}</p>
                 <nav className="space-y-1">
                     <NavLink icon={<SettingsIcon className="h-5 w-5" />} active={activePage === 'Configurações'} onClick={() => handleNavClick('Configurações')}>{t('settings')}</NavLink>
+                    {currentUser?.email === 'eduardopontesdias@outlook.com' && (
+                        <NavLink icon={<ChartPieIcon className="h-5 w-5" />} active={activePage === 'Admin'} onClick={() => handleNavClick('Admin')}>Painel Admin</NavLink>
+                    )}
                 </nav>
             </div>
 

@@ -6,7 +6,8 @@ import { auth } from '../services/firebase';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
-    updateProfile
+    updateProfile,
+    sendPasswordResetEmail
 } from 'firebase/auth';
 
 const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -32,8 +33,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
   const [cpf, setCpf] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => { setIsLoginMode(initialMode === 'login'); }, [initialMode]);
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      return setError('Por favor, digite seu e-mail para recuperar a senha.');
+    }
+    setIsResetting(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+      setError('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+    } catch (e: any) {
+      console.error(e);
+      setError('Erro ao enviar e-mail de recuperação.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +196,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                     <button type="submit" disabled={isLoading} className="w-full py-4 bg-[#020617] text-white rounded-xl font-bold hover:bg-black transition-all shadow-xl disabled:opacity-50 transform active:scale-95">
                         {isLoading ? 'CARREGANDO...' : (isLoginMode ? 'ENTRAR' : 'CADASTRAR AGORA')}
                     </button>
+
+                    {isLoginMode && (
+                        <div className="text-center">
+                            <button type="button" onClick={handleForgotPassword} disabled={isResetting} className="text-xs text-blue-600 font-bold hover:underline">
+                                Esqueceu sua senha?
+                            </button>
+                        </div>
+                    )}
 
                     <p className="text-center text-sm font-semibold text-gray-500">
                         {isLoginMode ? 'Não tem uma conta?' : 'Já possui conta?'} 

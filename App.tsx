@@ -10,6 +10,7 @@ import Agenda from './pages/Agenda';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import AIInsights from './pages/AIInsights';
+import Admin from './pages/Admin';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
@@ -173,6 +174,7 @@ const App: React.FC = () => {
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
+            {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}
         </main>
       </div>
 

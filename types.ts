@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -51,4 +51,5 @@ export interface User {
   billingCycle?: BillingCycle;
   // Added language property to User interface
   language?: Language;
+  role?: 'admin' | 'user';
 }
