@@ -212,7 +212,21 @@ const App: React.FC = () => {
         <main className="flex-1 overflow-x-hidden overflow-y-auto w-full p-4 md:p-6 lg:p-8 pb-28 md:pb-8 no-scrollbar max-w-full">
             {activePage === 'Dashboard' && <Dashboard transactions={transactions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
-            {activePage === 'Investimentos' && <Investments investments={investments} setInvestments={setInvestments} onSaveInvestment={async (inv) => { await api.createInvestment(inv, token); }} onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token); }} onWithdrawInvestment={async (id) => { await api.withdrawInvestment(id, token); }} language={language} />}
+            {activePage === 'Investimentos' && <Investments 
+                investments={investments} 
+                setInvestments={setInvestments} 
+                onSaveInvestment={async (inv) => { 
+                    try {
+                        await api.createInvestment(inv, token || ''); 
+                        setToast({ id: Date.now().toString(), message: "Investimento salvo!", type: 'success' });
+                    } catch (err: any) {
+                        setToast({ id: Date.now().toString(), message: "Erro ao salvar investimento.", type: 'error' });
+                    }
+                }} 
+                onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token || ''); }} 
+                onWithdrawInvestment={async (id) => { await api.withdrawInvestment(id, token || ''); }} 
+                language={language} 
+            />}
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} />}
@@ -222,7 +236,22 @@ const App: React.FC = () => {
       </div>
 
       <BottomNav activePage={activePage} setActivePage={setActivePage} language={language} isFreePlan={currentUser?.plan === 'FREE'} />
-      <TransactionModal isOpen={isTransactionModalOpen} onClose={() => setIsTransactionModalOpen(false)} onSave={async (t) => { await api.createTransaction(t, token); setIsTransactionModalOpen(false); }} transaction={editingTransaction} language={language} />
+      <TransactionModal 
+        isOpen={isTransactionModalOpen} 
+        onClose={() => setIsTransactionModalOpen(false)} 
+        onSave={async (t) => { 
+            try {
+                await api.createTransaction(t, token || ''); 
+                setIsTransactionModalOpen(false);
+                setToast({ id: Date.now().toString(), message: "Transação salva com sucesso!", type: 'success' });
+            } catch (err: any) {
+                console.error("Erro ao salvar transação:", err);
+                setToast({ id: Date.now().toString(), message: "Erro ao salvar transação. Verifique sua permissão.", type: 'error' });
+            }
+        }} 
+        transaction={editingTransaction} 
+        language={language} 
+      />
       <TransferModal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} onSaveTransfer={handleSaveTransfer} />
       <PlanSelectionModal isOpen={isPlanModalOpen} onClose={() => setIsPlanModalOpen(false)} onConfirmUpgrade={handleUpdatePlan} currentPlan={currentUser?.plan || 'FREE'} />
       <WhatsAppButton />

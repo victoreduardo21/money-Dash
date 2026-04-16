@@ -108,17 +108,24 @@ export const api = {
     },
     createTransaction: async (transaction: Omit<PersonalTransaction, 'id'> & { id?: string }, token: string) => {
         const uid = token || auth.currentUser?.uid;
-        if (!uid) throw new Error("Unauthorized");
+        if (!uid) {
+            console.error("Tentativa de criar transação sem UID.");
+            throw new Error("Usuário não autenticado no sistema.");
+        }
         try {
             const { id, ...data } = transaction;
+            const payload = { ...data, userId: uid };
+            console.log("Salvando Transação:", payload);
+            
             if (id) {
-                await updateDoc(doc(db, 'transactions', id), { ...data, userId: uid });
+                await updateDoc(doc(db, 'transactions', id), payload);
                 return { error: false, id };
             } else {
-                const docRef = await addDoc(collection(db, 'transactions'), { ...data, userId: uid });
+                const docRef = await addDoc(collection(db, 'transactions'), payload);
                 return { error: false, id: docRef.id };
             }
         } catch (error) {
+            console.error("Erro no api.createTransaction:", error);
             handleFirestoreError(error, OperationType.CREATE, 'transactions');
         }
     },
