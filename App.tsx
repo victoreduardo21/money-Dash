@@ -79,6 +79,10 @@ const App: React.FC = () => {
       } else {
         setToken(null);
         setCurrentUser(null);
+        // Clear data on logout
+        setTransactions([]);
+        setInvestments([]);
+        setTasks([]);
       }
       setIsAuthReady(true);
     });
@@ -86,7 +90,15 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!token || !isAuthReady) return;
+    if (!token || !isAuthReady) {
+        // Reset data if token is lost
+        if (isAuthReady && !token) {
+            setTransactions([]);
+            setInvestments([]);
+            setTasks([]);
+        }
+        return;
+    };
 
     const qT = query(collection(db, 'transactions'), where('userId', '==', token));
     const unsubT = onSnapshot(qT, (snap) => {
@@ -125,10 +137,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setCurrentUser(null);
-      setToken(null);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
+      // State cleanup will be handled by onAuthStateChanged
       setIsLoginScreen(false);
       setActivePage('Dashboard');
     } catch (error) {
