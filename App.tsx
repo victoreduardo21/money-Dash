@@ -226,14 +226,48 @@ const App: React.FC = () => {
                 setInvestments={setInvestments} 
                 onSaveInvestment={async (inv) => { 
                     try {
+                        const isNew = !inv.id;
                         await api.createInvestment(inv, token || ''); 
+                        
+                        // User Rule: Investment exits account balance
+                        if (isNew) {
+                            await api.createTransaction({
+                                description: `Aporte: ${inv.name}`,
+                                amount: inv.initialAmount,
+                                type: 'Despesa' as any,
+                                category: 'Investimento',
+                                currency: inv.currency,
+                                date: new Date().toISOString().slice(0, 10),
+                            }, token || '');
+                        }
+
                         setToast({ id: Date.now().toString(), message: "Investimento salvo!", type: 'success' });
                     } catch (err: any) {
                         setToast({ id: Date.now().toString(), message: "Erro ao salvar investimento.", type: 'error' });
                     }
                 }} 
                 onDeleteInvestment={async (id) => { await api.deleteInvestment(id, token || ''); }} 
-                onWithdrawInvestment={async (id) => { await api.withdrawInvestment(id, token || ''); }} 
+                onWithdrawInvestment={async (id) => { 
+                    const inv = investments.find(i => i.id === id);
+                    if (!inv) return;
+                    try {
+                        await api.withdrawInvestment(id, token || ''); 
+                        
+                        // User Rule: Return to account balance
+                        await api.createTransaction({
+                            description: `Resgate: ${inv.name}`,
+                            amount: inv.currentValue,
+                            type: 'Receita' as any,
+                            category: 'Resgate',
+                            currency: inv.currency,
+                            date: new Date().toISOString().slice(0, 10),
+                        }, token || '');
+
+                        setToast({ id: Date.now().toString(), message: "Resgate realizado com sucesso!", type: 'success' });
+                    } catch (err: any) {
+                        setToast({ id: Date.now().toString(), message: "Erro ao realizar resgate.", type: 'error' });
+                    }
+                }} 
                 language={language} 
             />}
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); }} language={language} />}

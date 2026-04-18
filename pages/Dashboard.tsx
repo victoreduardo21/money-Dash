@@ -74,8 +74,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
           const txs = transactions.filter(t => t.date.startsWith(mStr) && t.currency === selectedCurrency);
           return {
               name,
-              income: txs.filter(t => t.type === TransactionType.Receita && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0),
-              expense: txs.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + t.amount, 0)
+              // For the graph, we show the full cash flow (what entered and what exited)
+              income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0),
+              expense: txs.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0)
           };
       });
     }, [transactions, selectedCurrency, selectedMonth]);
