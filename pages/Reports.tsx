@@ -60,23 +60,22 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
             const txCurrency = t.currency || 'BRL';
             if (txCurrency === selectedCurrency) {
                 const amount = Number(t.amount) || 0;
-                const isInternal = isInternalTransfer(t.category);
                 const txMonth = t.date.substring(0, 7);
                 
-                // Totais do mês selecionado (para os cards de Receita e Custo)
+                // Totais do mês selecionado (Matching Dashboard: Income all, Expenses real)
                 if (txMonth === selectedMonth) {
-                    if (t.type === TransactionType.Receita && !isInternal) {
+                    if (t.type === TransactionType.Receita) {
                         rec += amount; 
-                    } else if (t.type === TransactionType.Despesa && !isInternal) {
+                    } else if (t.type === TransactionType.Despesa && !isInternalTransfer(t.category)) {
                         despReal += amount;
                     }
                 }
 
                 // Saldo acumulado (Rollover): Tudo até o mês selecionado
                 if (txMonth <= selectedMonth) {
-                    if (t.type === TransactionType.Receita && !isInternal) {
+                    if (t.type === TransactionType.Receita) {
                         totalRecAteMes += amount;
-                    } else if (t.type === TransactionType.Despesa && !isInternal) {
+                    } else if (t.type === TransactionType.Despesa && !isInternalTransfer(t.category)) {
                         totalDespAteMes += amount;
                     }
                 }
@@ -119,16 +118,14 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 if (monthIndex >= 0 && monthIndex < 12) {
                     const amount = Number(t.amount) || 0;
                     if (t.type === TransactionType.Receita) {
-                        if (!isInternalTransfer(t.category)) {
-                            data[monthIndex].income += amount;
-                        }
-                        // O saldo SEMPRE considera tudo (inclusive transferências internas)
+                        data[monthIndex].income += amount;
+                        // O saldo SEMPRE considera tudo
                         data[monthIndex].balance += amount;
                     } else if (t.type === TransactionType.Despesa) {
                         if (!isInternalTransfer(t.category)) {
                             data[monthIndex].expense += amount;
                         }
-                        // O saldo SEMPRE considera tudo (inclusive transferências internas)
+                        // O saldo SEMPRE considera tudo
                         data[monthIndex].balance -= amount;
                     }
                 }

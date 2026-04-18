@@ -49,34 +49,48 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
   };
   
   const totals = useMemo(() => {
-      const txs = transactions.filter(t => t.currency === selectedCurrency);
-      const investido = (investments || []).filter(i => i.currency === selectedCurrency).reduce((acc, i) => acc + i.currentValue, 0);
-      const txsMes = transactions.filter(t => t.date.startsWith(selectedMonth) && t.currency === selectedCurrency);
+      const txs = transactions.filter(t => (t.currency || 'BRL') === selectedCurrency);
+      const txsMes = txs.filter(t => t.date.startsWith(selectedMonth));
       
+      // Values for Cards (Matching user's specific requirement: Income includes everything, Expenses excludes investments)
       const recMes = txsMes
-          .filter(t => t.type === TransactionType.Receita && !isInternalTransfer(t.category))
-          .reduce((acc, t) => acc + t.amount, 0);
+          .filter(t => t.type === TransactionType.Receita)
+          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
       
       const gastMes = txsMes
           .filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category))
-          .reduce((acc, t) => acc + t.amount, 0);
+          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
           
-      const saldoTotal = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? t.amount : -t.amount), 0);
+      // "Available Balance" - Raw net sum of ALL transactions
+      const saldoTotal = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
+      
+      const investidoCurrent = (investments || [])
+          .filter(i => (i.currency || 'BRL') === selectedCurrency)
+          .reduce((acc, i) => acc + (Number(i.currentValue) || 0), 0);
           
-      return { saldoMes: recMes - gastMes, saldoTotal, investido, recMes, gastMes, patrimonio: saldoTotal + investido };
+      return { 
+        saldoMes: recMes - gastMes, 
+        saldoTotal,
+        investido: investidoCurrent, 
+        recMes, 
+        gastMes, 
+        patrimonio: saldoTotal + investidoCurrent 
+      };
     }, [transactions, investments, selectedCurrency, selectedMonth]);
 
     const monthlyChartData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const currentYear = selectedMonth.split('-')[0];
+      
       return months.map((name, i) => {
           const mStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-          const txs = transactions.filter(t => t.date.startsWith(mStr) && t.currency === selectedCurrency);
+          const txs = transactions.filter(t => t.date.startsWith(mStr) && (t.currency || 'BRL') === selectedCurrency);
+          
           return {
               name,
-              // For the graph, we show the full cash flow (what entered and what exited)
-              income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + t.amount, 0),
-              expense: txs.filter(t => t.type === TransactionType.Despesa).reduce((acc, t) => acc + t.amount, 0)
+              // Graph logic: Matching Cards (Incomes: all, Expenses: real)
+              income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (Number(t.amount) || 0), 0),
+              expense: txs.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + (Number(t.amount) || 0), 0)
           };
       });
     }, [transactions, selectedCurrency, selectedMonth]);
@@ -120,14 +134,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
         {/* METRIC CARDS - RESPONSIVO (1, 2 ou 4 colunas) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-8">
             <MetricCard 
-              title="Available Balance" 
+              title={t('balance')} 
               value={formatCurrency(totals.saldoTotal)} 
               icon={<CreditCardIcon className="h-7 w-7 text-blue-500" />} 
               valueClassName={totals.saldoTotal < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}
             />
-            <MetricCard title="Total Invested" value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} />
-            <MetricCard title="Income (Month)" value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-7 w-7 text-green-500" />} />
-            <MetricCard title="Real Expenses (Month)" value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-7 w-7 text-red-500" />} />
+            <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} />
+            <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-7 w-7 text-green-500" />} />
+            <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-7 w-7 text-red-500" />} />
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
