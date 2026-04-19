@@ -23,6 +23,8 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
 import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
+import { CheckCircleIcon } from 'lucide-react';
+import { translations } from './translations';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -277,6 +279,26 @@ const App: React.FC = () => {
             {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}
         </main>
       </div>
+
+      {currentUser?.subscriptionStatus === 'PENDING' && (
+          <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-950 flex items-center justify-center p-6 text-center">
+              <div className="max-w-md space-y-6">
+                  <div className="flex justify-center">
+                      <div className="bg-green-100 p-6 rounded-full dark:bg-green-900/30">
+                          <CheckCircleIcon size={64} className="text-green-600 dark:text-green-400" />
+                      </div>
+                  </div>
+                  <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{translations[language].pendingApproval}</h2>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed">{translations[language].pendingApprovalDesc}</p>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{translations[language].waitContact}</p>
+                  </div>
+                  <button onClick={handleLogout} className="w-full py-4 bg-[#020617] dark:bg-white dark:text-[#020617] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-xl">
+                      {translations[language].logout.toUpperCase()}
+                  </button>
+              </div>
+          </div>
+      )}
 
       <BottomNav activePage={activePage} setActivePage={setActivePage} language={language} isFreePlan={currentUser?.plan === 'FREE'} />
       <TransactionModal 

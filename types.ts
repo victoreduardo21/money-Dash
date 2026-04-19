@@ -52,4 +52,5 @@ export interface User {
   // Added language property to User interface
   language?: Language;
   role?: 'admin' | 'user';
+  phoneVerified?: boolean;
 }

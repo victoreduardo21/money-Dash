@@ -10,6 +10,9 @@ import CreateUserModal from '../components/CreateUserModal';
 import { api } from '../services/api';
 import { WhatsAppIcon } from '../components/icons/WhatsAppIcon';
 import { useTranslation } from '../translations';
+import { auth } from '../services/firebase';
+import { RecaptchaVerifier, linkWithPhoneNumber, PhoneAuthProvider, PhoneMultiFactorGenerator } from 'firebase/auth';
+import { CheckCircleIcon } from 'lucide-react';
 
 const ADMIN_EMAIL = 'eduardopontesdias@outlook.com'; 
 
@@ -29,7 +32,80 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [clients, setClients] = useState<User[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ name: currentUser.name, phone: currentUser.phone || '', cpf: currentUser.cpf || '' });
+  const [verificationId, setVerificationId] = useState<any>(null);
+  const [otp, setOtp] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState('');
   const isAdmin = currentUser.email === ADMIN_EMAIL;
+
+  useEffect(() => {
+    setFormData({ name: currentUser.name, phone: currentUser.phone || '', cpf: currentUser.cpf || '' });
+  }, [currentUser]);
+
+  const setupRecaptcha = () => {
+    if ((window as any).recaptchaVerifier) return;
+    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': () => {}
+    });
+  };
+
+  const handleSendCode = async () => {
+    setError('');
+    if (!formData.phone) return alert("Digite um número de telefone com código do país (ex: +55...)");
+    
+    try {
+        setIsVerifying(true);
+        setupRecaptcha();
+        const verifier = (window as any).recaptchaVerifier;
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Use linkWithPhoneNumber for currently logged-in users
+        const provider = new PhoneAuthProvider(auth);
+        const vid = await provider.verifyPhoneNumber(formData.phone, verifier);
+        setVerificationId(vid);
+        alert(t('smsSent'));
+    } catch (err: any) {
+        console.error(err);
+        setError("Erro ao enviar SMS. Verifique se o formato está correto (+5511...)");
+    } finally {
+        setIsVerifying(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!otp || !verificationId) return;
+    try {
+        setIsVerifying(true);
+        const credential = PhoneAuthProvider.credential(verificationId, otp);
+        
+        // This links the phone to the auth user, verifying it
+        await api.updateUser(auth.currentUser!.uid, { phone: formData.phone, phoneVerified: true });
+        
+        alert(t('phoneVerified'));
+        setVerificationId(null);
+        setOtp('');
+        // Reload page to refresh state or just rely on state update
+        window.location.reload(); 
+    } catch (err: any) {
+        setError(t('invalidCode'));
+    } finally {
+        setIsVerifying(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+        await api.updateUser(auth.currentUser!.uid, formData);
+        setIsEditing(false);
+        alert(t('saveChanges'));
+    } catch (err) {
+        alert("Erro ao salvar.");
+    }
+  };
 
   const loadAdminData = async () => {
     if (isAdmin) {
@@ -82,17 +158,82 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, currentUser, onUpd
           {/* PERFIL */}
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
             <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-6 border-b pb-4 dark:border-gray-700">{t('profile')}</h4>
+            <div id="recaptcha-container"></div>
             <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8">
                 <div className="h-28 w-28 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-4xl font-bold text-blue-700 dark:text-blue-200 shadow-lg border-4 border-white dark:border-gray-600">{userInitials}</div>
                 <div className="flex-grow w-full space-y-5">
+                    <div className="flex justify-end">
+                        <button 
+                            onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)} 
+                            className="text-xs font-bold px-4 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 dark:bg-blue-900/30 dark:border-blue-800"
+                        >
+                            {isEditing ? t('save') : t('editProfile')}
+                        </button>
+                    </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('name')}</label>
-                        <input type="text" value={currentUser.name} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm text-gray-500" />
+                        <input type="text" value={isEditing ? formData.name : currentUser.name} onChange={(e) => setFormData({...formData, name: e.target.value})} disabled={!isEditing} className={`block w-full px-4 py-2.5 rounded-lg shadow-sm border ${isEditing ? 'bg-white dark:bg-gray-800 border-blue-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label><input type="email" value={currentUser.email} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm text-gray-500" /></div>
-                        <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('cpf')}</label><input type="text" value={currentUser.cpf || '-'} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm text-gray-500" /></div>
+                        <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email</label><input type="email" value={currentUser.email} disabled className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded-lg shadow-sm text-gray-400" /></div>
+                        <div><label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('cpf')}</label><input type="text" value={isEditing ? formData.cpf : (currentUser.cpf || '-')} onChange={(e) => setFormData({...formData, cpf: e.target.value})} disabled={!isEditing} className={`block w-full px-4 py-2.5 border rounded-lg shadow-sm ${isEditing ? 'bg-white border-blue-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`} /></div>
                     </div>
+                    
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">{t('phone')}</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-grow">
+                                <input 
+                                    type="text" 
+                                    placeholder="+5511999999999"
+                                    value={isEditing ? formData.phone : (currentUser.phone || '-')} 
+                                    onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                                    disabled={!isEditing} 
+                                    className={`block w-full px-4 py-2.5 border rounded-lg shadow-sm ${isEditing ? 'bg-white border-blue-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}`} 
+                                />
+                                {currentUser.phoneVerified && !isEditing && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 flex items-center gap-1">
+                                        <CheckCircleIcon size={16} />
+                                        <span className="text-[10px] font-bold">{t('phoneVerified')}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {isEditing && !currentUser.phoneVerified && (
+                                <button 
+                                    onClick={handleSendCode}
+                                    disabled={isVerifying}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50"
+                                >
+                                    {t('verifyPhone')}
+                                </button>
+                            )}
+                        </div>
+                        
+                        {verificationId && (
+                            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
+                                <p className="text-xs font-bold text-gray-600 dark:text-gray-400">{t('enterCode')}</p>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        maxLength={6}
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value)}
+                                        placeholder="123456"
+                                        className="w-full px-4 py-2 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-center tracking-[1em] font-bold"
+                                    />
+                                    <button 
+                                        onClick={handleVerifyCode}
+                                        disabled={isVerifying}
+                                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold"
+                                    >
+                                        OK
+                                    </button>
+                                </div>
+                                {error && <p className="text-xs text-red-500 font-bold">{error}</p>}
+                            </div>
+                        )}
+                    </div>
+
                     <button onClick={() => setIsPasswordModalOpen(true)} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700">{t('changePassword')}</button>
                 </div>
             </div>

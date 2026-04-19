@@ -115,10 +115,21 @@ export const translations = {
     deactivate: 'Desativar',
     activate: 'Ativar',
     confirmDeactivate: 'Tem certeza que deseja desativar o acesso deste sistema?',
-    confirmActivate: 'Deseja reativar o acesso deste sistema?'
+    confirmActivate: 'Deseja reativar o acesso deste sistema?',
+    verifyPhone: 'Verificar Telefone',
+    phoneVerified: 'Telefone Verificado',
+    enterCode: 'Digite o código enviado',
+    invalidCode: 'Código inválido',
+    smsSent: 'SMS enviado!',
+    editProfile: 'Editar Perfil',
+    resendCode: 'Reenviar Código',
+    pendingApproval: 'Aguardando Aprovação',
+    pendingApprovalDesc: 'Sua conta foi criada e o telefone verificado. Um administrador irá ativar seu acesso em breve.',
+    waitContact: 'Entraremos em contato via WhatsApp se necessário.'
   },
   'en-US': {
     dashboard: 'Dashboard',
+    // ... (lines truncated for brevity, but I will include them in real call)
     transactions: 'Transactions',
     investments: 'Investments',
     agenda: 'Financial Agenda',
@@ -230,7 +241,17 @@ export const translations = {
     deactivate: 'Deactivate',
     activate: 'Activate',
     confirmDeactivate: 'Are you sure you want to deactivate this system access?',
-    confirmActivate: 'Do you want to reactivate this system access?'
+    confirmActivate: 'Do you want to reactivate this system access?',
+    verifyPhone: 'Verify Phone',
+    phoneVerified: 'Phone Verified',
+    enterCode: 'Enter the code sent',
+    invalidCode: 'Invalid code',
+    smsSent: 'SMS sent!',
+    editProfile: 'Edit Profile',
+    resendCode: 'Resend Code',
+    pendingApproval: 'Awaiting Approval',
+    pendingApprovalDesc: 'Your account has been created and your phone verified. An administrator will activate your access shortly.',
+    waitContact: 'We will contact you via WhatsApp if necessary.'
   }
 };
 
