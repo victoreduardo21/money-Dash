@@ -114,6 +114,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             
             if (userData) {
                 if (userData.subscriptionStatus === 'PENDING') {
+                    if (!userData.phoneVerified) {
+                        setRegisteredUserId(user.uid);
+                        setPhone(userData.phone || '');
+                        await handleSendCode(userData.phone || '');
+                        return;
+                    }
                     setIsPendingApproval(true);
                     return;
                 }
