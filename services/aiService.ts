@@ -57,12 +57,12 @@ export const aiService = {
     try {
       const response = await ai.models.generateContent({
         model,
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: prompt,
       });
       return response.text || "Não foi possível gerar insights no momento.";
     } catch (error) {
       console.error("Erro ao gerar insights com IA:", error);
-      return "Ocorreu um erro ao processar sua análise financeira. Verifique se sua chave de API está configurada corretamente.";
+      return "Ocorreu um erro ao processar sua análise financeira. Verifique a conexão e tente novamente.";
     }
   },
 
@@ -78,24 +78,20 @@ export const aiService = {
     
     const context = `
       Você é o "Guia de Negócios e Consultor Financeiro de Elite" do Money Dashs.
-      O usuário está buscando orientação estratégica para sua vida financeira e de negócios.
-      
+      Responda à pergunta do usuário considerando o contexto financeiro dele.
+
+      PERGUNTA DO USUÁRIO: "${question}"
+
       CONTEXTO DO USUÁRIO:
+      - Nome: ${currentUser?.name || "Usuário"}
       - Limite Cheque Especial: ${currentUser?.overdraftLimit || 0}
       - Plano: ${currentUser?.plan || 'FREE'}
       
-      DADOS FINANCEIROS COMPLETOS:
-      - Transações: ${JSON.stringify(transactions.map(t => ({ d: t.description, v: t.amount, t: t.type, c: t.category })))}
-      - Investimentos: ${JSON.stringify(investments.map(i => ({ n: i.name, v: i.currentValue, r: i.yieldRate })))}
+      DADOS FINANCEIROS:
+      - Transações: ${JSON.stringify(transactions.map(t => ({ d: t.description, v: t.amount, t: t.type })))}
+      - Investimentos: ${JSON.stringify(investments.map(i => ({ n: i.name, v: i.currentValue })))}
       - Crédito: ${JSON.stringify(creditCards.map(c => ({ n: c.name, l: c.limit })))}
       - Transações de Crédito: ${JSON.stringify(creditTransactions.map(ct => ({ d: ct.description, v: ct.amount, o: ct.isOverdraft })))}
-      
-      DIRETRIZES DE RESPOSTA:
-      1. Seja um Mentor: Não apenas responda, ensine o usuário a pensar como um investidor.
-      2. Foco em Lucratividade: Sempre que possível, mostre como transformar despesas em potenciais investimentos.
-      3. Análise de Crédito: Se o usuário perguntar sobre dívidas ou crédito, foque em reduzir juros e otimizar prazos.
-      
-      Pergunta do Usuário: "${question}"
       
       Responda em Português (Brasil) usando Markdown.
     `;
@@ -103,12 +99,12 @@ export const aiService = {
     try {
       const response = await ai.models.generateContent({
         model,
-        contents: [{ parts: [{ text: context }] }],
+        contents: context,
       });
       return response.text || "Não consegui processar sua pergunta agora.";
     } catch (error) {
       console.error("Erro ao perguntar para IA:", error);
-      return "Ocorreu um erro ao processar sua pergunta. Tente novamente.";
+      return "Ocorreu um erro ao processar sua pergunta. Tente novamente em alguns instantes.";
     }
   }
 };
