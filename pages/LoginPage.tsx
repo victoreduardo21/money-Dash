@@ -160,7 +160,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
         }
     } catch (e: any) {
         console.error("Auth Error:", e);
-        setError(e.message || 'Ocorreu um erro.');
+        let msg = 'Ocorreu um erro ao processar sua solicitação.';
+        
+        if (e.code === 'auth/email-already-in-use') {
+            msg = 'Este e-mail já está sendo utilizado por outra conta.';
+        } else if (e.code === 'auth/weak-password') {
+            msg = 'A senha deve ter no mínimo 6 caracteres e ser mais forte.';
+        } else if (e.code === 'auth/invalid-email') {
+            msg = 'O formato do e-mail é inválido.';
+        } else if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            msg = 'E-mail ou senha incorretos.';
+        } else if (e.message?.includes('auth/email-already-in-use')) {
+             msg = 'Este e-mail já está sendo utilizado por outra conta.';
+        }
+        
+        setError(msg);
     } finally {
         setIsLoading(false);
     }
