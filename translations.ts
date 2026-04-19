@@ -125,7 +125,10 @@ export const translations = {
     resendCode: 'Reenviar Código',
     pendingApproval: 'Aguardando Aprovação',
     pendingApprovalDesc: 'Sua conta foi criada e o telefone verificado. Um administrador irá ativar seu acesso em breve.',
-    waitContact: 'Entraremos em contato via WhatsApp se necessário.'
+    waitContact: 'Entraremos em contato via WhatsApp se necessário.',
+    inactiveAccount: 'Conta Desativada',
+    inactiveAccountDesc: 'Seu acesso ao sistema foi suspenso por um administrador.',
+    contactSupport: 'Entre em contato com o suporte para mais informações.'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -251,7 +254,10 @@ export const translations = {
     resendCode: 'Resend Code',
     pendingApproval: 'Awaiting Approval',
     pendingApprovalDesc: 'Your account has been created and your phone verified. An administrator will activate your access shortly.',
-    waitContact: 'We will contact you via WhatsApp if necessary.'
+    waitContact: 'We will contact you via WhatsApp if necessary.',
+    inactiveAccount: 'Account Deactivated',
+    inactiveAccountDesc: 'Your access to the system has been suspended by an administrator.',
+    contactSupport: 'Please contact support for more information.'
   }
 };
 

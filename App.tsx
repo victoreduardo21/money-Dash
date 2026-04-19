@@ -70,25 +70,34 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let unsubProfile: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setToken(user.uid);
-        const userData = await api.getMe(user.uid);
-        if (userData) {
-          setCurrentUser(userData);
-          if (userData.language) setLanguage(userData.language);
-        }
+        
+        // Use onSnapshot for real-time profile updates (approval/deactivation)
+        unsubProfile = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+            if (docSnap.exists()) {
+                const userData = { ...docSnap.data(), id: docSnap.id } as User;
+                setCurrentUser(userData);
+                if (userData.language) setLanguage(userData.language);
+            }
+        });
       } else {
+        if (unsubProfile) unsubProfile();
         setToken(null);
         setCurrentUser(null);
-        // Clear data on logout
         setTransactions([]);
         setInvestments([]);
         setTasks([]);
       }
       setIsAuthReady(true);
     });
-    return () => unsubscribe();
+    return () => {
+        unsubscribe();
+        if (unsubProfile) unsubProfile();
+    };
   }, []);
 
   useEffect(() => {
@@ -280,18 +289,24 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {currentUser?.subscriptionStatus === 'PENDING' && (
+      {(currentUser?.subscriptionStatus === 'PENDING' || currentUser?.subscriptionStatus === 'INACTIVE') && (
           <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-950 flex items-center justify-center p-6 text-center">
               <div className="max-w-md space-y-6">
                   <div className="flex justify-center">
-                      <div className="bg-green-100 p-6 rounded-full dark:bg-green-900/30">
-                          <CheckCircleIcon size={64} className="text-green-600 dark:text-green-400" />
+                      <div className={`p-6 rounded-full dark:bg-opacity-20 ${currentUser.subscriptionStatus === 'PENDING' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                          <CheckCircleIcon size={64} className={currentUser.subscriptionStatus === 'PENDING' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} />
                       </div>
                   </div>
-                  <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{translations[language].pendingApproval}</h2>
-                  <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed">{translations[language].pendingApprovalDesc}</p>
+                  <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                    {currentUser.subscriptionStatus === 'PENDING' ? translations[language].pendingApproval : translations[language].inactiveAccount}
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
+                    {currentUser.subscriptionStatus === 'PENDING' ? translations[language].pendingApprovalDesc : translations[language].inactiveAccountDesc}
+                  </p>
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">{translations[language].waitContact}</p>
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {currentUser.subscriptionStatus === 'PENDING' ? translations[language].waitContact : translations[language].contactSupport}
+                      </p>
                   </div>
                   <button onClick={handleLogout} className="w-full py-4 bg-[#020617] dark:bg-white dark:text-[#020617] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-xl">
                       {translations[language].logout.toUpperCase()}

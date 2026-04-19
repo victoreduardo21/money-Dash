@@ -129,6 +129,8 @@ const Admin: React.FC = () => {
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                             user.subscriptionStatus === 'ACTIVE' 
                                             ? 'bg-green-100 text-green-700' 
+                                            : user.subscriptionStatus === 'PENDING'
+                                            ? 'bg-yellow-100 text-yellow-700'
                                             : 'bg-red-100 text-red-700'
                                         }`}>
                                             {user.subscriptionStatus || 'INACTIVE'}
@@ -139,7 +141,7 @@ const Admin: React.FC = () => {
                                             onClick={() => handleToggleStatus(user.email, user.subscriptionStatus || 'INACTIVE')}
                                             className="text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors"
                                         >
-                                            {user.subscriptionStatus === 'ACTIVE' ? 'Desativar' : 'Ativar'}
+                                            {user.subscriptionStatus === 'PENDING' ? 'Aprovar' : (user.subscriptionStatus === 'ACTIVE' ? 'Desativar' : 'Ativar')}
                                         </button>
                                     </td>
                                 </tr>

@@ -46,7 +46,7 @@ export interface User {
   avatar?: string; // base64 encoded image
   phone?: string;
   cpf?: string;
-  subscriptionStatus?: 'ACTIVE' | 'PENDING' | 'OVERDUE';
+  subscriptionStatus?: 'ACTIVE' | 'PENDING' | 'OVERDUE' | 'INACTIVE';
   plan: Plan;
   billingCycle?: BillingCycle;
   // Added language property to User interface

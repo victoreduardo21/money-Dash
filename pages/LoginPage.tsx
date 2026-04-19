@@ -57,17 +57,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     });
   };
 
+  const sanitizePhoneNumber = (num: string) => {
+    // Keep only + and digits
+    return num.replace(/[^\d+]/g, '');
+  };
+
   const handleSendCode = async (phoneNum: string) => {
     try {
+        const cleanPhone = sanitizePhoneNumber(phoneNum);
+        if (cleanPhone.length < 10) {
+            setError("Número de telefone inválido. Use: +5511999999999");
+            return;
+        }
         setupRecaptcha();
         const verifier = (window as any).recaptchaVerifier;
         const provider = new PhoneAuthProvider(auth);
-        const vid = await provider.verifyPhoneNumber(phoneNum, verifier);
+        const vid = await provider.verifyPhoneNumber(cleanPhone, verifier);
         setVerificationId(vid);
         setShowVerification(true);
+        setError(''); // Clear error on success
     } catch (err: any) {
-        console.error(err);
-        setError("Erro ao enviar SMS. Verifique o número (ex: +5511...)");
+        console.error("SMS Error:", err);
+        if (err.code === 'auth/too-many-requests') {
+          setError("Muitas tentativas. Tente novamente mais tarde.");
+        } else if (err.code === 'auth/invalid-phone-number') {
+          setError("Número de telefone inválido.");
+        } else {
+          setError("Erro ao enviar SMS. Verifique se o número está correto (ex: +5511999999999).");
+        }
     }
   };
 
@@ -276,24 +293,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                                     Money Dashs
                                 </h1>
                             </div>
-                            {!isLoginMode && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Nome Completo</label>
-                                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Seu nome" className={inputClasses} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Telefone</label>
-                                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="+55 11 99999-9999" className={inputClasses} />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">CPF</label>
-                                            <input type="text" value={cpf} onChange={e => setCpf(e.target.value)} required placeholder="000.000.000-00" className={inputClasses} />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+            {!isLoginMode && (
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Nome Completo</label>
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Seu nome" className={inputClasses} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Telefone</label>
+                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="+55 11 99999-9999" className={inputClasses} />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">CPF</label>
+                            <input type="text" value={cpf} onChange={e => setCpf(e.target.value)} required placeholder="000.000.000-00" className={inputClasses} />
+                        </div>
+                    </div>
+                </div>
+            )}
                             
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">E-mail</label>
