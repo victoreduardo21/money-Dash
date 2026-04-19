@@ -16,7 +16,7 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation } from './types';
 import { api } from './services/api';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<CalendarEvent[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
+  const [aiConversation, setAiConversation] = useState<AiConversation | null>(null);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language) || 'pt-BR');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => (localStorage.getItem('selected_currency') as Currency) || 'BRL');
@@ -153,12 +154,23 @@ const App: React.FC = () => {
       console.error("Error fetching credit transactions:", error);
     });
 
+    const unsubAI = onSnapshot(doc(db, 'ai_conversations', token), (snap) => {
+      if (snap.exists()) {
+        setAiConversation({ ...snap.data(), id: snap.id } as AiConversation);
+      } else {
+        setAiConversation(null);
+      }
+    }, (error) => {
+      console.error("Error fetching AI conversation:", error);
+    });
+
     return () => {
       unsubT();
       unsubI();
       unsubC();
       unsubCC();
       unsubCT();
+      unsubAI();
     };
   }, [token, isAuthReady]);
 
@@ -306,7 +318,7 @@ const App: React.FC = () => {
             />}
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
-            {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} />}
+            {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} creditCards={creditCards} creditTransactions={creditTransactions} currentUser={currentUser} aiConversation={aiConversation} token={token || ''} />}
             {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
             {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}

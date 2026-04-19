@@ -345,5 +345,16 @@ export const api = {
         } catch (error) {
             handleFirestoreError(error, OperationType.DELETE, 'credit_transactions/' + id);
         }
+    },
+    saveAiConversation: async (data: { messages: any[], lastUpdate: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        const docRef = doc(db, 'ai_conversations', uid);
+        try {
+            await setDoc(docRef, { ...data, userId: uid });
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.WRITE, 'ai_conversations/' + uid);
+        }
     }
 };

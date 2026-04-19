@@ -115,6 +115,10 @@
     "/credit_transactions/{txId}": {
       "schema": "CreditTransaction",
       "description": "Credit and overdraft transactions"
+    },
+    "/ai_conversations/{convId}": {
+      "schema": "AiConversation",
+      "description": "Persisted AI chat history"
     }
   }
 }

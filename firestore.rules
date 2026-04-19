@@ -80,6 +80,12 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
+    function isValidAiConversation(data) {
+      return data.keys().hasAll(['messages', 'userId', 'lastUpdate']) &&
+             data.userId == request.auth.uid &&
+             data.messages is list;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -124,6 +130,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidCreditTransaction(request.resource.data);
       allow update: if isAuthenticated() && isDocOwner() && isValidCreditTransaction(request.resource.data);
       allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /ai_conversations/{convId} {
+      allow read: if isOwner(convId);
+      allow create: if isAuthenticated() && isValidAiConversation(request.resource.data);
+      allow update: if isOwner(convId) && isValidAiConversation(request.resource.data);
+      allow delete: if isOwner(convId);
     }
   }
 }

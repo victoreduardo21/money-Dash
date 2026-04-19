@@ -64,6 +64,19 @@ export interface CreditTransaction {
     isOverdraft?: boolean;
 }
 
+export interface AiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface AiConversation {
+  id: string;
+  userId: string;
+  messages: AiMessage[];
+  lastUpdate: string;
+}
+
 export interface User {
   id?: string;
   name: string;

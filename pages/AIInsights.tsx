@@ -1,13 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PersonalTransaction, Investment } from '../types';
+import { PersonalTransaction, Investment, CreditCard, CreditTransaction, User as UserType, AiConversation, AiMessage } from '../types';
 import { aiService } from '../services/aiService';
+import { api } from '../services/api';
 import Markdown from 'react-markdown';
 import { Sparkles, Send, User, Bot, RefreshCw, Trash2 } from 'lucide-react';
 
 interface AIInsightsProps {
   transactions: PersonalTransaction[];
   investments: Investment[];
+  creditCards: CreditCard[];
+  creditTransactions: CreditTransaction[];
+  currentUser: UserType | null;
+  aiConversation: AiConversation | null;
+  token: string;
 }
 
 interface Message {
@@ -15,11 +21,25 @@ interface Message {
   content: string;
 }
 
-const AIInsights: React.FC<AIInsightsProps> = ({ transactions, investments }) => {
+const AIInsights: React.FC<AIInsightsProps> = ({ 
+  transactions, 
+  investments, 
+  creditCards, 
+  creditTransactions, 
+  currentUser,
+  aiConversation,
+  token
+}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (aiConversation) {
+      setMessages(aiConversation.messages);
+    }
+  }, [aiConversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,10 +50,27 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions, investments }) =>
   }, [messages]);
 
   const handleInitialAnalysis = async () => {
+    if (aiConversation && aiConversation.messages.length > 0) return; // Don't re-analyze if history exists
+
     setIsLoading(true);
     try {
-      const result = await aiService.generateFinancialInsights(transactions, investments);
-      setMessages([{ role: 'assistant', content: result }]);
+      const result = await aiService.generateFinancialInsights(
+        transactions, 
+        investments, 
+        creditCards, 
+        creditTransactions, 
+        currentUser
+      );
+      const initialMessage: Message = { role: 'assistant', content: result };
+      const updatedMessages = [initialMessage];
+      setMessages(updatedMessages);
+      
+      // Save initial message to DB
+      await api.saveAiConversation({
+        messages: updatedMessages.map(m => ({ ...m, timestamp: new Date().toISOString() })),
+        lastUpdate: new Date().toISOString()
+      }, token);
+
     } catch (error) {
       console.error("Error fetching insights:", error);
       setMessages([{ role: 'assistant', content: "Erro ao carregar análise inicial. Tente novamente." }]);
@@ -43,7 +80,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions, investments }) =>
   };
 
   useEffect(() => {
-    if (messages.length === 0 && (transactions.length > 0 || investments.length > 0)) {
+    if (messages.length === 0 && (transactions.length > 0 || investments.length > 0 || creditCards.length > 0)) {
       handleInitialAnalysis();
     }
   }, []);
@@ -54,12 +91,30 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions, investments }) =>
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const newUserMessage: Message = { role: 'user', content: userMessage };
+    const currentMessages = [...messages, newUserMessage];
+    setMessages(currentMessages);
     setIsLoading(true);
 
     try {
-      const response = await aiService.askQuestion(userMessage, transactions, investments);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      const response = await aiService.askQuestion(
+        userMessage, 
+        transactions, 
+        investments, 
+        creditCards, 
+        creditTransactions, 
+        currentUser
+      );
+      const assistantMessage: Message = { role: 'assistant', content: response };
+      const finalMessages = [...currentMessages, assistantMessage];
+      setMessages(finalMessages);
+      
+      // Save all messages to DB
+      await api.saveAiConversation({
+        messages: finalMessages.map(m => ({ ...m, timestamp: new Date().toISOString() })),
+        lastUpdate: new Date().toISOString()
+      }, token);
+
     } catch (error) {
       console.error("Error asking question:", error);
       setMessages(prev => [...prev, { role: 'assistant', content: "Desculpe, tive um problema para processar sua pergunta." }]);
@@ -68,8 +123,11 @@ const AIInsights: React.FC<AIInsightsProps> = ({ transactions, investments }) =>
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
     setMessages([]);
+    if (token) {
+        await api.saveAiConversation({ messages: [], lastUpdate: new Date().toISOString() }, token);
+    }
     handleInitialAnalysis();
   };
 
