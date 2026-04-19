@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { CreditCard, CreditTransaction, Language, Currency } from '../types';
+import { CreditCard, CreditTransaction, Language, Currency, TransactionType } from '../types';
 import { api } from '../services/api';
 import { useTranslation } from '../translations';
 import { 
@@ -15,9 +15,18 @@ import {
     Calendar,
     DollarSign,
     Edit2,
-    Settings
+    Settings,
+    CheckCircle
 } from 'lucide-react';
 import { User } from '../types';
+
+const CATEGORIES_PT = [
+    'Alimentação', 'Moradia', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Investimentos', 'Aporte', 'Assinaturas', 'Outros'
+];
+
+const CATEGORIES_EN = [
+    'Food', 'Housing', 'Transport', 'Health', 'Education', 'Leisure', 'Investments', 'Contributions', 'Subscriptions', 'Others'
+];
 
 interface CreditsProps {
     creditCards: CreditCard[];
@@ -59,6 +68,9 @@ const Credits: React.FC<CreditsProps> = ({
     const [installments, setInstallments] = useState('1');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [isOverdraft, setIsOverdraft] = useState(false);
+    const [category, setCategory] = useState(language === 'pt-BR' ? CATEGORIES_PT[0] : CATEGORIES_EN[0]);
+
+    const categories = language === 'pt-BR' ? CATEGORIES_PT : CATEGORIES_EN;
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat(language, {
@@ -70,6 +82,7 @@ const Credits: React.FC<CreditsProps> = ({
     const cardExpenses = useMemo(() => {
         const totals: Record<string, number> = {};
         creditTransactions.forEach(tx => {
+            if (tx.status === 'PAID') return;
             if (tx.cardId && tx.cardId !== 'overdraft') {
                 totals[tx.cardId] = (totals[tx.cardId] || 0) + tx.amount;
             }
@@ -79,7 +92,7 @@ const Credits: React.FC<CreditsProps> = ({
 
     const overdraftSpent = useMemo(() => {
         return creditTransactions
-            .filter(tx => tx.isOverdraft || tx.cardId === 'overdraft')
+            .filter(tx => (tx.isOverdraft || tx.cardId === 'overdraft') && tx.status !== 'PAID')
             .reduce((acc, tx) => acc + tx.amount, 0);
     }, [creditTransactions]);
 
@@ -124,8 +137,9 @@ const Credits: React.FC<CreditsProps> = ({
                 installments: 1, 
                 totalInstallments: totalInst,
                 date,
-                category: isOverdraft ? 'Cheque Especial' : 'Cartão de Crédito',
-                isOverdraft
+                category: category || (isOverdraft ? 'Cheque Especial' : 'Cartão de Crédito'),
+                isOverdraft,
+                status: 'PENDING'
             }, token);
             
             setIsTransactionModalOpen(false);
@@ -136,6 +150,33 @@ const Credits: React.FC<CreditsProps> = ({
             setIsOverdraft(false);
         } catch (err) {
             console.error("Error saving credit transaction:", err);
+        }
+    };
+
+    const handlePayNow = async (tx: CreditTransaction) => {
+        if (!token) return;
+        try {
+            // 1. Criar transação real de despesa (sai da conta)
+            await api.createTransaction({
+                description: `PGTO: ${tx.description}`,
+                amount: tx.amount,
+                currency: selectedCurrency,
+                date: new Date().toISOString().split('T')[0],
+                type: TransactionType.Despesa,
+                category: tx.category || 'Pagamento'
+            }, token);
+
+            // 2. Atualizar status da transação de crédito
+            await api.createCreditTransaction({
+                ...tx,
+                status: 'PAID',
+                paymentDate: new Date().toISOString().split('T')[0]
+            }, token);
+
+            alert('Pagamento realizado e registrado nas suas despesas!');
+        } catch (err) {
+            console.error("Error paying transaction:", err);
+            alert('Erro ao processar pagamento.');
         }
     };
 
@@ -317,9 +358,24 @@ const Credits: React.FC<CreditsProps> = ({
                                         <span className="text-sm font-black text-gray-900 dark:text-white">{formatCurrency(tx.amount)}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button onClick={() => handleDeleteTransaction(tx.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            {tx.status !== 'PAID' ? (
+                                                <button 
+                                                    onClick={() => handlePayNow(tx)}
+                                                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm"
+                                                >
+                                                    {t('payNow')}
+                                                </button>
+                                            ) : (
+                                                <div className="flex items-center gap-1 text-green-500 font-bold text-[10px] uppercase tracking-wider bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-lg">
+                                                    <CheckCircle size={12} />
+                                                    {t('paid')}
+                                                </div>
+                                            )}
+                                            <button onClick={() => handleDeleteTransaction(tx.id)} className="text-gray-300 hover:text-red-500 transition-colors p-1">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -440,6 +496,17 @@ const Credits: React.FC<CreditsProps> = ({
                                     placeholder="Ex: Supermercado, Aluguel..." 
                                     className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">{t('category')}</label>
+                                <select 
+                                    value={category} 
+                                    onChange={e => setCategory(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                >
+                                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

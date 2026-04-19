@@ -9,12 +9,13 @@ import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
-import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language } from '../types';
+import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction } from '../types';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
 import { useTranslation } from '../translations';
 
 interface DashboardProps {
     transactions: PersonalTransaction[];
+    creditTransactions: CreditTransaction[];
     investments: Investment[];
     setActivePage: (page: Page) => void;
     onEditTransaction: (transaction: PersonalTransaction) => void;
@@ -27,7 +28,20 @@ interface DashboardProps {
     onCurrencyChange: (currency: Currency) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setActivePage, onEditTransaction, onDeleteTransaction, onNewTransaction, onOpenTransfer, searchQuery, language, selectedCurrency, onCurrencyChange }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+    transactions, 
+    creditTransactions = [], 
+    investments, 
+    setActivePage, 
+    onEditTransaction, 
+    onDeleteTransaction, 
+    onNewTransaction, 
+    onOpenTransfer, 
+    searchQuery, 
+    language, 
+    selectedCurrency, 
+    onCurrencyChange 
+}) => {
   const t = useTranslation(language);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const monthInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +73,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       
       const gastMes = txsMes
           .filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category))
-          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0) +
+          (creditTransactions || [])
+          .filter(ctx => ctx.date.startsWith(selectedMonth) && ctx.status !== 'PAID')
+          .reduce((acc, ctx) => acc + (Number(ctx.amount) || 0), 0);
           
       // "Available Balance" - Raw net sum of ALL transactions
       const saldoTotal = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
@@ -85,12 +102,14 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, investments, setAct
       return months.map((name, i) => {
           const mStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
           const txs = transactions.filter(t => t.date.startsWith(mStr) && (t.currency || 'BRL') === selectedCurrency);
+          const ctxs = (creditTransactions || []).filter(c => c.date.startsWith(mStr) && c.status !== 'PAID');
           
           return {
               name,
-              // Graph logic: Matching Cards (Incomes: all, Expenses: real)
+              // Graph logic: Matching Cards (Incomes: all, Expenses: real + pending credit)
               income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (Number(t.amount) || 0), 0),
-              expense: txs.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + (Number(t.amount) || 0), 0)
+              expense: txs.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + (Number(t.amount) || 0), 0) +
+                       ctxs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0)
           };
       });
     }, [transactions, selectedCurrency, selectedMonth]);

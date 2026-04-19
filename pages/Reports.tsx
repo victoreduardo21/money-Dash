@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useRef } from 'react';
-import { PersonalTransaction, TransactionType, Currency, Language, Investment } from '../types';
+import { PersonalTransaction, TransactionType, Currency, Language, Investment, CreditTransaction } from '../types';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
@@ -12,6 +12,7 @@ import { useTranslation } from '../translations';
 
 interface ReportsProps {
     transactions: PersonalTransaction[];
+    creditTransactions: CreditTransaction[];
     investments: Investment[];
     language: Language;
     selectedCurrency: Currency;
@@ -23,7 +24,7 @@ const COLOR_DESPESA = '#EF4444';
 const COLOR_APORTE = '#6366F1';
 const COLOR_SALDO = '#3B82F6';
 
-const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, selectedCurrency, onCurrencyChange }) => {
+const Reports: React.FC<ReportsProps> = ({ transactions, creditTransactions = [], investments, language, selectedCurrency, onCurrencyChange }) => {
     const t = useTranslation(language);
     const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
     const monthInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +82,12 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                 }
             }
         });
+
+        const pendingCreditMonth = (creditTransactions || [])
+            .filter(ctx => ctx.date.startsWith(selectedMonth) && ctx.status !== 'PAID')
+            .reduce((acc, ctx) => acc + (Number(ctx.amount) || 0), 0);
+        
+        despReal += pendingCreditMonth;
         
         const saldoTotal = transactions
             .filter(t => (t.currency || 'BRL') === selectedCurrency)
@@ -128,6 +135,16 @@ const Reports: React.FC<ReportsProps> = ({ transactions, investments, language, 
                         // O saldo SEMPRE considera tudo
                         data[monthIndex].balance -= amount;
                     }
+                }
+            }
+        });
+
+        // Inclui gastos pendentes no crédito no gráfico de barras/áreas
+        (creditTransactions || []).forEach(ctx => {
+            if (ctx.date.startsWith(selectedYear) && ctx.status !== 'PAID') {
+                const monthIndex = parseInt(ctx.date.split('-')[1]) - 1;
+                if (monthIndex >= 0 && monthIndex < 12) {
+                    data[monthIndex].expense += Number(ctx.amount) || 0;
                 }
             }
         });

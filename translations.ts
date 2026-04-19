@@ -149,7 +149,10 @@ export const translations = {
     overdraftLimit: 'Limite do Cheque Especial',
     usedOverdraft: 'Cheque Especial Utilizado',
     login: 'Entrar na Conta',
-    register: 'Criar uma Conta'
+    register: 'Criar uma Conta',
+    payNow: 'Pagar Agora',
+    paid: 'Pago',
+    selectCategory: 'Selecionar Categoria'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -299,7 +302,10 @@ export const translations = {
     overdraftLimit: 'Overdraft Limit',
     usedOverdraft: 'Used Overdraft',
     login: 'Login to Account',
-    register: 'Create an Account'
+    register: 'Create an Account',
+    payNow: 'Pay Now',
+    paid: 'Paid',
+    selectCategory: 'Select Category'
   }
 };
 

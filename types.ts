@@ -62,6 +62,8 @@ export interface CreditTransaction {
     category: string;
     userId?: string;
     isOverdraft?: boolean;
+    status?: 'PENDING' | 'PAID';
+    paymentDate?: string;
 }
 
 export interface AiMessage {

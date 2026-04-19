@@ -73,10 +73,13 @@ service cloud.firestore {
     }
 
     function isValidCreditTransaction(data) {
-      return data.keys().hasAll(['cardId', 'description', 'amount', 'totalInstallments', 'date', 'userId']) &&
+      return data.keys().hasAll(['cardId', 'description', 'amount', 'totalInstallments', 'date', 'userId', 'category']) &&
              data.description is string && data.description.size() > 0 && data.description.size() < 255 &&
              data.amount is number &&
              data.totalInstallments is int &&
+             data.category is string &&
+             (data.status == null || data.status in ['PENDING', 'PAID']) &&
+             (data.paymentDate == null || data.paymentDate is string) &&
              data.userId == request.auth.uid;
     }
 
