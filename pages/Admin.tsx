@@ -37,10 +37,11 @@ const Admin: React.FC = () => {
     };
 
     const handleToggleStatus = async (email: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        const newStatus = (currentStatus === 'ACTIVE') ? 'INACTIVE' : 'ACTIVE';
         try {
             await api.toggleUserStatus({ targetEmail: email, status: newStatus }, '');
-            setUsers(prev => prev.map(u => u.email === email ? { ...u, subscriptionStatus: newStatus as any } : u));
+            // Update local state is handled implicitly by the onSnapshot listener, but we can do it manually for instant feedback if desired.
+            // However, the listener is better for consistency.
         } catch (error) {
             console.error("Erro ao alternar status:", error);
         }
