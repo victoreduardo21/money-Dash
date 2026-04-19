@@ -16,7 +16,7 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction } from './types';
 import { api } from './services/api';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -25,6 +25,7 @@ import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
 import { CheckCircleIcon } from 'lucide-react';
 import { translations } from './translations';
+import Credits from './pages/Credits';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,6 +33,8 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<PersonalTransaction[]>([]);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [tasks, setTasks] = useState<CalendarEvent[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language) || 'pt-BR');
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => (localStorage.getItem('selected_currency') as Currency) || 'BRL');
@@ -91,6 +94,8 @@ const App: React.FC = () => {
         setTransactions([]);
         setInvestments([]);
         setTasks([]);
+        setCreditCards([]);
+        setCreditTransactions([]);
       }
       setIsAuthReady(true);
     });
@@ -107,6 +112,8 @@ const App: React.FC = () => {
             setTransactions([]);
             setInvestments([]);
             setTasks([]);
+            setCreditCards([]);
+            setCreditTransactions([]);
         }
         return;
     };
@@ -132,10 +139,26 @@ const App: React.FC = () => {
       console.error("Error fetching tasks:", error);
     });
 
+    const qCC = query(collection(db, 'credit_cards'), where('userId', '==', token));
+    const unsubCC = onSnapshot(qCC, (snap) => {
+      setCreditCards(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditCard)));
+    }, (error) => {
+      console.error("Error fetching credit cards:", error);
+    });
+
+    const qCT = query(collection(db, 'credit_transactions'), where('userId', '==', token));
+    const unsubCT = onSnapshot(qCT, (snap) => {
+      setCreditTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditTransaction)));
+    }, (error) => {
+      console.error("Error fetching credit transactions:", error);
+    });
+
     return () => {
       unsubT();
       unsubI();
       unsubC();
+      unsubCC();
+      unsubCT();
     };
   }, [token, isAuthReady]);
 
@@ -284,6 +307,7 @@ const App: React.FC = () => {
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} />}
+            {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
             {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}
         </main>

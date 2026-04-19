@@ -61,6 +61,24 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
+    function isValidCreditCard(data) {
+      return data.keys().hasAll(['name', 'limit', 'closingDay', 'dueDay', 'currency', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.limit is number &&
+             data.closingDay is int && data.closingDay >= 1 && data.closingDay <= 31 &&
+             data.dueDay is int && data.dueDay >= 1 && data.dueDay <= 31 &&
+             data.currency in ['BRL', 'USD'] &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidCreditTransaction(data) {
+      return data.keys().hasAll(['cardId', 'description', 'amount', 'totalInstallments', 'date', 'userId']) &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 255 &&
+             data.amount is number &&
+             data.totalInstallments is int &&
+             data.userId == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -90,6 +108,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && isValidCalendarEvent(request.resource.data);
       allow update: if isAuthenticated() && isDocOwner() && isValidCalendarEvent(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /credit_cards/{cardId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCreditCard(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCreditCard(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /credit_transactions/{txId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCreditTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCreditTransaction(request.resource.data);
       allow delete: if isAuthenticated() && isDocOwner();
     }
   }

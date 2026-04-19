@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction } from '../types';
 import { db, auth } from './firebase';
 import { 
     collection, 
@@ -272,6 +272,78 @@ export const api = {
             return { error: false };
         } catch (error) {
             handleFirestoreError(error, OperationType.UPDATE, 'users/' + uid);
+        }
+    },
+    getCreditCards: async (token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'credit_cards'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as CreditCard));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'credit_cards');
+            return [];
+        }
+    },
+    createCreditCard: async (card: Omit<CreditCard, 'id'> & { id?: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const { id, ...data } = card;
+            if (id) {
+                await updateDoc(doc(db, 'credit_cards', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'credit_cards'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'credit_cards');
+        }
+    },
+    deleteCreditCard: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'credit_cards', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'credit_cards/' + id);
+        }
+    },
+    getCreditTransactions: async (token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'credit_transactions'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as CreditTransaction));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'credit_transactions');
+            return [];
+        }
+    },
+    createCreditTransaction: async (transaction: Omit<CreditTransaction, 'id'> & { id?: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const { id, ...data } = transaction;
+            if (id) {
+                await updateDoc(doc(db, 'credit_transactions', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'credit_transactions'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'credit_transactions');
+        }
+    },
+    deleteCreditTransaction: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'credit_transactions', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'credit_transactions/' + id);
         }
     }
 };

@@ -57,6 +57,37 @@
         "userId": { "type": "string" }
       },
       "required": ["description", "date", "done", "userId"]
+    },
+    "CreditCard": {
+      "title": "CreditCard",
+      "description": "User credit card details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "limit": { "type": "number" },
+        "closingDay": { "type": "integer" },
+        "dueDay": { "type": "integer" },
+        "currency": { "type": "string", "enum": ["BRL", "USD"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "limit", "closingDay", "dueDay", "currency", "userId"]
+    },
+    "CreditTransaction": {
+      "title": "CreditTransaction",
+      "description": "Expense on a credit card or overdraft",
+      "type": "object",
+      "properties": {
+        "cardId": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "installments": { "type": "integer" },
+        "totalInstallments": { "type": "integer" },
+        "date": { "type": "string", "format": "date" },
+        "category": { "type": "string" },
+        "userId": { "type": "string" },
+        "isOverdraft": { "type": "boolean" }
+      },
+      "required": ["cardId", "description", "amount", "totalInstallments", "date", "userId"]
     }
   },
   "firestore": {
@@ -75,6 +106,14 @@
     "/calendar/{eventId}": {
       "schema": "CalendarEvent",
       "description": "Calendar events collection"
+    },
+    "/credit_cards/{cardId}": {
+      "schema": "CreditCard",
+      "description": "User credit cards"
+    },
+    "/credit_transactions/{txId}": {
+      "schema": "CreditTransaction",
+      "description": "Credit and overdraft transactions"
     }
   }
 }

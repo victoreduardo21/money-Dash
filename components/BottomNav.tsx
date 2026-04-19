@@ -4,7 +4,7 @@ import { DashboardIcon } from './icons/DashboardIcon';
 import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, CreditCard } from 'lucide-react';
 import { Page, Language } from '../types';
 import { useTranslation } from '../translations';
 
@@ -21,9 +21,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ activePage, setActivePage, langua
     const navItems: { page: Page; icon: React.ReactNode; label: string; protected?: boolean }[] = [
         { page: 'Dashboard', icon: <DashboardIcon className="w-6 h-6" />, label: t('dashboard') },
         { page: 'Transações', icon: <SwitchHorizontalIcon className="w-6 h-6" />, label: t('transactions') },
-        { page: 'Agenda', icon: <CalendarIcon className="w-6 h-6" />, label: t('agenda'), protected: true },
-        { page: 'Insights', icon: <Sparkles className="w-6 h-6" />, label: t('insightsIA'), protected: true },
+        { page: 'Créditos', icon: <CreditCard className="w-6 h-6" />, label: t('credits') },
         { page: 'Investimentos', icon: <TrendingUpIcon className="w-6 h-6" />, label: t('investments'), protected: true },
+        { page: 'Agenda', icon: <CalendarIcon className="w-6 h-6" />, label: t('agenda'), protected: true },
     ];
 
     return (

@@ -7,7 +7,7 @@ import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { ChartPieIcon } from './icons/ChartPieIcon';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, CreditCard } from 'lucide-react';
 import { Page, User, Language } from '../types';
 import { useTranslation } from '../translations';
 
@@ -84,6 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, activePage, setAct
                 <nav className="space-y-1">
                     <NavLink icon={<DashboardIcon className="h-5 w-5" />} active={activePage === 'Dashboard'} onClick={() => handleNavClick('Dashboard')}>{t('dashboard')}</NavLink>
                     <NavLink icon={<SwitchHorizontalIcon className="h-5 w-5" />} active={activePage === 'Transações'} onClick={() => handleNavClick('Transações')}>{t('transactions')}</NavLink>
+                    <NavLink icon={<CreditCard className="h-5 w-5" />} active={activePage === 'Créditos'} onClick={() => handleNavClick('Créditos')}>{t('credits')}</NavLink>
                     
                     {!isFreePlan && (
                         <>

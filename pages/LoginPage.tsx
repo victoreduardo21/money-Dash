@@ -280,8 +280,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 ) : (
                     <>
                         <div className="text-left">
-                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{isLoginMode ? 'Bem-vindo de volta' : 'Crie sua conta'}</h2>
+                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{isLoginMode ? t('login') : t('register')}</h2>
                             <p className="mt-2 text-sm text-gray-500 font-medium">{isLoginMode ? 'Acesse sua conta para continuar.' : 'Comece a organizar suas finanças hoje.'}</p>
+                        </div>
+
+                        <div className="md:hidden flex gap-2 p-1 bg-gray-100 rounded-xl mt-4">
+                            <button 
+                                onClick={() => setIsLoginMode(true)}
+                                className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${isLoginMode ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'}`}
+                            >
+                                {t('login')}
+                            </button>
+                            <button 
+                                onClick={() => setIsLoginMode(false)}
+                                className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${!isLoginMode ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'}`}
+                            >
+                                {t('register')}
+                            </button>
                         </div>
 
                         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>

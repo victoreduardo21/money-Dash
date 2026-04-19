@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -20,6 +20,7 @@ export interface PersonalTransaction {
   date: string;
   type: TransactionType;
   category: string;
+  userId?: string;
 }
 
 export interface Investment {
@@ -29,6 +30,7 @@ export interface Investment {
     currentValue: number;
     yieldRate: number; // Percentage
     currency: Currency;
+    userId?: string;
 }
 
 export interface CalendarEvent {
@@ -36,6 +38,30 @@ export interface CalendarEvent {
     description: string;
     date: string;
     done: boolean;
+    userId?: string;
+}
+
+export interface CreditCard {
+    id: string;
+    name: string;
+    limit: number;
+    closingDay: number;
+    dueDay: number;
+    currency: Currency;
+    userId?: string;
+}
+
+export interface CreditTransaction {
+    id: string;
+    cardId: string; // "cheque_especial" as a special ID or a separate flag
+    description: string;
+    amount: number;
+    installments: number; // Current installment / Total installments (e.g., 1/12)
+    totalInstallments: number;
+    date: string;
+    category: string;
+    userId?: string;
+    isOverdraft?: boolean;
 }
 
 export interface User {
