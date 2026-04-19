@@ -31,7 +31,8 @@ service cloud.firestore {
              data.email is string && data.email.matches('^.+@.+$') &&
              data.plan in ['FREE', 'PRO', 'VIP'] &&
              (data.phone == null || (data.phone is string && data.phone.size() < 20)) &&
-             (data.cpf == null || (data.cpf is string && data.cpf.size() < 20));
+             (data.cpf == null || (data.cpf is string && data.cpf.size() < 20)) &&
+             (data.overdraftLimit == null || data.overdraftLimit is number);
     }
     
     function isValidTransaction(data) {

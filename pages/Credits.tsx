@@ -13,8 +13,11 @@ import {
     ChevronDown,
     ChevronUp,
     Calendar,
-    DollarSign
+    DollarSign,
+    Edit2,
+    Settings
 } from 'lucide-react';
+import { User } from '../types';
 
 interface CreditsProps {
     creditCards: CreditCard[];
@@ -23,6 +26,7 @@ interface CreditsProps {
     selectedCurrency: Currency;
     onCurrencyChange: (c: Currency) => void;
     token: string;
+    currentUser: User | null;
 }
 
 const Credits: React.FC<CreditsProps> = ({ 
@@ -31,17 +35,22 @@ const Credits: React.FC<CreditsProps> = ({
     language, 
     selectedCurrency, 
     onCurrencyChange, 
-    token 
+    token,
+    currentUser
 }) => {
     const t = useTranslation(language);
     const [isCardModalOpen, setIsCardModalOpen] = useState(false);
     const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [isOverdraftModalOpen, setIsOverdraftModalOpen] = useState(false);
     
     // New Card Form
     const [cardName, setCardName] = useState('');
     const [cardLimit, setCardLimit] = useState('');
     const [closingDay, setClosingDay] = useState('10');
     const [dueDay, setDueDay] = useState('15');
+
+    // Overdraft Limit
+    const [tempOverdraftLimit, setTempOverdraftLimit] = useState(currentUser?.overdraftLimit?.toString() || '0');
     
     // New Transaction Form
     const [selectedCardId, setSelectedCardId] = useState('');
@@ -73,6 +82,16 @@ const Credits: React.FC<CreditsProps> = ({
             .filter(tx => tx.isOverdraft || tx.cardId === 'overdraft')
             .reduce((acc, tx) => acc + tx.amount, 0);
     }, [creditTransactions]);
+
+    const handleSaveOverdraftLimit = async () => {
+        if (!token) return;
+        try {
+            await api.updateUser(token, { overdraftLimit: parseFloat(tempOverdraftLimit) });
+            setIsOverdraftModalOpen(false);
+        } catch (err) {
+            console.error("Error saving overdraft limit:", err);
+        }
+    };
 
     const handleSaveCard = async () => {
         if (!cardName || !cardLimit) return;
@@ -163,12 +182,36 @@ const Credits: React.FC<CreditsProps> = ({
                     <div className="relative z-10 flex flex-col h-full justify-between">
                         <div className="flex items-center justify-between mb-8">
                             <span className="text-xs font-black uppercase tracking-widest opacity-80">{t('overdraft')}</span>
-                            <AlertCircle size={20} className="opacity-80" />
+                            <button 
+                                onClick={() => setIsOverdraftModalOpen(true)}
+                                className="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors"
+                            >
+                                <Edit2 size={16} />
+                            </button>
                         </div>
                         <div>
                             <p className="text-3xl font-black tracking-tight mb-2">{formatCurrency(overdraftSpent)}</p>
-                            <div className="flex items-center gap-2 bg-white/20 w-fit px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                                {t('usedOverdraft')}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 bg-white/20 w-fit px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                                    {t('usedOverdraft')}
+                                </div>
+                                
+                                {currentUser?.overdraftLimit ? (
+                                    <div className="space-y-1.5 pt-2">
+                                        <div className="flex justify-between text-[10px] font-black uppercase opacity-80">
+                                            <span>{t('availableLimit')}</span>
+                                            <span>{formatCurrency(currentUser.overdraftLimit - overdraftSpent)}</span>
+                                        </div>
+                                        <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-white transition-all duration-1000"
+                                                style={{ width: `${Math.min((overdraftSpent / currentUser.overdraftLimit) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] font-bold opacity-70 italic pt-2">Limite não configurado</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -438,6 +481,50 @@ const Credits: React.FC<CreditsProps> = ({
                                 className={`w-full py-4 mt-4 ${isOverdraft ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'} text-white rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg active:scale-95`}
                             >
                                 {t('save')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isOverdraftModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsOverdraftModalOpen(false)}></div>
+                    <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-2xl">
+                                <AlertCircle className="text-red-600" />
+                            </div>
+                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('overdraft')}</h2>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">{t('overdraftLimit')}</label>
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">
+                                        {selectedCurrency === 'BRL' ? 'R$' : '$'}
+                                    </div>
+                                    <input 
+                                        type="number" 
+                                        value={tempOverdraftLimit} 
+                                        onChange={e => setTempOverdraftLimit(e.target.value)}
+                                        placeholder="0,00" 
+                                        className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white font-black text-xl outline-none focus:ring-2 focus:ring-red-500 transition-all"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-2 px-1">O cheque especial permite que você use um valor extra além do seu saldo disponível em conta.</p>
+                            </div>
+                            
+                            <button 
+                                onClick={handleSaveOverdraftLimit}
+                                className="w-full py-4 mt-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                            >
+                                {t('save')}
+                            </button>
+                            <button 
+                                onClick={() => setIsOverdraftModalOpen(false)}
+                                className="w-full py-4 text-gray-400 font-bold uppercase tracking-widest text-xs hover:text-gray-600 transition-colors"
+                            >
+                                {t('cancel')}
                             </button>
                         </div>
                     </div>

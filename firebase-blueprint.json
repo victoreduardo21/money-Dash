@@ -13,7 +13,8 @@
         "plan": { "type": "string", "enum": ["FREE", "PRO", "VIP"] },
         "billingCycle": { "type": "string", "enum": ["MONTHLY", "ANNUAL"] },
         "language": { "type": "string", "enum": ["pt-BR", "en-US"] },
-        "subscriptionStatus": { "type": "string", "enum": ["ACTIVE", "PENDING", "OVERDUE"] }
+        "subscriptionStatus": { "type": "string", "enum": ["ACTIVE", "PENDING", "OVERDUE", "INACTIVE"] },
+        "overdraftLimit": { "type": "number" }
       },
       "required": ["name", "email", "plan"]
     },

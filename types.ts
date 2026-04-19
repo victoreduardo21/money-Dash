@@ -79,4 +79,5 @@ export interface User {
   language?: Language;
   role?: 'admin' | 'user';
   phoneVerified?: boolean;
+  overdraftLimit?: number;
 }

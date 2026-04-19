@@ -307,7 +307,7 @@ const App: React.FC = () => {
             {activePage === 'Agenda' && <Agenda tasks={tasks} onAddTask={async (t) => { await api.createCalendarEvent(t, token); }} onToggleTask={async (id, d) => { await api.toggleCalendarEvent(id, d, token); }} onDeleteTask={async (id) => { await api.deleteCalendarEvent(id, token); }} language={language} />}
             {activePage === 'Relatórios' && <Reports transactions={transactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} />}
-            {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} />}
+            {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
             {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}
         </main>
