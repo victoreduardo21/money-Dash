@@ -86,6 +86,16 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     return cat.includes('invest') || cat === 'aporte' || cat === 'contribution' || cat === 'resgate';
   };
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const cleanDate = dateStr.split('T')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [y, m, d] = parts;
+    if (currentLanguage === 'pt-BR') return `${d}/${m}/${y}`;
+    return `${m}/${d}/${y}`;
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm md:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
       <div className="p-4 md:p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/50">
@@ -99,7 +109,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             <div className="flex justify-between items-start">
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-bold text-gray-900 dark:text-white truncate">{transaction.description}</p>
-                <p className="text-[10px] text-gray-500 font-medium">{new Date(transaction.date).toLocaleDateString(currentLanguage, {timeZone: 'UTC'})}</p>
+                <p className="text-[10px] text-gray-500 font-medium">{formatDate(transaction.date)}</p>
               </div>
               {onEdit && onDelete && <ActionMenu transaction={transaction} onEdit={onEdit} onDelete={onDelete} language={currentLanguage} />}
             </div>
@@ -167,7 +177,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
                     </span>
                 </td>
                 <td className="px-4 py-3">
-                  {new Date(transaction.date).toLocaleDateString(currentLanguage, {timeZone: 'UTC'})}
+                  {formatDate(transaction.date)}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] font-black px-2.5 py-1 rounded-full border uppercase tracking-tighter ${getCategoryColor(transaction.category)}`}>

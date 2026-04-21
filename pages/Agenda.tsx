@@ -51,7 +51,17 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
         }
     };
 
-    const sortedTasks = [...tasks].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedTasks = [...tasks].sort((a, b) => a.date.localeCompare(b.date));
+
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        const cleanDate = dateStr.split('T')[0];
+        const parts = cleanDate.split('-');
+        if (parts.length !== 3) return dateStr;
+        const [y, m, d] = parts;
+        if (language === 'pt-BR') return `${d}/${m}/${y}`;
+        return `${m}/${d}/${y}`;
+    };
 
     const getTodayString = () => {
         const d = new Date();
@@ -107,7 +117,7 @@ const Agenda: React.FC<AgendaProps> = ({ tasks, onAddTask, onToggleTask, onDelet
                                                     {task.done ? t('done') : isPast ? t('past') : isToday ? t('today') : t('future')}
                                                 </span>
                                                 <span className={`${task.done ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                    {new Date(task.date).toLocaleDateString(language, { timeZone: 'UTC' })}
+                                                    {formatDate(task.date)}
                                                 </span>
                                             </div>
                                         </div>
