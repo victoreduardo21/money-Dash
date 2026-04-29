@@ -2,57 +2,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
+    // ===============================================================
     // Helper Functions
-    function isSignedIn() {
+    // ===============================================================
+    function isAuthenticated() {
       return request.auth != null;
     }
-
-    function isSuperAdmin() {
-      return isSignedIn() && request.auth.token.email == "eduardopontesdias@outlook.com";
-    }
-
+    
     function isAdmin() {
-      return isSuperAdmin() || 
-        (isSignedIn() && 
-         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "eduardopontesdias@outlook.com")
+        );
     }
-
+    
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
-
+    
     function isDocOwner() {
-      return isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    // Refined read rule for list queries
-    // Normal users check their own data first (fast, matches query filter)
-    // SuperAdmins check token (fast, no DB read)
-    // Admins check DB (slower)
-    function canReadDoc() {
-      return isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        request.auth.token.email == "eduardopontesdias@outlook.com" ||
-        isAdmin()
-      );
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128;
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
     }
     
     function isValidUser(data) {
@@ -60,15 +30,9 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
              data.email is string && data.email.matches('^.+@.+$') &&
              data.plan in ['FREE', 'PRO', 'VIP'] &&
-             (data.phone == null || (data.phone is string && data.phone.size() < 25)) &&
-             (data.cpf == null || (data.cpf is string && data.cpf.size() < 25)) &&
-             (data.subscriptionStatus == null || data.subscriptionStatus in ['ACTIVE', 'PENDING', 'OVERDUE', 'INACTIVE']) &&
-             (data.role == null || data.role in ['admin', 'user']) &&
-             (data.billingCycle == null || data.billingCycle in ['MONTHLY', 'ANNUAL']) &&
-             (data.phoneVerified == null || data.phoneVerified is bool) &&
-             (data.overdraftLimit == null || data.overdraftLimit is number) &&
-             (data.createdAt == null || data.createdAt is string) &&
-             (data.avatar == null || data.avatar is string);
+             (data.phone == null || (data.phone is string && data.phone.size() < 20)) &&
+             (data.cpf == null || (data.cpf is string && data.cpf.size() < 20)) &&
+             (data.overdraftLimit == null || data.overdraftLimit is number);
     }
     
     function isValidTransaction(data) {
@@ -139,64 +103,60 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
-    match /test/connection {
-      allow read: if isSignedIn();
-    }
-
     match /users/{userId} {
-      allow read: if isOwner(userId) || isSuperAdmin() || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if (isOwner(userId) || isSuperAdmin() || isAdmin()) && isValidUser(incoming());
-      allow delete: if isSuperAdmin() || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
     
     match /transactions/{transactionId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidTransaction(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidTransaction(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidTransaction(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
     
     match /investments/{investmentId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidInvestment(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidInvestment(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidInvestment(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidInvestment(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
     
     match /calendar/{eventId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidCalendarEvent(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidCalendarEvent(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCalendarEvent(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCalendarEvent(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
 
     match /credit_cards/{cardId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidCreditCard(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidCreditCard(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCreditCard(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCreditCard(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
 
     match /credit_transactions/{txId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidCreditTransaction(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidCreditTransaction(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidCreditTransaction(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidCreditTransaction(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
 
     match /ai_conversations/{convId} {
-      allow read: if isOwner(convId) || isAdmin();
-      allow create: if isSignedIn() && isValidAiConversation(incoming());
-      allow update: if (isOwner(convId) || isAdmin()) && isValidAiConversation(incoming());
-      allow delete: if isOwner(convId) || isAdmin();
+      allow read: if isOwner(convId);
+      allow create: if isAuthenticated() && isValidAiConversation(request.resource.data);
+      allow update: if isOwner(convId) && isValidAiConversation(request.resource.data);
+      allow delete: if isOwner(convId);
     }
 
     match /subscriptions/{subId} {
-      allow read: if canReadDoc();
-      allow create: if isSignedIn() && isValidSubscription(incoming());
-      allow update: if isSignedIn() && (isDocOwner() || isAdmin()) && isValidSubscription(incoming());
-      allow delete: if isSignedIn() && (isDocOwner() || isAdmin());
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidSubscription(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidSubscription(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
     }
   }
 }

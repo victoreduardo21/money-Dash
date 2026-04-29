@@ -106,5 +106,4 @@ export interface User {
   role?: 'admin' | 'user';
   phoneVerified?: boolean;
   overdraftLimit?: number;
-  createdAt?: string;
 }

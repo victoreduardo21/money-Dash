@@ -17,7 +17,7 @@ import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
 import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription } from './types';
-import { api, OperationType, handleFirestoreError } from './services/api';
+import { api } from './services/api';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
@@ -126,42 +126,42 @@ const App: React.FC = () => {
     const unsubT = onSnapshot(qT, (snap) => {
       setTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonalTransaction)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'transactions');
+      console.error("Error fetching transactions:", error);
     });
 
     const qI = query(collection(db, 'investments'), where('userId', '==', token));
     const unsubI = onSnapshot(qI, (snap) => {
       setInvestments(snap.docs.map(d => ({ ...d.data(), id: d.id } as Investment)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'investments');
+      console.error("Error fetching investments:", error);
     });
 
     const qC = query(collection(db, 'calendar'), where('userId', '==', token));
     const unsubC = onSnapshot(qC, (snap) => {
       setTasks(snap.docs.map(d => ({ ...d.data(), id: d.id } as CalendarEvent)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'calendar');
+      console.error("Error fetching tasks:", error);
     });
 
     const qCC = query(collection(db, 'credit_cards'), where('userId', '==', token));
     const unsubCC = onSnapshot(qCC, (snap) => {
       setCreditCards(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditCard)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'credit_cards');
+      console.error("Error fetching credit cards:", error);
     });
 
     const qCT = query(collection(db, 'credit_transactions'), where('userId', '==', token));
     const unsubCT = onSnapshot(qCT, (snap) => {
       setCreditTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditTransaction)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'credit_transactions');
+      console.error("Error fetching credit transactions:", error);
     });
 
     const qSub = query(collection(db, 'subscriptions'), where('userId', '==', token));
     const unsubSub = onSnapshot(qSub, (snap) => {
       setSubscriptions(snap.docs.map(d => ({ ...d.data(), id: d.id } as Subscription)));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'subscriptions');
+      console.error("Error fetching subscriptions:", error);
     });
 
     const unsubAI = onSnapshot(doc(db, 'ai_conversations', token), (snap) => {

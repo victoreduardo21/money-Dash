@@ -168,10 +168,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 cpf,
                 plan: selectedPlan as Plan,
                 billingCycle: selectedBillingCycle as BillingCycle,
-                subscriptionStatus: 'PENDING',
+                subscriptionStatus: 'ACTIVE',
                 role: 'user',
-                phoneVerified: false,
-                createdAt: new Date().toISOString()
+                phoneVerified: false
             };
             
             const createRes = await api.createUser(newUser, user.uid);
@@ -180,7 +179,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 setIsLoading(false);
                 return;
             }
-            
             await handleSendCode(phone);
         }
     } catch (e: any) {
