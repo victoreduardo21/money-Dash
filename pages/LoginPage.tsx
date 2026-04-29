@@ -170,7 +170,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 billingCycle: selectedBillingCycle as BillingCycle,
                 subscriptionStatus: 'ACTIVE',
                 role: 'user',
-                phoneVerified: false
+                phoneVerified: false,
+                createdAt: new Date().toISOString()
             };
             
             const createRes = await api.createUser(newUser, user.uid);

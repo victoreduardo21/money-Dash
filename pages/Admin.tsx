@@ -1,20 +1,53 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, Plan } from '../types';
 import { api } from '../services/api';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query } from 'firebase/firestore';
+import MetricCard from '../components/MetricCard';
+import { UsersIcon } from '../components/icons/UsersIcon';
+import { CheckCircleIcon } from '../components/icons/CheckCircleIcon';
+import { ClockIcon } from '../components/icons/ClockIcon';
+import { DollarSignIcon } from '../components/icons/DollarSignIcon';
+
+const PLAN_PRICES = {
+    FREE: { MONTHLY: 0, ANNUAL: 0 },
+    PRO: { MONTHLY: 39.90, ANNUAL: 399.90 },
+    VIP: { MONTHLY: 79.90, ANNUAL: 799.90 }
+};
 
 const Admin: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
+    const stats = useMemo(() => {
+        const activeUsers = users.filter(u => u.subscriptionStatus === 'ACTIVE');
+        const revenue = activeUsers.reduce((acc, u) => {
+            const plan = u.plan || 'FREE';
+            const cycle = u.billingCycle || 'MONTHLY';
+            const price = PLAN_PRICES[plan][cycle];
+            return acc + (cycle === 'ANNUAL' ? price / 12 : price);
+        }, 0);
+
+        return {
+            total: users.length,
+            active: activeUsers.length,
+            pending: users.filter(u => u.subscriptionStatus === 'PENDING').length,
+            revenue
+        };
+    }, [users]);
+
     useEffect(() => {
         const q = query(collection(db, 'users'));
         const unsubscribe = onSnapshot(q, (snap) => {
             const fetchedUsers = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-            setUsers(fetchedUsers);
+            // Ensure all users have a createdAt date for the table, fallback to a reasonable date if missing
+            const processedUsers = fetchedUsers.map(u => ({
+                ...u,
+                createdAt: u.createdAt || new Date('2024-01-01').toISOString()
+            }));
+            setUsers(processedUsers);
             setIsLoading(false);
         }, (error) => {
             console.error("Erro ao carregar usuários:", error);
@@ -64,6 +97,32 @@ const Admin: React.FC = () => {
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard 
+                    title="Total de Usuários" 
+                    value={stats.total.toString()} 
+                    icon={<div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-2xl"><UsersIcon className="h-6 w-6 text-blue-600" /></div>} 
+                />
+                <MetricCard 
+                    title="Assinaturas Ativas" 
+                    value={stats.active.toString()} 
+                    icon={<div className="p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl"><CheckCircleIcon className="h-6 w-6 text-emerald-600" /></div>} 
+                    valueClassName="text-emerald-600 font-black"
+                />
+                <MetricCard 
+                    title="Aguardando Aprovação" 
+                    value={stats.pending.toString()} 
+                    icon={<div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-2xl"><ClockIcon className="h-6 w-6 text-amber-600" /></div>} 
+                    valueClassName="text-amber-600 font-black"
+                />
+                <MetricCard 
+                    title="Faturamento (MRR)" 
+                    value={`R$ ${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+                    icon={<div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl"><DollarSignIcon className="h-6 w-6 text-indigo-600" /></div>} 
+                    valueClassName="text-indigo-600 font-black"
+                />
+            </div>
+
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
@@ -72,6 +131,7 @@ const Admin: React.FC = () => {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Usuário</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Permissão</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contato</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Abertura</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Plano</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
@@ -115,16 +175,26 @@ const Admin: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <select 
-                                            value={user.plan} 
-                                            onChange={(e) => handleUpdatePlan(user.id!, e.target.value as Plan)}
-                                            disabled={updatingUserId === user.id}
-                                            className="text-xs font-bold bg-gray-100 dark:bg-slate-700 border-none rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
-                                        >
-                                            <option value="FREE">FREE</option>
-                                            <option value="PRO">PRO</option>
-                                            <option value="VIP">VIP</option>
-                                        </select>
+                                        <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '--/--/----'}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            <select 
+                                                value={user.plan} 
+                                                onChange={(e) => handleUpdatePlan(user.id!, e.target.value as Plan)}
+                                                disabled={updatingUserId === user.id}
+                                                className="text-xs font-bold bg-gray-100 dark:bg-slate-700 border-none rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+                                            >
+                                                <option value="FREE">FREE</option>
+                                                <option value="PRO">PRO</option>
+                                                <option value="VIP">VIP</option>
+                                            </select>
+                                            <span className="text-[10px] font-medium text-gray-500 whitespace-nowrap">
+                                                R$ {PLAN_PRICES[user.plan || 'FREE'][user.billingCycle || 'MONTHLY'].toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${

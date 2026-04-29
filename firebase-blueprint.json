@@ -14,7 +14,8 @@
         "billingCycle": { "type": "string", "enum": ["MONTHLY", "ANNUAL"] },
         "language": { "type": "string", "enum": ["pt-BR", "en-US"] },
         "subscriptionStatus": { "type": "string", "enum": ["ACTIVE", "PENDING", "OVERDUE", "INACTIVE"] },
-        "overdraftLimit": { "type": "number" }
+        "overdraftLimit": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account opening date" }
       },
       "required": ["name", "email", "plan"]
     },

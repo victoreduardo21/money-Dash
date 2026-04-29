@@ -114,14 +114,20 @@ export const api = {
         }
         try {
             const { id, ...data } = transaction;
-            const payload = { ...data, userId: uid };
-            console.log("Salvando Transação:", payload);
+            const payload = { 
+                ...data, 
+                amount: Number(data.amount),
+                userId: uid,
+                createdAt: data.createdAt || new Date().toISOString()
+            };
+            console.log("Saving Transaction:", payload);
             
             if (id) {
                 await updateDoc(doc(db, 'transactions', id), payload);
                 return { error: false, id };
             } else {
                 const docRef = await addDoc(collection(db, 'transactions'), payload);
+                console.log("Transaction created with ID:", docRef.id);
                 return { error: false, id: docRef.id };
             }
         } catch (error) {

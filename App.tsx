@@ -20,7 +20,7 @@ import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan
 import { api } from './services/api';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, query, where, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocFromServer, doc, getDoc } from 'firebase/firestore';
 import WhatsAppButton from './components/WhatsAppButton';
 import Toast, { ToastMessage } from './components/Toast';
 import { CheckCircleIcon } from 'lucide-react';
@@ -82,8 +82,25 @@ const App: React.FC = () => {
       if (user) {
         setToken(user.uid);
         
+        // Ensure user document exists in Firestore
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+            const newUser: User = {
+                name: user.displayName || 'Usuário',
+                email: user.email || '',
+                plan: 'FREE',
+                subscriptionStatus: 'ACTIVE', // Default to active for trial/demo purposes
+                role: 'user',
+                billingCycle: 'MONTHLY',
+                language: 'pt-BR',
+                createdAt: new Date().toISOString()
+            };
+            await api.createUser(newUser, user.uid);
+        }
+
         // Use onSnapshot for real-time profile updates (approval/deactivation)
-        unsubProfile = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+        unsubProfile = onSnapshot(userRef, (docSnap) => {
             if (docSnap.exists()) {
                 const userData = { ...docSnap.data(), id: docSnap.id } as User;
                 setCurrentUser(userData);
@@ -124,7 +141,15 @@ const App: React.FC = () => {
 
     const qT = query(collection(db, 'transactions'), where('userId', '==', token));
     const unsubT = onSnapshot(qT, (snap) => {
-      setTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonalTransaction)));
+      const fetched = snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonalTransaction));
+      // Sort by date descending, then by document id for stability
+      const sorted = fetched.sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          if (dateB !== dateA) return dateB - dateA;
+          return b.id.localeCompare(a.id);
+      });
+      setTransactions(sorted);
     }, (error) => {
       console.error("Error fetching transactions:", error);
     });
