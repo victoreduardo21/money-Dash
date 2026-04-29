@@ -9,7 +9,7 @@ import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
-import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction } from '../types';
+import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction, Subscription } from '../types';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
 import { useTranslation } from '../translations';
 
@@ -17,6 +17,7 @@ interface DashboardProps {
     transactions: PersonalTransaction[];
     creditTransactions: CreditTransaction[];
     investments: Investment[];
+    subscriptions?: Subscription[];
     setActivePage: (page: Page) => void;
     onEditTransaction: (transaction: PersonalTransaction) => void;
     onDeleteTransaction: (id: string) => void;
@@ -32,6 +33,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     transactions, 
     creditTransactions = [], 
     investments, 
+    subscriptions = [],
     setActivePage, 
     onEditTransaction, 
     onDeleteTransaction, 
@@ -66,24 +68,29 @@ const Dashboard: React.FC<DashboardProps> = ({
       const txs = transactions.filter(t => (t.currency || 'BRL') === selectedCurrency);
       const txsMes = txs.filter(t => t.date.startsWith(selectedMonth));
       
+      const subsTotal = (subscriptions || [])
+          .filter((s: Subscription) => s.status === 'ACTIVE' && s.currency === selectedCurrency)
+          .reduce((acc: number, s: Subscription) => acc + (Number(s.amount) || 0), 0);
+
       // Values for Cards (Matching user's specific requirement: Income includes everything, Expenses excludes investments)
       const recMes = txsMes
-          .filter(t => t.type === TransactionType.Receita)
-          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+          .filter((t: PersonalTransaction) => t.type === TransactionType.Receita)
+          .reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0);
       
       const gastMes = txsMes
-          .filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category))
-          .reduce((acc, t) => acc + (Number(t.amount) || 0), 0) +
+          .filter((t: PersonalTransaction) => t.type === TransactionType.Despesa && !isInternalTransfer(t.category))
+          .reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0) +
           (creditTransactions || [])
-          .filter(ctx => ctx.date.startsWith(selectedMonth) && ctx.status !== 'PAID')
-          .reduce((acc, ctx) => acc + (Number(ctx.amount) || 0), 0);
+          .filter((ctx: CreditTransaction) => ctx.date.startsWith(selectedMonth) && ctx.status !== 'PAID')
+          .reduce((acc: number, ctx: CreditTransaction) => acc + (Number(ctx.amount) || 0), 0) +
+          subsTotal;
           
       // "Available Balance" - Raw net sum of ALL transactions
-      const saldoTotal = txs.reduce((acc, t) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
+      const saldoTotal = txs.reduce((acc: number, t: PersonalTransaction) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
       
       const investidoCurrent = (investments || [])
-          .filter(i => (i.currency || 'BRL') === selectedCurrency)
-          .reduce((acc, i) => acc + (Number(i.currentValue) || 0), 0);
+          .filter((i: Investment) => (i.currency || 'BRL') === selectedCurrency)
+          .reduce((acc: number, i: Investment) => acc + (Number(i.currentValue) || 0), 0);
           
       return { 
         saldoMes: recMes - gastMes, 
@@ -93,26 +100,31 @@ const Dashboard: React.FC<DashboardProps> = ({
         gastMes, 
         patrimonio: saldoTotal + investidoCurrent 
       };
-    }, [transactions, investments, selectedCurrency, selectedMonth]);
+    }, [transactions, investments, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
 
     const monthlyChartData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const currentYear = selectedMonth.split('-')[0];
       
+      const subsTotal = (subscriptions || [])
+          .filter((s: Subscription) => s.status === 'ACTIVE' && s.currency === selectedCurrency)
+          .reduce((acc: number, s: Subscription) => acc + (Number(s.amount) || 0), 0);
+
       return months.map((name, i) => {
           const mStr = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-          const txs = transactions.filter(t => t.date.startsWith(mStr) && (t.currency || 'BRL') === selectedCurrency);
-          const ctxs = (creditTransactions || []).filter(c => c.date.startsWith(mStr) && c.status !== 'PAID');
+          const txs = transactions.filter((t: PersonalTransaction) => t.date.startsWith(mStr) && (t.currency || 'BRL') === selectedCurrency);
+          const ctxs = (creditTransactions || []).filter((c: CreditTransaction) => c.date.startsWith(mStr) && c.status !== 'PAID');
           
           return {
               name,
-              // Graph logic: Matching Cards (Incomes: all, Expenses: real + pending credit)
-              income: txs.filter(t => t.type === TransactionType.Receita).reduce((acc, t) => acc + (Number(t.amount) || 0), 0),
-              expense: txs.filter(t => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc, t) => acc + (Number(t.amount) || 0), 0) +
-                       ctxs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0)
+              // Graph logic: Matching Cards (Incomes: all, Expenses: real + pending credit + subscriptions)
+              income: txs.filter((t: PersonalTransaction) => t.type === TransactionType.Receita).reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0),
+              expense: txs.filter((t: PersonalTransaction) => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0) +
+                       ctxs.reduce((acc: number, c: CreditTransaction) => acc + (Number(c.amount) || 0), 0) +
+                       subsTotal
           };
       });
-    }, [transactions, selectedCurrency, selectedMonth]);
+    }, [transactions, selectedCurrency, selectedMonth, subscriptions, creditTransactions]);
 
     return (
       <div className="w-full max-w-7xl mx-auto pb-10">

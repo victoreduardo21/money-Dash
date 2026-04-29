@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -38,6 +38,17 @@ export interface CalendarEvent {
     description: string;
     date: string;
     done: boolean;
+    userId?: string;
+}
+
+export interface Subscription {
+    id: string;
+    description: string;
+    amount: number;
+    currency: Currency;
+    dueDay: number;
+    category: string;
+    status: 'ACTIVE' | 'PAUSED';
     userId?: string;
 }
 
@@ -95,4 +106,5 @@ export interface User {
   role?: 'admin' | 'user';
   phoneVerified?: boolean;
   overdraftLimit?: number;
+  createdAt?: string;
 }

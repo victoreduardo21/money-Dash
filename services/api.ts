@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription } from '../types';
 import { db, auth } from './firebase';
 import { 
     collection, 
@@ -14,7 +14,7 @@ import {
     setDoc
 } from 'firebase/firestore';
 
-enum OperationType {
+export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
   DELETE = 'delete',
@@ -23,7 +23,7 @@ enum OperationType {
   WRITE = 'write',
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -355,6 +355,42 @@ export const api = {
             return { error: false };
         } catch (error) {
             handleFirestoreError(error, OperationType.WRITE, 'ai_conversations/' + uid);
+        }
+    },
+    getSubscriptions: async (token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        const q = query(collection(db, 'subscriptions'), where('userId', '==', uid));
+        try {
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Subscription));
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'subscriptions');
+            return [];
+        }
+    },
+    createSubscription: async (subscription: Omit<Subscription, 'id'> & { id?: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        try {
+            const { id, ...data } = subscription;
+            if (id) {
+                await updateDoc(doc(db, 'subscriptions', id), { ...data, userId: uid });
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'subscriptions'), { ...data, userId: uid });
+                return { error: false, id: docRef.id };
+            }
+        } catch (error) {
+            handleFirestoreError(error, OperationType.CREATE, 'subscriptions');
+        }
+    },
+    deleteSubscription: async (id: string, token: string) => {
+        try {
+            await deleteDoc(doc(db, 'subscriptions', id));
+            return { error: false };
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, 'subscriptions/' + id);
         }
     }
 };

@@ -9,6 +9,7 @@ export const translations = {
     agenda: 'Agenda Financeira',
     reports: 'Relatórios Avançados',
     insightsIA: 'Insights com IA',
+    subscriptions: 'Assinaturas Fixas',
     settings: 'Configurações',
     balance: 'Saldo Disponível',
     monthlyBalance: 'Saldo do Mês',
@@ -152,7 +153,13 @@ export const translations = {
     register: 'Criar uma Conta',
     payNow: 'Pagar Agora',
     paid: 'Pago',
-    selectCategory: 'Selecionar Categoria'
+    selectCategory: 'Selecionar Categoria',
+    newSubscription: 'Nova Assinatura',
+    recurringValue: 'Valor Recorrente',
+    activeSub: 'Ativa',
+    pausedSub: 'Pausada',
+    serviceName: 'Nome do Serviço',
+    noSubscriptions: 'Nenhuma assinatura cadastrada.'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -162,6 +169,7 @@ export const translations = {
     agenda: 'Financial Agenda',
     reports: 'Advanced Reports',
     insightsIA: 'AI Insights',
+    subscriptions: 'Fixed Subscriptions',
     settings: 'Settings',
     balance: 'Available Balance',
     monthlyBalance: 'Monthly Balance',
@@ -305,7 +313,13 @@ export const translations = {
     register: 'Create an Account',
     payNow: 'Pay Now',
     paid: 'Paid',
-    selectCategory: 'Select Category'
+    selectCategory: 'Select Category',
+    newSubscription: 'New Subscription',
+    recurringValue: 'Recurring Value',
+    activeSub: 'Active',
+    pausedSub: 'Paused',
+    serviceName: 'Service Name',
+    noSubscriptions: 'No subscriptions found.'
   }
 };
 

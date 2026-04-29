@@ -16,8 +16,8 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation } from './types';
-import { api } from './services/api';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription } from './types';
+import { api, OperationType, handleFirestoreError } from './services/api';
 import { auth, db } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, getDocFromServer, doc } from 'firebase/firestore';
@@ -26,6 +26,7 @@ import Toast, { ToastMessage } from './components/Toast';
 import { CheckCircleIcon } from 'lucide-react';
 import { translations } from './translations';
 import Credits from './pages/Credits';
+import Subscriptions from './pages/Subscriptions';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,6 +36,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<CalendarEvent[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [aiConversation, setAiConversation] = useState<AiConversation | null>(null);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('language') as Language) || 'pt-BR');
@@ -97,6 +99,7 @@ const App: React.FC = () => {
         setTasks([]);
         setCreditCards([]);
         setCreditTransactions([]);
+        setSubscriptions([]);
       }
       setIsAuthReady(true);
     });
@@ -123,35 +126,42 @@ const App: React.FC = () => {
     const unsubT = onSnapshot(qT, (snap) => {
       setTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as PersonalTransaction)));
     }, (error) => {
-      console.error("Error fetching transactions:", error);
+      handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
     const qI = query(collection(db, 'investments'), where('userId', '==', token));
     const unsubI = onSnapshot(qI, (snap) => {
       setInvestments(snap.docs.map(d => ({ ...d.data(), id: d.id } as Investment)));
     }, (error) => {
-      console.error("Error fetching investments:", error);
+      handleFirestoreError(error, OperationType.LIST, 'investments');
     });
 
     const qC = query(collection(db, 'calendar'), where('userId', '==', token));
     const unsubC = onSnapshot(qC, (snap) => {
       setTasks(snap.docs.map(d => ({ ...d.data(), id: d.id } as CalendarEvent)));
     }, (error) => {
-      console.error("Error fetching tasks:", error);
+      handleFirestoreError(error, OperationType.LIST, 'calendar');
     });
 
     const qCC = query(collection(db, 'credit_cards'), where('userId', '==', token));
     const unsubCC = onSnapshot(qCC, (snap) => {
       setCreditCards(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditCard)));
     }, (error) => {
-      console.error("Error fetching credit cards:", error);
+      handleFirestoreError(error, OperationType.LIST, 'credit_cards');
     });
 
     const qCT = query(collection(db, 'credit_transactions'), where('userId', '==', token));
     const unsubCT = onSnapshot(qCT, (snap) => {
       setCreditTransactions(snap.docs.map(d => ({ ...d.data(), id: d.id } as CreditTransaction)));
     }, (error) => {
-      console.error("Error fetching credit transactions:", error);
+      handleFirestoreError(error, OperationType.LIST, 'credit_transactions');
+    });
+
+    const qSub = query(collection(db, 'subscriptions'), where('userId', '==', token));
+    const unsubSub = onSnapshot(qSub, (snap) => {
+      setSubscriptions(snap.docs.map(d => ({ ...d.data(), id: d.id } as Subscription)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'subscriptions');
     });
 
     const unsubAI = onSnapshot(doc(db, 'ai_conversations', token), (snap) => {
@@ -170,6 +180,7 @@ const App: React.FC = () => {
       unsubC();
       unsubCC();
       unsubCT();
+      unsubSub();
       unsubAI();
     };
   }, [token, isAuthReady]);
@@ -265,7 +276,7 @@ const App: React.FC = () => {
         />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto w-full p-4 md:p-6 lg:p-8 pb-28 md:pb-8 no-scrollbar max-w-full">
-            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
+            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} subscriptions={subscriptions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Investimentos' && <Investments 
                 investments={investments} 
@@ -320,28 +331,29 @@ const App: React.FC = () => {
             {activePage === 'Relatórios' && <Reports transactions={transactions} creditTransactions={creditTransactions} investments={investments} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} creditCards={creditCards} creditTransactions={creditTransactions} currentUser={currentUser} aiConversation={aiConversation} token={token || ''} />}
             {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
+            {activePage === 'Assinaturas' && <Subscriptions subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} token={token || ''} />}
             {activePage === 'Configurações' && currentUser && <Settings theme={theme} setTheme={setTheme} currentUser={currentUser} onUpdatePassword={async (c, n) => { await api.updatePassword({currentPassword: c, newPassword: n}, token); }} onUpdateAvatar={async (a) => { await api.updateAvatar({avatar: a}, token); }} onCreateUser={async (u) => { const r = await api.createUser(u); return r; }} language={language} onLanguageChange={setLanguage} />}
             {activePage === 'Admin' && currentUser?.email === 'eduardopontesdias@outlook.com' && <Admin />}
         </main>
       </div>
 
-      {(currentUser?.subscriptionStatus === 'PENDING' || currentUser?.subscriptionStatus === 'INACTIVE') && (
+      {(currentUser?.subscriptionStatus === 'INACTIVE') && (
           <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-950 flex items-center justify-center p-6 text-center">
               <div className="max-w-md space-y-6">
                   <div className="flex justify-center">
-                      <div className={`p-6 rounded-full dark:bg-opacity-20 ${currentUser.subscriptionStatus === 'PENDING' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                          <CheckCircleIcon size={64} className={currentUser.subscriptionStatus === 'PENDING' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} />
+                      <div className="p-6 rounded-full dark:bg-opacity-20 bg-red-100 dark:bg-red-900/30">
+                          <CheckCircleIcon size={64} className="text-red-600 dark:text-red-400" />
                       </div>
                   </div>
                   <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                    {currentUser.subscriptionStatus === 'PENDING' ? translations[language].pendingApproval : translations[language].inactiveAccount}
+                    {translations[language].inactiveAccount}
                   </h2>
                   <p className="text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                    {currentUser.subscriptionStatus === 'PENDING' ? translations[language].pendingApprovalDesc : translations[language].inactiveAccountDesc}
+                    {translations[language].inactiveAccountDesc}
                   </p>
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
                       <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                        {currentUser.subscriptionStatus === 'PENDING' ? translations[language].waitContact : translations[language].contactSupport}
+                        {translations[language].contactSupport}
                       </p>
                   </div>
                   <button onClick={handleLogout} className="w-full py-4 bg-[#020617] dark:bg-white dark:text-[#020617] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-xl">
