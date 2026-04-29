@@ -10,6 +10,31 @@ const Admin: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
+    const PLAN_VALUES = {
+        FREE: { MONTHLY: 0, ANNUAL: 0 },
+        PRO: { MONTHLY: 49.90, ANNUAL: 499.90 },
+        VIP: { MONTHLY: 99.90, ANNUAL: 999.90 }
+    };
+
+    const calculateMonthlyRevenue = () => {
+        return users.reduce((acc, user) => {
+            if (user.subscriptionStatus !== 'ACTIVE') return acc;
+            const cycle = user.billingCycle || 'MONTHLY';
+            const value = PLAN_VALUES[user.plan as keyof typeof PLAN_VALUES]?.[cycle as 'MONTHLY' | 'ANNUAL'] || 0;
+            // For MRR, normalize annual to monthly
+            return acc + (cycle === 'ANNUAL' ? value / 12 : value);
+        }, 0);
+    };
+
+    const calculateTotalAnnualRevenue = () => {
+        return users.reduce((acc, user) => {
+            if (user.subscriptionStatus !== 'ACTIVE') return acc;
+            const cycle = user.billingCycle || 'MONTHLY';
+            const value = PLAN_VALUES[user.plan as keyof typeof PLAN_VALUES]?.[cycle as 'MONTHLY' | 'ANNUAL'] || 0;
+            return acc + (cycle === 'MONTHLY' ? value * 12 : value);
+        }, 0);
+    };
+
     useEffect(() => {
         const q = query(collection(db, 'users'));
         const unsubscribe = onSnapshot(q, (snap) => {
@@ -57,10 +82,24 @@ const Admin: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Painel Administrativo</h1>
                     <p className="text-sm text-gray-500">Gerenciamento de {users.length} usuários cadastrados</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-right">
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Faturamento Mensal (MRR)</div>
+                        <div className="text-xl font-black text-green-600">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateMonthlyRevenue())}
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-right">
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Faturamento Anual Est.</div>
+                        <div className="text-xl font-black text-blue-600">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTotalAnnualRevenue())}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -72,7 +111,9 @@ const Admin: React.FC = () => {
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Usuário</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Permissão</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Contato</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Cadastro</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Plano</th>
+                                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
                             </tr>
@@ -115,6 +156,11 @@ const Admin: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
+                                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-'}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
                                         <select 
                                             value={user.plan} 
                                             onChange={(e) => handleUpdatePlan(user.id!, e.target.value as Plan)}
@@ -125,6 +171,22 @@ const Admin: React.FC = () => {
                                             <option value="PRO">PRO</option>
                                             <option value="VIP">VIP</option>
                                         </select>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                            {(() => {
+                                                const cycle = user.billingCycle || 'MONTHLY';
+                                                const val = PLAN_VALUES[user.plan as keyof typeof PLAN_VALUES]?.[cycle as 'MONTHLY' | 'ANNUAL'] || 0;
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)}</span>
+                                                        <span className="text-[9px] text-gray-400 font-normal uppercase tracking-tighter">
+                                                            {cycle === 'MONTHLY' ? '/mês' : '/ano'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
