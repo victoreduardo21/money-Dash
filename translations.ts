@@ -160,7 +160,19 @@ export const translations = {
     activeSub: 'Ativa',
     pausedSub: 'Pausada',
     serviceName: 'Nome do Serviço',
-    noSubscriptions: 'Nenhuma assinatura cadastrada.'
+    noSubscriptions: 'Nenhuma assinatura cadastrada.',
+    goals: 'Metas & Objetivos',
+    newGoal: 'Nova Meta',
+    saveGoal: 'Guardar Dinheiro',
+    targetAmount: 'Valor da Meta',
+    savedAmount: 'Valor Guardado',
+    remainingAmount: 'Restante',
+    months: 'Meses',
+    cronograma: 'Cronograma Mensal',
+    monthlyTarget: 'Meta Mensal',
+    markAsSaved: 'Marcar como Guardado',
+    savedSuccess: 'Valor guardado com sucesso!',
+    goalCompleted: 'Meta Concluída!'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -321,7 +333,19 @@ export const translations = {
     activeSub: 'Active',
     pausedSub: 'Paused',
     serviceName: 'Service Name',
-    noSubscriptions: 'No subscriptions found.'
+    noSubscriptions: 'No subscriptions found.',
+    goals: 'Goals & Targets',
+    newGoal: 'New Goal',
+    saveGoal: 'Save Money',
+    targetAmount: 'Target Amount',
+    savedAmount: 'Saved Amount',
+    remainingAmount: 'Remaining',
+    months: 'Months',
+    cronograma: 'Monthly Schedule',
+    monthlyTarget: 'Monthly Target',
+    markAsSaved: 'Mark as Saved',
+    savedSuccess: 'Amount saved successfully!',
+    goalCompleted: 'Goal Completed!'
   }
 };
 

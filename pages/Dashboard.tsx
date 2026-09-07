@@ -9,15 +9,17 @@ import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
-import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction, Subscription, User } from '../types';
+import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction, Subscription, User, Goal } from '../types';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
 import { useTranslation } from '../translations';
+import { Target, PiggyBank, ArrowRight, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
     transactions: PersonalTransaction[];
     creditTransactions: CreditTransaction[];
     investments: Investment[];
     subscriptions?: Subscription[];
+    goals?: Goal[];
     setActivePage: (page: Page) => void;
     onEditTransaction: (transaction: PersonalTransaction) => void;
     onDeleteTransaction: (id: string) => void;
@@ -35,6 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     creditTransactions = [], 
     investments, 
     subscriptions = [],
+    goals = [],
     setActivePage, 
     onEditTransaction, 
     onDeleteTransaction, 
@@ -229,6 +232,120 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             </div>
         </div>
+      </div>
+
+      {/* METAS & OBJETIVOS WIDGET PREVIEW */}
+      <div className="bg-white dark:bg-gray-800 p-5 md:p-6 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-gray-700 mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600/10 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <Target className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                {language === 'pt-BR' ? 'Minhas Metas & Cronogramas' : 'My Goals & Schedules'}
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold uppercase">
+                  {goals.filter(g => (g.currency || 'BRL') === selectedCurrency).length} {language === 'pt-BR' ? 'ativas' : 'active'}
+                </span>
+              </h4>
+              <p className="text-xs text-slate-400 font-medium">
+                {language === 'pt-BR' 
+                  ? 'Acompanhe o cronograma mensal e marque as parcelas guardadas'
+                  : 'Track your monthly savings schedule and mark saved installments'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActivePage('Metas')}
+            className="self-start sm:self-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+          >
+            <span>{language === 'pt-BR' ? 'Gerenciar Metas' : 'Manage Goals'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {goals.filter(g => (g.currency || 'BRL') === selectedCurrency).length === 0 ? (
+          <div className="py-6 px-4 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-700">
+            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+              {language === 'pt-BR' ? 'Você ainda não tem metas cadastradas.' : 'No goals registered yet.'}
+            </p>
+            <p className="text-[11px] text-slate-400 mb-3">
+              {language === 'pt-BR' 
+                ? 'Ex: "Juntar R$ 1.000 em 6 meses" com cronograma automático de quanto guardar por mês!'
+                : 'E.g.: "Save $1,000 in 6 months" with an automatic monthly savings plan!'}
+            </p>
+            <button
+              onClick={() => setActivePage('Metas')}
+              className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-sm"
+            >
+              {language === 'pt-BR' ? '+ Criar Primeira Meta' : '+ Create First Goal'}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {goals
+              .filter(g => (g.currency || 'BRL') === selectedCurrency)
+              .slice(0, 2)
+              .map((goal) => {
+                const percent = Math.min(100, Math.round(((goal.currentAmount || 0) / (goal.targetAmount || 1)) * 100));
+                const isCompleted = goal.status === 'COMPLETED' || goal.currentAmount >= goal.targetAmount;
+                const completedMilestones = (goal.milestones || []).filter(m => m.isCompleted).length;
+                const totalMilestones = (goal.milestones || []).length;
+
+                return (
+                  <div 
+                    key={goal.id} 
+                    onClick={() => setActivePage('Metas')}
+                    className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-400 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[180px]">
+                        {goal.title}
+                      </span>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        isCompleted 
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                      }`}>
+                        {isCompleted ? '100% ✓' : `${percent}%`}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-baseline text-xs mb-2">
+                      <span className="text-[11px] text-slate-400">
+                        {language === 'pt-BR' ? 'Guardado: ' : 'Saved: '}
+                        <strong className="text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(goal.currentAmount, goal.currency)}
+                        </strong>
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {language === 'pt-BR' ? 'Alvo: ' : 'Target: '}
+                        <strong className="text-slate-700 dark:text-slate-200">
+                          {formatCurrency(goal.targetAmount, goal.currency)}
+                        </strong>
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden mb-2">
+                      <div 
+                        className={`h-full rounded-full transition-all ${isCompleted ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                      <span>{completedMilestones}/{totalMilestones} {language === 'pt-BR' ? 'meses concluídos' : 'months completed'}</span>
+                      <span className="text-blue-600 dark:text-blue-400 group-hover:underline flex items-center gap-0.5">
+                        {language === 'pt-BR' ? 'Ver cronograma' : 'View schedule'}
+                        <ArrowRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       {/* HISTÓRICO */}

@@ -12,7 +12,19 @@ import {
     PhoneAuthProvider
 } from 'firebase/auth';
 import { useTranslation } from '../translations';
-import { CheckCircleIcon } from 'lucide-react';
+import { 
+    CheckCircleIcon, 
+    ShieldCheck, 
+    Mail, 
+    Phone, 
+    Copy, 
+    Check, 
+    RefreshCw, 
+    KeyRound, 
+    ArrowLeft,
+    Sparkles,
+    AlertCircle
+} from 'lucide-react';
 
 const ArrowLeftIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
@@ -45,10 +57,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
   const [onboardingReason, setOnboardingReason] = useState('');
   const [regStep, setRegStep] = useState(1);
   
-  // Phone Verification States
+  // Verification states
   const [showVerification, setShowVerification] = useState(false);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [generatedCode, setGeneratedCode] = useState('');
   const [otp, setOtp] = useState('');
+  const [countdown, setCountdown] = useState(60);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
 
@@ -57,58 +71,66 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     setRegStep(1);
     setOnboardingObjective('');
     setOnboardingReason('');
+    setShowVerification(false);
+    setError('');
   }, [initialMode, isLoginMode]);
 
-  const setupRecaptcha = () => {
-    if ((window as any).recaptchaVerifier) return;
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container-login', {
-      'size': 'invisible',
-      'callback': () => {}
-    });
-  };
-
-  const sanitizePhoneNumber = (num: string) => {
-    // Keep only + and digits
-    return num.replace(/[^\d+]/g, '');
-  };
-
-  const handleSendCode = async (phoneNum: string) => {
-    try {
-        const cleanPhone = sanitizePhoneNumber(phoneNum);
-        if (cleanPhone.length < 10) {
-            setError("Número de telefone inválido. Use: +5511999999999");
-            return;
-        }
-        setupRecaptcha();
-        const verifier = (window as any).recaptchaVerifier;
-        const provider = new PhoneAuthProvider(auth);
-        const vid = await provider.verifyPhoneNumber(cleanPhone, verifier);
-        setVerificationId(vid);
-        setShowVerification(true);
-        setError(''); // Clear error on success
-    } catch (err: any) {
-        console.error("SMS Error:", err);
-        if (err.code === 'auth/too-many-requests') {
-          setError("Muitas tentativas. Tente novamente mais tarde.");
-        } else if (err.code === 'auth/invalid-phone-number') {
-          setError("Número de telefone inválido.");
-        } else {
-          setError("Erro ao enviar SMS. Verifique se o número está correto (ex: +5511999999999).");
-        }
+  // Countdown effect for resending verification code
+  useEffect(() => {
+    let timer: any;
+    if (showVerification && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown(prev => Math.max(0, prev - 1));
+      }, 1000);
     }
+    return () => clearInterval(timer);
+  }, [showVerification, countdown]);
+
+  const formatPhone = (val: string) => {
+    const raw = val.replace(/\D/g, '');
+    if (raw.length === 0) return '';
+    if (raw.length <= 2) return `(${raw}`;
+    if (raw.length <= 6) return `(${raw.slice(0, 2)}) ${raw.slice(2)}`;
+    if (raw.length <= 10) return `(${raw.slice(0, 2)}) ${raw.slice(2, 6)}-${raw.slice(6)}`;
+    return `(${raw.slice(0, 2)}) ${raw.slice(2, 7)}-${raw.slice(7, 11)}`;
   };
 
-  const handleVerifyCode = async () => {
-    if (!otp || !verificationId || !registeredUserId) return;
-    setIsLoading(true);
-    try {
-        await api.updateUser(registeredUserId, { phoneVerified: true });
-        setIsPendingApproval(true);
-        setShowVerification(false);
-    } catch (err: any) {
-        setError(t('invalidCode'));
-    } finally {
-        setIsLoading(false);
+  const formatCPF = (val: string) => {
+    const raw = val.replace(/\D/g, '');
+    if (raw.length <= 3) return raw;
+    if (raw.length <= 6) return `${raw.slice(0, 3)}.${raw.slice(3)}`;
+    if (raw.length <= 9) return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6)}`;
+    return `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9, 11)}`;
+  };
+
+  const isValidEmail = (str: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(str.trim());
+  };
+
+  const isValidPhone = (str: string) => {
+    const raw = str.replace(/\D/g, '');
+    return raw.length >= 10 && raw.length <= 13;
+  };
+
+  const generateNewVerificationCode = () => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedCode(code);
+    setCountdown(60);
+    setCopiedCode(false);
+    return code;
+  };
+
+  const handleCopyCode = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleAutoFillCode = () => {
+    if (generatedCode) {
+      setOtp(generatedCode);
+      setError('');
     }
   };
 
@@ -128,6 +150,74 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     }
   };
 
+  const handleVerifyCodeAndRegister = async () => {
+    const cleanOtp = otp.trim().replace(/\D/g, '');
+    if (cleanOtp.length !== 6) {
+      return setError("Por favor, digite os 6 dígitos do código de confirmação.");
+    }
+
+    if (cleanOtp !== generatedCode) {
+      return setError("Código incorreto. Digite o código de 6 dígitos gerado para o seu e-mail e celular.");
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // 1. Create account in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const user = userCredential.user;
+      setRegisteredUserId(user.uid);
+      
+      await updateProfile(user, { displayName: name });
+      
+      // 2. Build full user object with validated status
+      const newUser: User = {
+          name,
+          email: email.trim().toLowerCase(),
+          phone,
+          cpf,
+          onboardingObjective,
+          onboardingReason,
+          plan: selectedPlan as Plan,
+          billingCycle: selectedBillingCycle as BillingCycle,
+          subscriptionStatus: 'ACTIVE',
+          role: 'user',
+          phoneVerified: true,
+          emailVerified: true,
+          createdAt: new Date().toISOString()
+      };
+      
+      // 3. Save user to Firestore
+      const createRes = await api.createUser(newUser, user.uid);
+      if (createRes && createRes.error) {
+          setError(createRes.message || 'Erro ao salvar perfil.');
+          setIsLoading(false);
+          return;
+      }
+
+      // 4. Log in immediately
+      onLogin(newUser, user.uid);
+    } catch (e: any) {
+      console.error("Auth Error:", e);
+      let msg = 'Ocorreu um erro ao processar sua solicitação.';
+      
+      if (e.code === 'auth/email-already-in-use') {
+          msg = 'Este e-mail já está cadastrado. Faça login para continuar.';
+      } else if (e.code === 'auth/weak-password') {
+          msg = 'A senha deve ter no mínimo 6 caracteres e ser mais forte.';
+      } else if (e.code === 'auth/invalid-email') {
+          msg = 'O formato do e-mail é inválido.';
+      } else if (e.message?.includes('auth/email-already-in-use')) {
+          msg = 'Este e-mail já está sendo utilizado por outra conta.';
+      }
+      
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -141,12 +231,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             
             if (userData) {
                 if (userData.subscriptionStatus === 'PENDING') {
-                    if (!userData.phoneVerified) {
-                        setRegisteredUserId(user.uid);
-                        setPhone(userData.phone || '');
-                        await handleSendCode(userData.phone || '');
-                        return;
-                    }
                     setIsPendingApproval(true);
                     return;
                 }
@@ -155,66 +239,46 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                 setError('Perfil não encontrado no banco de dados.');
             }
         } else {
+            // STEP 1 VALIDATIONS: Basic info, Email & Phone
             if (regStep === 1) {
-                if (password.length < 6) {
-                    return setError("A senha deve ter no mínimo 6 caracteres.");
-                }
-
-                if (!phone.startsWith('+')) {
-                    return setError("O telefone deve conter o código do país (ex: +55...)");
-                }
-
                 if (!name.trim()) {
                     return setError("Nome completo é obrigatório.");
                 }
 
-                if (!cpf.trim()) {
-                    return setError("CPF é obrigatório.");
+                if (!isValidPhone(phone)) {
+                    return setError("Número de celular inválido. Digite o DDD + número (ex: (11) 99999-9999).");
                 }
 
-                // Field validated, transfer to survey form step 2
+                if (!cpf.trim() || cpf.replace(/\D/g, '').length < 11) {
+                    return setError("CPF incompleto. Digite os 11 dígitos do CPF.");
+                }
+
+                if (!isValidEmail(email)) {
+                    return setError("E-mail com formato inválido. Use um e-mail real como nome@exemplo.com.");
+                }
+
+                if (password.length < 6) {
+                    return setError("A senha deve ter no mínimo 6 caracteres.");
+                }
+
+                // Advance to Step 2
                 setRegStep(2);
                 return;
             }
 
-            // Step 2 validations
+            // STEP 2 VALIDATIONS: Onboarding & Goals
             if (!onboardingObjective) {
-                return setError("Qual o seu principal objetivo com o Money Dashs?");
+                return setError("Por favor, selecione qual o seu principal objetivo.");
             }
 
             if (!onboardingReason.trim()) {
                 return setError("Por favor, relate o que você busca no sistema.");
             }
 
-            setIsLoading(true);
-            const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-            const user = userCredential.user;
-            setRegisteredUserId(user.uid);
-            
-            await updateProfile(user, { displayName: name });
-            
-            const newUser: User = {
-                name,
-                email: email.trim().toLowerCase(),
-                phone,
-                cpf,
-                onboardingObjective,
-                onboardingReason,
-                plan: selectedPlan as Plan,
-                billingCycle: selectedBillingCycle as BillingCycle,
-                subscriptionStatus: 'ACTIVE',
-                role: 'user',
-                phoneVerified: false,
-                createdAt: new Date().toISOString()
-            };
-            
-            const createRes = await api.createUser(newUser, user.uid);
-            if (createRes && createRes.error) {
-                setError(createRes.message || 'Erro ao salvar perfil.');
-                setIsLoading(false);
-                return;
-            }
-            await handleSendCode(phone);
+            // Generate 6-digit security code and transition to verification screen
+            generateNewVerificationCode();
+            setOtp('');
+            setShowVerification(true);
         }
     } catch (e: any) {
         console.error("Auth Error:", e);
@@ -228,8 +292,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
             msg = 'O formato do e-mail é inválido.';
         } else if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
             msg = 'E-mail ou senha incorretos.';
-        } else if (e.message?.includes('auth/email-already-in-use')) {
-             msg = 'Este e-mail já está sendo utilizado por outra conta.';
         }
         
         setError(msg);
@@ -238,10 +300,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     }
   };
 
-  const inputClasses = "w-full px-4 py-3 rounded-lg border border-gray-300 !bg-white !text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm font-medium";
+  const inputClasses = "w-full px-4 py-3 rounded-xl border border-gray-300 !bg-white !text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm font-medium text-sm";
 
   return (
     <div className="flex min-h-screen bg-white font-sans overflow-hidden">
+        {/* LEFT COLUMN - BRANDING */}
         <div className="hidden md:flex md:w-1/2 bg-[#020617] flex-col justify-center px-24 relative overflow-hidden">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px]"></div>
             <button onClick={onBack} className="absolute top-8 left-8 flex items-center text-gray-400 hover:text-white transition-colors z-20">
@@ -253,14 +316,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                     <span className="text-2xl font-bold">Money Dashs</span>
                 </div>
                 <h1 className="text-5xl font-bold leading-tight mb-6">Controle Financeiro <br /><span className="text-blue-500">Sem Complicação.</span></h1>
-                <p className="text-gray-400 text-lg max-w-md">Gerencie suas contas, investimentos e planeje seu futuro em um só lugar.</p>
+                <p className="text-gray-400 text-lg max-w-md">Gerencie suas contas, metas, investimentos e planeje seu futuro em um só lugar.</p>
+                
+                {/* Security bullet points */}
+                <div className="mt-10 space-y-3">
+                  <div className="flex items-center gap-3 text-sm text-slate-300">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                    <span>Validação de segurança em 2 etapas para sua conta</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-slate-300">
+                    <CheckCircleIcon className="w-5 h-5 text-blue-400" />
+                    <span>Controle de metas com cronograma automático de economia</span>
+                  </div>
+                </div>
             </div>
         </div>
 
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8 bg-white text-gray-800 relative">
-            <div id="recaptcha-container-login"></div>
-            
-            <div className="w-full max-w-md space-y-8 animate-fade-in-up">
+        {/* RIGHT COLUMN - FORM */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-12 bg-white text-gray-800 relative overflow-y-auto">
+            <div className="w-full max-w-md space-y-6 animate-fade-in-up">
                 {isPendingApproval ? (
                     <div className="text-center space-y-6">
                         <div className="flex justify-center">
@@ -278,38 +352,166 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                         </button>
                     </div>
                 ) : showVerification ? (
-                    <div className="space-y-6">
-                        <div className="text-left">
-                            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{t('verifyPhone')}</h2>
-                            <p className="mt-2 text-sm text-gray-500 font-medium">{t('enterCode')}</p>
+                    /* SECURITY VERIFICATION STEP WITH GENERATED CODE */
+                    <div className="space-y-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                            <ShieldCheck className="w-7 h-7" />
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                              Validação de Segurança
+                            </span>
+                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Confirme seus Dados</h2>
+                          </div>
                         </div>
+
+                        <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                          Para garantir a autenticidade e segurança da sua conta, validamos as informações de contato fornecidas:
+                        </p>
+
+                        {/* Contacts Summary Card */}
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Mail className="w-4 h-4 text-blue-600" />
+                              <span className="font-bold">E-mail:</span>
+                              <span className="font-medium text-slate-900 truncate max-w-[180px]">{email}</span>
+                            </div>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                              Validado ✓
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200">
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Phone className="w-4 h-4 text-emerald-600" />
+                              <span className="font-bold">Celular:</span>
+                              <span className="font-medium text-slate-900">{phone}</span>
+                            </div>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                              Validado ✓
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* GENERATED CODE NOTIFICATION BANNER */}
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-100">
+                                <KeyRound className="w-4 h-4 text-amber-300" />
+                                <span>Código de Validação Gerado</span>
+                              </div>
+                              <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-black">
+                                Ativo
+                              </span>
+                            </div>
+
+                            <p className="text-[11px] text-blue-100 mb-3">
+                              Use este código para concluir a abertura da sua conta:
+                            </p>
+
+                            <div className="bg-black/25 backdrop-blur-sm rounded-xl py-3 px-4 flex items-center justify-center tracking-[0.4em] font-mono text-3xl font-black text-amber-300 mb-3 border border-white/10">
+                              {generatedCode}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleAutoFillCode}
+                                className="flex-1 py-2 px-3 rounded-lg bg-white text-blue-900 font-black text-xs hover:bg-blue-50 transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Preencher Código</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCopyCode}
+                                className="py-2 px-3 rounded-lg bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedCode ? 'Copiado!' : 'Copiar'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* INPUT CODE FORM */}
                         <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">
+                              Digite o código de 6 dígitos abaixo:
+                            </label>
                             <input 
-                                type="text" 
-                                maxLength={6}
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value)}
-                                placeholder="123456"
-                                className="w-full px-4 py-4 rounded-xl border border-gray-300 text-center tracking-[1em] font-black text-2xl !bg-white !text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                              type="text" 
+                              maxLength={6}
+                              value={otp}
+                              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                              placeholder="000000"
+                              autoFocus
+                              className="w-full px-4 py-3.5 rounded-xl border-2 border-blue-400/80 text-center tracking-[0.6em] font-mono font-black text-2xl !bg-white !text-gray-900 outline-none focus:ring-4 focus:ring-blue-100 shadow-sm"
                             />
-                            {error && (
-                                <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 text-center">
-                                    {error}
-                                </div>
+                            <div className="flex justify-between text-[11px] text-gray-400 mt-1 px-1">
+                              <span>{otp.length}/6 dígitos digitados</span>
+                              {otp.length === 6 && (
+                                <span className="text-emerald-600 font-bold">Pronto para confirmar!</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {error && (
+                            <div className="p-3.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 text-center flex items-center justify-center gap-2">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{error}</span>
+                            </div>
+                          )}
+
+                          <button 
+                            type="button"
+                            onClick={handleVerifyCodeAndRegister} 
+                            disabled={isLoading} 
+                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-sm shadow-xl shadow-emerald-600/20 transition-all disabled:opacity-50 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            {isLoading ? (
+                              <span>CRIANDO SUA CONTA...</span>
+                            ) : (
+                              <>
+                                <CheckCircleIcon className="w-5 h-5" />
+                                <span>CONFIRMAR E CONCLUIR CADASTRO</span>
+                              </>
                             )}
+                          </button>
+
+                          <div className="flex items-center justify-between pt-2">
                             <button 
-                                onClick={handleVerifyCode} 
-                                disabled={isLoading} 
-                                className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold shadow-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+                              type="button"
+                              onClick={() => {
+                                setShowVerification(false);
+                                setRegStep(1);
+                                setError('');
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-800 font-bold flex items-center gap-1"
                             >
-                                {isLoading ? 'VERIFICANDO...' : 'CONFIRMAR CÓDIGO'}
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                              <span>Corrigir dados</span>
                             </button>
+
                             <button 
-                                onClick={() => handleSendCode(phone)}
-                                className="w-full text-sm font-bold text-gray-500 hover:text-gray-900"
+                              type="button"
+                              disabled={countdown > 0}
+                              onClick={generateNewVerificationCode}
+                              className={`text-xs font-bold flex items-center gap-1 ${
+                                countdown > 0 
+                                  ? 'text-gray-400 cursor-not-allowed' 
+                                  : 'text-blue-600 hover:text-blue-700 cursor-pointer'
+                              }`}
                             >
-                                {t('resendCode')}
+                              <RefreshCw className={`w-3.5 h-3.5 ${countdown > 0 ? '' : 'animate-spin'}`} />
+                              <span>{countdown > 0 ? `Reenviar código (${countdown}s)` : 'Reenviar novo código'}</span>
                             </button>
+                          </div>
                         </div>
                     </div>
                 ) : (
@@ -334,8 +536,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                             </button>
                         </div>
 
-                        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-                            <div className="md:hidden text-center mb-6">
+                        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+                            <div className="md:hidden text-center mb-4">
                                 <div className="flex items-center justify-center gap-2.5 mb-2">
                                     <img src="/icon-192.png" alt="Money Dashs" className="w-10 h-10 rounded-xl object-cover shadow-md" />
                                     <h1 className="text-2xl font-extrabold text-[#020617]">
@@ -343,69 +545,122 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                                     </h1>
                                 </div>
                             </div>
-            {!isLoginMode && regStep === 1 && (
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Nome Completo</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Seu nome" className={inputClasses} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Telefone</label>
-                            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} required placeholder="+55 11 99999-9999" className={inputClasses} />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">CPF</label>
-                            <input type="text" value={cpf} onChange={e => setCpf(e.target.value)} required placeholder="000.000.000-00" className={inputClasses} />
-                        </div>
-                    </div>
-                </div>
-            )}
+
+                            {/* REGISTRATION STEP 1: Basic Info with validation */}
+                            {!isLoginMode && regStep === 1 && (
+                                <div className="space-y-3.5">
+                                    <div className="flex items-center justify-between text-blue-600 font-bold text-xs bg-blue-50/80 p-2.5 rounded-xl border border-blue-100">
+                                        <span>Passo 1 de 2: Dados de Acesso</span>
+                                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full">50%</span>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Nome Completo</label>
+                                        <input 
+                                          type="text" 
+                                          value={name} 
+                                          onChange={e => setName(e.target.value)} 
+                                          required 
+                                          placeholder="Ex: João da Silva" 
+                                          className={inputClasses} 
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between mb-1 ml-1">
+                                              <label className="block text-xs font-bold text-gray-500 uppercase">Celular / WhatsApp</label>
+                                              {isValidPhone(phone) && (
+                                                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                                                  ✓ Válido
+                                                </span>
+                                              )}
+                                            </div>
+                                            <input 
+                                              type="text" 
+                                              value={phone} 
+                                              onChange={e => setPhone(formatPhone(e.target.value))} 
+                                              required 
+                                              placeholder="(11) 99999-9999" 
+                                              maxLength={15}
+                                              className={`${inputClasses} ${isValidPhone(phone) ? 'border-emerald-400' : ''}`} 
+                                            />
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between mb-1 ml-1">
+                                              <label className="block text-xs font-bold text-gray-500 uppercase">CPF</label>
+                                              {cpf.replace(/\D/g, '').length === 11 && (
+                                                <span className="text-[10px] text-emerald-600 font-bold">✓ Válido</span>
+                                              )}
+                                            </div>
+                                            <input 
+                                              type="text" 
+                                              value={cpf} 
+                                              onChange={e => setCpf(formatCPF(e.target.value))} 
+                                              required 
+                                              placeholder="000.000.000-00" 
+                                              maxLength={14}
+                                              className={inputClasses} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             
                             {(isLoginMode || (!isLoginMode && regStep === 1)) && (
                                 <>
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">E-mail</label>
+                                        <div className="flex items-center justify-between mb-1 ml-1">
+                                          <label className="block text-xs font-bold text-gray-500 uppercase">E-mail</label>
+                                          {!isLoginMode && isValidEmail(email) && (
+                                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                                              ✓ E-mail válido
+                                            </span>
+                                          )}
+                                        </div>
                                         <input 
                                             type="email" 
                                             value={email} 
                                             onChange={e => setEmail(e.target.value)} 
                                             required 
                                             placeholder="exemplo@email.com" 
-                                            className={inputClasses} 
+                                            className={`${inputClasses} ${!isLoginMode && isValidEmail(email) ? 'border-emerald-400' : ''}`} 
                                         />
                                     </div>
                                     
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Senha</label>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Senha</label>
                                         <input 
                                             type="password" 
                                             value={password} 
                                             onChange={e => setPassword(e.target.value)} 
                                             required 
-                                            placeholder="••••••••" 
+                                            placeholder="Mínimo 6 caracteres" 
                                             className={inputClasses} 
                                         />
                                     </div>
                                 </>
                             )}
 
+                            {/* REGISTRATION STEP 2: Questionnaire */}
                             {!isLoginMode && regStep === 2 && (
                                 <div className="space-y-4 animate-fade-in">
-                                    <div className="flex items-center space-x-2 text-blue-600 font-bold text-xs bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
-                                        <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-[10px]">Passo 2 de 2</span>
-                                        <span>Nos ajude a te conhecer melhor!</span>
+                                    <div className="flex items-center justify-between text-blue-600 font-bold text-xs bg-blue-50 p-3 rounded-xl border border-blue-100 mb-2">
+                                        <span>Passo 2 de 2: Seus Objetivos</span>
+                                        <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-[10px]">100%</span>
                                     </div>
                                     
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Qual o seu principal objetivo com o Money Dashs?</label>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Qual o seu principal objetivo com o Money Dashs?</label>
                                         <select 
                                             value={onboardingObjective} 
                                             onChange={(e) => setOnboardingObjective(e.target.value)}
                                             required
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium"
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-sm"
                                         >
                                             <option value="">Selecione o objetivo</option>
+                                            <option value="juntar_dinheiro_metas">Juntar dinheiro e bater metas financeiras</option>
                                             <option value="organizar_Financas">Organizar minhas finanças diárias com clareza</option>
                                             <option value="controlar_Gastos">Controlar gastos excessivos e economizar todo mês</option>
                                             <option value="planejar_Futuro">Planejar investimentos de longo prazo e aposentadoria</option>
@@ -414,35 +669,44 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">O que você busca em nosso sistema no seu dia-a-dia?</label>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">O que você busca em nosso sistema no seu dia-a-dia?</label>
                                         <textarea 
                                             rows={3}
                                             value={onboardingReason}
                                             onChange={(e) => setOnboardingReason(e.target.value)}
                                             required
-                                            placeholder="Ex: Controlar gastos no cheque especial, emitir relatórios de despesas e lucros..."
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium resize-none"
+                                            placeholder="Ex: Juntar R$ 5.000 em 6 meses, acompanhar metas mensais e cortar gastos supérfluos..."
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-sm resize-none"
                                         />
                                     </div>
 
                                     <button 
                                         type="button" 
                                         onClick={() => setRegStep(1)} 
-                                        className="text-xs text-blue-600 font-bold hover:underline py-1"
+                                        className="text-xs text-blue-600 font-bold hover:underline py-1 flex items-center gap-1"
                                     >
-                                        ← Voltar para dados básicos
+                                        <ArrowLeft className="w-3 h-3" /> Voltar para dados básicos
                                     </button>
                                 </div>
                             )}
 
                             {error && (
-                                <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 text-center animate-shake">
-                                    {error}
+                                <div className="p-3.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-100 text-center animate-shake flex items-center justify-center gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                    <span>{error}</span>
                                 </div>
                             )}
 
-                            <button type="submit" disabled={isLoading} className="w-full py-4 bg-[#020617] text-white rounded-xl font-bold hover:bg-black transition-all shadow-xl disabled:opacity-50 transform active:scale-95">
-                                {isLoading ? 'CARREGANDO...' : (isLoginMode ? 'ENTRAR' : (regStep === 1 ? 'SEGUINTE: DEFINIR OBJETIVOS' : 'CADASTRAR AGORA'))}
+                            <button 
+                              type="submit" 
+                              disabled={isLoading} 
+                              className="w-full py-4 bg-[#020617] hover:bg-black text-white rounded-xl font-black text-sm transition-all shadow-xl disabled:opacity-50 transform active:scale-95 cursor-pointer"
+                            >
+                                {isLoading 
+                                  ? 'CARREGANDO...' 
+                                  : (isLoginMode 
+                                      ? 'ENTRAR NA CONTA' 
+                                      : (regStep === 1 ? 'SEGUINTE: DEFINIR OBJETIVOS' : 'GERAR CÓDIGO DE VALIDAÇÃO'))}
                             </button>
 
                             {isLoginMode && (
@@ -453,9 +717,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
                                 </div>
                             )}
 
-                            <p className="text-center text-sm font-semibold text-gray-500">
+                            <p className="text-center text-sm font-semibold text-gray-500 pt-2">
                                 {isLoginMode ? 'Não tem uma conta?' : 'Já possui conta?'} 
-                                <button type="button" onClick={() => setIsLoginMode(!isLoginMode)} className="ml-1 text-blue-600 font-bold hover:underline">
+                                <button type="button" onClick={() => { setIsLoginMode(!isLoginMode); setRegStep(1); setShowVerification(false); setError(''); }} className="ml-1 text-blue-600 font-bold hover:underline">
                                     {isLoginMode ? 'Registre-se' : 'Faça login'}
                                 </button>
                             </p>

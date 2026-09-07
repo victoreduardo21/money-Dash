@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification, Goal } from '../types';
 import { db, auth } from './firebase';
 import { 
     collection, 
@@ -416,5 +416,92 @@ export const api = {
         } catch (error) {
             handleFirestoreError(error, OperationType.DELETE, 'notifications/' + id);
         }
+    },
+    getGoals: async (token: string): Promise<Goal[]> => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
+        try {
+            const q = query(collection(db, 'goals'), where('userId', '==', uid));
+            const snap = await getDocs(q);
+            const list = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Goal));
+            if (list.length > 0) {
+                localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(list));
+                return list;
+            }
+        } catch (error) {
+            console.warn('Firestore goals query error, checking localStorage:', error);
+        }
+        try {
+            const local = localStorage.getItem(`cached_goals_${uid}`);
+            if (local) return JSON.parse(local);
+        } catch (e) {
+            console.error('Local storage goals parsing error:', e);
+        }
+        return [];
+    },
+    createGoal: async (goal: Omit<Goal, 'id'> & { id?: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        const { id, ...data } = goal;
+        const payload = {
+            ...data,
+            userId: uid,
+            updatedAt: new Date().toISOString()
+        };
+        try {
+            if (id && !id.startsWith('local_')) {
+                await updateDoc(doc(db, 'goals', id), payload);
+                const local = localStorage.getItem(`cached_goals_${uid}`);
+                if (local) {
+                    const parsed: Goal[] = JSON.parse(local);
+                    const updated = parsed.map(g => g.id === id ? { ...g, ...payload, id } : g);
+                    localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(updated));
+                }
+                return { error: false, id };
+            } else {
+                const docRef = await addDoc(collection(db, 'goals'), payload);
+                const newGoal = { ...payload, id: docRef.id };
+                const local = localStorage.getItem(`cached_goals_${uid}`);
+                const parsed: Goal[] = local ? JSON.parse(local) : [];
+                // remove old local version if replacing
+                const filtered = parsed.filter(g => g.id !== id);
+                filtered.unshift(newGoal as Goal);
+                localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(filtered));
+                return { error: false, id: docRef.id };
+            }
+        } catch (error) {
+            console.warn('Firestore createGoal error, using localStorage persistence:', error);
+            const goalId = id || ('local_goal_' + Date.now());
+            const localGoal = { ...payload, id: goalId } as Goal;
+            const local = localStorage.getItem(`cached_goals_${uid}`);
+            const parsed: Goal[] = local ? JSON.parse(local) : [];
+            const existingIndex = parsed.findIndex(g => g.id === goalId);
+            if (existingIndex >= 0) {
+                parsed[existingIndex] = localGoal;
+            } else {
+                parsed.unshift(localGoal);
+            }
+            localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(parsed));
+            return { error: false, id: goalId };
+        }
+    },
+    deleteGoal: async (id: string, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        try {
+            if (!id.startsWith('local_')) {
+                await deleteDoc(doc(db, 'goals', id));
+            }
+        } catch (error) {
+            console.warn('Firestore deleteGoal error:', error);
+        }
+        if (uid) {
+            const local = localStorage.getItem(`cached_goals_${uid}`);
+            if (local) {
+                const parsed: Goal[] = JSON.parse(local);
+                const filtered = parsed.filter(g => g.id !== id);
+                localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(filtered));
+            }
+        }
+        return { error: false };
     }
 };

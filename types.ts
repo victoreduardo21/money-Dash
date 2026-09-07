@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Metas' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -120,6 +120,7 @@ export interface User {
   language?: Language;
   role?: 'admin' | 'user';
   phoneVerified?: boolean;
+  emailVerified?: boolean;
   overdraftLimit?: number;
   emailNotifications?: boolean;
   emailNotificationsDaysAndBefore?: number; // e.g. 1, 2, 3 days before
@@ -133,3 +134,47 @@ export interface SystemNotification {
     userId: string; // 'all' for general, or target userId for specific
     createdAt: string;
 }
+
+export interface GoalMilestone {
+  id: string;
+  monthNumber: number; // 1, 2, 3...
+  monthLabel: string; // Ex: "Mês 1 (Set/2026)"
+  targetAmount: number; // Valor previsto para guardar neste mês
+  savedAmount: number; // Valor efetivamente já guardado neste mês
+  isCompleted: boolean; // Se a meta deste mês foi cumprida
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  date: string;
+  milestoneId?: string;
+  note?: string;
+  deductFromBalance?: boolean;
+  createdAt: string;
+}
+
+export interface Goal {
+  id: string;
+  userId?: string;
+  title: string;
+  description?: string;
+  category: string;
+  targetAmount: number;
+  currentAmount: number;
+  currency: Currency;
+  targetMonths: number;
+  startDate: string; // YYYY-MM
+  deadlineDate: string; // YYYY-MM
+  distributionType: 'EQUAL' | 'CUSTOM' | 'PROGRESSIVE';
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'PAUSED';
+  icon?: string;
+  color?: string;
+  milestones: GoalMilestone[];
+  contributions?: GoalContribution[];
+  createdAt: string;
+  updatedAt?: string;
+}
+

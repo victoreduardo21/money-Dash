@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Investments from './pages/Investments';
 import Agenda from './pages/Agenda';
+import Goals from './pages/Goals';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import AIInsights from './pages/AIInsights';
@@ -17,7 +18,7 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification, Goal } from './types';
 import { api } from './services/api';
 import { auth, db, handleFirestoreError, OperationType } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
   const [aiConversation, setAiConversation] = useState<AiConversation | null>(null);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
@@ -216,6 +218,23 @@ const App: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'subscriptions');
     });
 
+    const qGoals = query(collection(db, 'goals'), where('userId', '==', token));
+    const unsubGoals = onSnapshot(qGoals, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Goal));
+      setGoals(list);
+      if (token) localStorage.setItem(`cached_goals_${token}`, JSON.stringify(list));
+    }, (error) => {
+      console.warn('Goals snapshot warning:', error);
+      if (token) {
+        const cached = localStorage.getItem(`cached_goals_${token}`);
+        if (cached) {
+          try {
+            setGoals(JSON.parse(cached));
+          } catch (e) {}
+        }
+      }
+    });
+
     let isInitialNotifLoad = true;
     const qNotif = query(collection(db, 'notifications'), where('userId', 'in', ['all', token]));
     const unsubNotif = onSnapshot(qNotif, (snap) => {
@@ -261,6 +280,7 @@ const App: React.FC = () => {
       unsubCC();
       unsubCT();
       unsubSub();
+      unsubGoals();
       unsubAI();
       unsubNotif();
     };
@@ -326,6 +346,159 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveGoal = async (goalData: Omit<Goal, 'id'> & { id?: string }) => {
+    try {
+      await api.createGoal(goalData, token || '');
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Meta salva com sucesso!' : 'Goal saved successfully!', 
+        type: 'success' 
+      });
+    } catch (err) {
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Erro ao salvar meta.' : 'Error saving goal.', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const handleDeleteGoal = async (id: string) => {
+    try {
+      await api.deleteGoal(id, token || '');
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Meta excluída com sucesso.' : 'Goal deleted.', 
+        type: 'info' 
+      });
+    } catch (err) {
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Erro ao excluir meta.' : 'Error deleting goal.', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const handleDepositToGoal = async (
+    goalId: string,
+    amount: number,
+    milestoneId?: string,
+    deductFromBalance?: boolean,
+    date?: string,
+    note?: string
+  ) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    try {
+      const newCurrent = (goal.currentAmount || 0) + amount;
+      const updatedMilestones = (goal.milestones || []).map(m => {
+        if (milestoneId && m.id === milestoneId) {
+          const newSaved = (m.savedAmount || 0) + amount;
+          return {
+            ...m,
+            savedAmount: newSaved,
+            isCompleted: newSaved >= m.targetAmount,
+            completedAt: new Date().toISOString()
+          };
+        }
+        return m;
+      });
+
+      const updatedGoal: Goal = {
+        ...goal,
+        currentAmount: newCurrent,
+        status: newCurrent >= goal.targetAmount ? 'COMPLETED' : goal.status,
+        milestones: updatedMilestones,
+        contributions: [
+          ...(goal.contributions || []),
+          {
+            id: 'c_' + Date.now(),
+            amount,
+            date: date || new Date().toISOString().slice(0, 10),
+            milestoneId,
+            note,
+            deductFromBalance,
+            createdAt: new Date().toISOString()
+          }
+        ]
+      };
+
+      await api.createGoal(updatedGoal, token || '');
+
+      if (deductFromBalance) {
+        await api.createTransaction({
+          description: `Aporte Meta: ${goal.title}${note ? ` (${note})` : ''}`,
+          amount: amount,
+          type: TransactionType.Despesa,
+          category: 'Investimento',
+          currency: goal.currency || 'BRL',
+          date: date || new Date().toISOString().slice(0, 10)
+        }, token || '');
+      }
+
+      setToast({ 
+        id: Date.now().toString(), 
+        message: newCurrent >= goal.targetAmount 
+          ? (language === 'pt-BR' ? '🎉 Parabéns! Você atingiu sua meta!' : '🎉 Congratulations! Goal reached!')
+          : (language === 'pt-BR' ? `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso!` : `Deposit of $${amount.toFixed(2)} recorded!`), 
+        type: 'success' 
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Erro ao registrar aporte.' : 'Error recording deposit.', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const handleToggleMilestoneQuick = async (goalId: string, milestoneId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    try {
+      const ms = goal.milestones.find(m => m.id === milestoneId);
+      if (!ms) return;
+
+      const willBeCompleted = !ms.isCompleted;
+      const diff = willBeCompleted ? ms.targetAmount : -(ms.savedAmount || ms.targetAmount);
+      const newCurrent = Math.max(0, (goal.currentAmount || 0) + diff);
+
+      const updatedMilestones = goal.milestones.map(m => {
+        if (m.id === milestoneId) {
+          return {
+            ...m,
+            isCompleted: willBeCompleted,
+            savedAmount: willBeCompleted ? m.targetAmount : 0,
+            completedAt: willBeCompleted ? new Date().toISOString() : undefined
+          };
+        }
+        return m;
+      });
+
+      const updatedGoal: Goal = {
+        ...goal,
+        currentAmount: newCurrent,
+        status: newCurrent >= goal.targetAmount ? 'COMPLETED' : 'IN_PROGRESS',
+        milestones: updatedMilestones
+      };
+
+      await api.createGoal(updatedGoal, token || '');
+      setToast({ 
+        id: Date.now().toString(), 
+        message: willBeCompleted 
+          ? (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} marcada como guardada!` : `Installment marked as saved!`)
+          : (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} reaberta.` : `Installment reopened.`),
+        type: 'info' 
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (!isAuthReady) return (
       <div className="flex items-center justify-center h-screen bg-slate-900">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -374,8 +547,21 @@ const App: React.FC = () => {
         />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto w-full p-4 md:p-6 lg:p-8 pb-28 md:pb-8 no-scrollbar max-w-full">
-            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} subscriptions={subscriptions} investments={investments} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
+            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} subscriptions={subscriptions} investments={investments} goals={goals} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
+            {activePage === 'Metas' && (
+                <Goals 
+                    goals={goals} 
+                    onSaveGoal={handleSaveGoal} 
+                    onDeleteGoal={handleDeleteGoal} 
+                    onDepositToGoal={handleDepositToGoal} 
+                    onToggleMilestoneQuick={handleToggleMilestoneQuick} 
+                    language={language} 
+                    selectedCurrency={selectedCurrency} 
+                    onCurrencyChange={setSelectedCurrency} 
+                    currentUser={currentUser} 
+                />
+            )}
             {activePage === 'Investimentos' && <Investments 
                 investments={investments} 
                 setInvestments={setInvestments} 
