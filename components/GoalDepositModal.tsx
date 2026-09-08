@@ -33,18 +33,36 @@ export const GoalDepositModal: React.FC<GoalDepositModalProps> = ({
   const [note, setNote] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  const milestoneTarget = milestone ? Number(milestone.targetAmount) || 0 : 0;
+  const milestoneSaved = milestone ? Number(milestone.savedAmount) || 0 : 0;
+  const milestoneRemaining = Math.max(0, milestoneTarget - milestoneSaved);
+  const isMilestonePartial = milestoneSaved > 0 && milestoneSaved < milestoneTarget;
+  const milestonePercent = milestoneTarget > 0 ? Math.min(100, Math.round((milestoneSaved / milestoneTarget) * 100)) : 0;
+
   useEffect(() => {
     if (milestone) {
-      // If milestone is not completed, pre-fill with remaining needed for this milestone
-      const needed = Math.max(0, milestone.targetAmount - (milestone.savedAmount || 0));
+      // If milestone has partial savings, pre-fill with the exact remaining needed
+      const needed = Math.max(0, (milestone.targetAmount || 0) - (milestone.savedAmount || 0));
       setAmount(String(needed > 0 ? needed : milestone.targetAmount));
-      setNote(`Aporte ${milestone.monthLabel}`);
+      setNote(
+        (milestone.savedAmount || 0) > 0 
+          ? `Aporte Restante ${milestone.monthLabel}` 
+          : `Aporte ${milestone.monthLabel}`
+      );
     } else if (goal) {
-      // General deposit
-      const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
-      const suggested = goal.milestones.find(m => !m.isCompleted)?.targetAmount || remaining;
-      setAmount(String(suggested));
-      setNote(isPT ? 'Aporte na Meta' : 'Goal Contribution');
+      // General deposit: find first incomplete milestone (especially if partial)
+      const partialMilestone = goal.milestones?.find(m => (!m.isCompleted && (m.savedAmount || 0) > 0));
+      const firstIncomplete = partialMilestone || goal.milestones?.find(m => !m.isCompleted);
+      
+      if (firstIncomplete) {
+        const needed = Math.max(0, firstIncomplete.targetAmount - (firstIncomplete.savedAmount || 0));
+        setAmount(String(needed > 0 ? needed : firstIncomplete.targetAmount));
+        setNote(`Aporte ${firstIncomplete.monthLabel}`);
+      } else {
+        const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+        setAmount(String(remaining > 0 ? remaining : 100));
+        setNote(isPT ? 'Aporte na Meta' : 'Goal Contribution');
+      }
     }
     setErrorMsg('');
   }, [milestone, goal, isOpen, isPT]);
@@ -112,31 +130,80 @@ export const GoalDepositModal: React.FC<GoalDepositModalProps> = ({
           )}
 
           {milestone && (
-            <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                  {isPT ? 'Parcela Selecionada' : 'Selected Milestone'}
-                </span>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {milestone.monthLabel}
-                </p>
+            <div className={`p-4 rounded-2xl border ${
+              isMilestonePartial 
+                ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60' 
+                : 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40'
+            } space-y-2.5`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className={`text-[10px] font-black uppercase tracking-wider block ${
+                    isMilestonePartial ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {isMilestonePartial 
+                      ? (isPT ? `Parcela Parcial (${milestonePercent}% concluída)` : `Partial Milestone (${milestonePercent}%)`) 
+                      : (isPT ? 'Parcela Selecionada' : 'Selected Milestone')}
+                  </span>
+                  <p className="text-xs font-black text-slate-800 dark:text-slate-100">
+                    {milestone.monthLabel}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-400 block">
+                    {isPT ? 'Meta da parcela' : 'Target'}
+                  </span>
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                    {currencySymbol} {milestoneTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 block">
-                  {isPT ? 'Meta do mês' : 'Month target'}
-                </span>
-                <span className="text-xs font-black text-blue-700 dark:text-blue-300">
-                  {currencySymbol} {milestone.targetAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
+
+              {/* BARRA DE PROGRESSO DA PARCELA */}
+              {isMilestonePartial && (
+                <div className="w-full bg-amber-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${milestonePercent}%` }}
+                  />
+                </div>
+              )}
+
+              {/* DETALHES FINANCEIROS DA PARCELA */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">
+                    {isPT ? 'Já guardado:' : 'Already saved:'}
+                  </span>
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    {currencySymbol} {milestoneSaved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 block">
+                    {isPT ? 'Restante a guardar:' : 'Remaining needed:'}
+                  </span>
+                  <span className="text-sm font-black text-amber-700 dark:text-amber-300">
+                    {currencySymbol} {milestoneRemaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
           {/* VALOR GUARDADO */}
           <div>
-            <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 block mb-1.5">
-              {isPT ? 'Quanto você guardou? *' : 'Amount Saved *'}
-            </label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                {isPT ? 'Quanto você guardou? *' : 'Amount Saved *'}
+              </label>
+              {milestone && milestoneRemaining > 0 && (
+                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                  {isPT ? 'Falta: ' : 'Left: '}
+                  {currencySymbol} {milestoneRemaining.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              )}
+            </div>
+
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">
                 {currencySymbol}
@@ -154,15 +221,49 @@ export const GoalDepositModal: React.FC<GoalDepositModalProps> = ({
               />
             </div>
             
-            {/* Quick buttons if milestone target exists */}
+            {/* INFORMATIVO DINÂMICO CONFORME DIGITAÇÃO */}
+            {milestone && parseFloat(amount) > 0 && (
+              <div className="mt-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                {parseFloat(amount) >= milestoneRemaining ? (
+                  <p className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {isPT 
+                        ? `🎉 Excelente! Esse aporte de ${currencySymbol} ${parseFloat(amount).toFixed(2)} vai quitar 100% desta parcela!` 
+                        : `🎉 Great! This will complete 100% of this installment!`}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {isPT 
+                        ? `Você guardará ${currencySymbol} ${parseFloat(amount).toFixed(2)}. Ainda restará ${currencySymbol} ${(milestoneRemaining - parseFloat(amount)).toFixed(2)} pendente nesta parcela.`
+                        : `You are saving part now. ${currencySymbol} ${(milestoneRemaining - parseFloat(amount)).toFixed(2)} will remain pending on this milestone.`}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Quick buttons */}
             {milestone && (
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                {isMilestonePartial && milestoneRemaining > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount(String(milestoneRemaining))}
+                    className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 hover:bg-amber-200 transition-colors border border-amber-300 dark:border-amber-700"
+                  >
+                    {isPT ? 'Guardar Restante' : 'Save Remaining'} ({currencySymbol} {milestoneRemaining.toFixed(2)})
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setAmount(String(milestone.targetAmount))}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40 transition-colors border border-slate-200 dark:border-slate-700"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/40 transition-colors border border-slate-200 dark:border-slate-700"
                 >
-                  {isPT ? 'Valor da meta integral' : 'Full target'} ({currencySymbol} {milestone.targetAmount})
+                  {isPT ? 'Meta Integral' : 'Full Target'} ({currencySymbol} {milestone.targetAmount.toFixed(2)})
                 </button>
               </div>
             )}

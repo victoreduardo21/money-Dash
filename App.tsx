@@ -392,18 +392,44 @@ const App: React.FC = () => {
     if (!goal) return;
 
     try {
-      const newCurrent = (goal.currentAmount || 0) + amount;
+      const numAmount = Number(amount) || 0;
+      if (numAmount <= 0) return;
+
+      const newCurrent = (goal.currentAmount || 0) + numAmount;
+      
+      let remainingToAllocate = numAmount;
       const updatedMilestones = (goal.milestones || []).map(m => {
-        if (milestoneId && m.id === milestoneId) {
-          const newSaved = (m.savedAmount || 0) + amount;
+        if (milestoneId) {
+          if (m.id === milestoneId) {
+            const currentSaved = Number(m.savedAmount) || 0;
+            const newSaved = currentSaved + numAmount;
+            const isCompleted = newSaved >= m.targetAmount;
+            return {
+              ...m,
+              savedAmount: newSaved,
+              isCompleted,
+              completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : undefined
+            };
+          }
+          return m;
+        } else {
+          // If no specific milestone is provided, allocate sequentially to incomplete or partial milestones
+          if (remainingToAllocate <= 0) return m;
+          const currentSaved = Number(m.savedAmount) || 0;
+          const needed = Math.max(0, m.targetAmount - currentSaved);
+          if (needed <= 0 && m.isCompleted) return m;
+
+          const alloc = Math.min(remainingToAllocate, needed > 0 ? needed : remainingToAllocate);
+          remainingToAllocate -= alloc;
+          const newSaved = currentSaved + alloc;
+          const isCompleted = newSaved >= m.targetAmount;
           return {
             ...m,
             savedAmount: newSaved,
-            isCompleted: newSaved >= m.targetAmount,
-            completedAt: new Date().toISOString()
+            isCompleted,
+            completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : undefined
           };
         }
-        return m;
       });
 
       const updatedGoal: Goal = {
@@ -415,7 +441,7 @@ const App: React.FC = () => {
           ...(goal.contributions || []),
           {
             id: 'c_' + Date.now(),
-            amount,
+            amount: numAmount,
             date: date || new Date().toISOString().slice(0, 10),
             milestoneId,
             note,
@@ -430,7 +456,7 @@ const App: React.FC = () => {
       if (deductFromBalance) {
         await api.createTransaction({
           description: `Aporte Meta: ${goal.title}${note ? ` (${note})` : ''}`,
-          amount: amount,
+          amount: numAmount,
           type: TransactionType.Despesa,
           category: 'Investimento',
           currency: goal.currency || 'BRL',
@@ -442,7 +468,7 @@ const App: React.FC = () => {
         id: Date.now().toString(), 
         message: newCurrent >= goal.targetAmount 
           ? (language === 'pt-BR' ? '🎉 Parabéns! Você atingiu sua meta!' : '🎉 Congratulations! Goal reached!')
-          : (language === 'pt-BR' ? `Aporte de R$ ${amount.toFixed(2)} registrado com sucesso!` : `Deposit of $${amount.toFixed(2)} recorded!`), 
+          : (language === 'pt-BR' ? `Aporte de R$ ${numAmount.toFixed(2)} registrado com sucesso!` : `Deposit of $${numAmount.toFixed(2)} recorded!`), 
         type: 'success' 
       });
     } catch (err) {
@@ -455,6 +481,48 @@ const App: React.FC = () => {
     }
   };
 
+  const handleWithdrawGoal = async (goalId: string, withdrawAmount?: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const amountToWithdraw = withdrawAmount || goal.currentAmount;
+    if (amountToWithdraw <= 0) return;
+
+    try {
+      const newCurrent = Math.max(0, (goal.currentAmount || 0) - amountToWithdraw);
+      const updatedGoal: Goal = {
+        ...goal,
+        currentAmount: newCurrent,
+        status: newCurrent >= goal.targetAmount ? 'COMPLETED' : 'IN_PROGRESS'
+      };
+      await api.createGoal(updatedGoal, token || '');
+
+      // Devolve o valor resgatado para o saldo da conta corrente
+      await api.createTransaction({
+        description: `Resgate Meta: ${goal.title}`,
+        amount: amountToWithdraw,
+        type: TransactionType.Receita,
+        category: 'Resgate',
+        currency: goal.currency || 'BRL',
+        date: new Date().toISOString().slice(0, 10),
+      }, token || '');
+
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' 
+          ? `Resgate de R$ ${amountToWithdraw.toFixed(2)} realizado! Valor creditado no saldo.`
+          : `Withdrawal of $${amountToWithdraw.toFixed(2)} completed! Added to balance.`,
+        type: 'success'
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao realizar resgate da meta.' : 'Error withdrawing from goal.',
+        type: 'error'
+      });
+    }
+  };
+
   const handleToggleMilestoneQuick = async (goalId: string, milestoneId: string) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -463,8 +531,10 @@ const App: React.FC = () => {
       const ms = goal.milestones.find(m => m.id === milestoneId);
       if (!ms) return;
 
-      const willBeCompleted = !ms.isCompleted;
-      const diff = willBeCompleted ? ms.targetAmount : -(ms.savedAmount || ms.targetAmount);
+      const isCompleted = ms.isCompleted || ((ms.savedAmount || 0) >= ms.targetAmount && ms.targetAmount > 0);
+      const willBeCompleted = !isCompleted;
+      const currentSaved = Number(ms.savedAmount) || 0;
+      const diff = willBeCompleted ? Math.max(0, ms.targetAmount - currentSaved) : -currentSaved;
       const newCurrent = Math.max(0, (goal.currentAmount || 0) + diff);
 
       const updatedMilestones = goal.milestones.map(m => {
@@ -565,6 +635,7 @@ const App: React.FC = () => {
             {activePage === 'Investimentos' && <Investments 
                 investments={investments} 
                 setInvestments={setInvestments} 
+                goals={goals}
                 onSaveInvestment={async (inv) => { 
                     try {
                         const isNew = !inv.id;
@@ -609,6 +680,9 @@ const App: React.FC = () => {
                         setToast({ id: Date.now().toString(), message: "Erro ao realizar resgate.", type: 'error' });
                     }
                 }} 
+                onDepositToGoal={handleDepositToGoal}
+                onWithdrawGoal={handleWithdrawGoal}
+                setActivePage={setActivePage}
                 language={language} 
             />}
             {activePage === 'Agenda' && (
@@ -623,7 +697,7 @@ const App: React.FC = () => {
                     language={language} 
                 />
             )}
-            {activePage === 'Relatórios' && <Reports transactions={transactions} creditTransactions={creditTransactions} investments={investments} subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
+            {activePage === 'Relatórios' && <Reports transactions={transactions} creditTransactions={creditTransactions} investments={investments} goals={goals} subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} creditCards={creditCards} creditTransactions={creditTransactions} currentUser={currentUser} aiConversation={aiConversation} token={token || ''} />}
             {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
             {activePage === 'Assinaturas' && <Subscriptions subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} token={token || ''} />}

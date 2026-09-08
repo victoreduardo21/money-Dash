@@ -1,7 +1,8 @@
 
 import React, { useMemo, useState, useRef } from 'react';
-import { PersonalTransaction, TransactionType, Currency, Language, Investment, CreditTransaction, Subscription, User } from '../types';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PersonalTransaction, TransactionType, Currency, Language, Investment, Goal, CreditTransaction, Subscription, User } from '../types';
+import { PieChart, Pie, Cell, Tooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import ResponsiveContainer from '../components/SafeResponsiveContainer';
 import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { ArrowUpIcon } from '../components/icons/ArrowUpIcon';
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon';
@@ -16,6 +17,7 @@ interface ReportsProps {
     transactions: PersonalTransaction[];
     creditTransactions: CreditTransaction[];
     investments: Investment[];
+    goals?: Goal[];
     subscriptions?: Subscription[];
     language: Language;
     selectedCurrency: Currency;
@@ -32,6 +34,7 @@ const Reports: React.FC<ReportsProps> = ({
     transactions, 
     creditTransactions = [], 
     investments, 
+    goals = [],
     subscriptions = [], 
     language, 
     selectedCurrency, 
@@ -122,12 +125,18 @@ const Reports: React.FC<ReportsProps> = ({
             .filter(t => (t.currency || 'BRL') === selectedCurrency)
             .reduce((acc, t) => acc + (t.type === TransactionType.Receita ? Number(t.amount) : -Number(t.amount)), 0);
 
-        const patrimonioTotalAtivos = (investments || [])
+        const patrimonioInvestimentos = (investments || [])
             .filter(i => (i.currency || 'BRL') === selectedCurrency)
             .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
 
-        return { rec, despReal, saldoTotal, patrimonioTotalAtivos };
-    }, [transactions, investments, selectedMonth, selectedCurrency, subscriptions]);
+        const patrimonioMetas = (goals || [])
+            .filter(g => (g.currency || 'BRL') === selectedCurrency)
+            .reduce((acc, g) => acc + (Number(g.currentAmount) || 0), 0);
+
+        const patrimonioTotalAtivos = patrimonioInvestimentos + patrimonioMetas;
+
+        return { rec, despReal, saldoTotal, patrimonioTotalAtivos, patrimonioInvestimentos, patrimonioMetas };
+    }, [transactions, investments, goals, selectedMonth, selectedCurrency, subscriptions]);
 
     const monthlyData = useMemo(() => {
         const months = language === 'pt-BR' 
@@ -335,7 +344,11 @@ const Reports: React.FC<ReportsProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-wider">{t('totalInvested')}</span>
                     </div>
                     <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(monthTotals.patrimonioTotalAtivos)}</p>
-                    <p className="text-[9px] text-gray-400 mt-0.5">Valor total em investimentos</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">
+                        {isPT 
+                            ? `Ativos: ${formatCurrency(monthTotals.patrimonioInvestimentos)} • Metas: ${formatCurrency(monthTotals.patrimonioMetas)}`
+                            : `Assets: ${formatCurrency(monthTotals.patrimonioInvestimentos)} • Goals: ${formatCurrency(monthTotals.patrimonioMetas)}`}
+                    </p>
                 </div>
 
                 <div className="bg-blue-600 p-5 rounded-xl shadow-xl text-white hover:scale-[1.02] transition-transform">

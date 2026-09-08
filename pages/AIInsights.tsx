@@ -4,9 +4,10 @@ import { useTranslation } from '../translations';
 import { aiService } from '../services/aiService';
 import { api } from '../services/api';
 import { 
-  BarChart, Bar, Cell, Tooltip, Legend, ResponsiveContainer, 
+  BarChart, Bar, Cell, Tooltip, Legend, 
   AreaChart, Area, XAxis, YAxis, CartesianGrid 
 } from 'recharts';
+import ResponsiveContainer from '../components/SafeResponsiveContainer';
 import { 
   Sparkles, TrendingUp, TrendingDown, Landmark, 
   AlertTriangle, DollarSign, PieChart as PieIcon, 

@@ -10,9 +10,10 @@ interface MetricCardProps {
   change?: string;
   changeType?: 'increase' | 'decrease';
   valueClassName?: string;
+  subtitle?: React.ReactNode;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType, valueClassName }) => {
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, changeType, valueClassName, subtitle }) => {
   const isIncrease = changeType === 'increase';
   const ChangeIcon = isIncrease ? ArrowUpIcon : ArrowDownIcon;
 
@@ -24,6 +25,11 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, change, cha
       <div className="text-left flex-1 min-w-0">
         <p className="text-[10px] md:text-[11px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-[0.1em] mb-0.5 md:mb-1 truncate">{title}</p>
         <p className={`text-lg md:text-xl lg:text-2xl font-black tracking-tighter truncate ${valueClassName || 'text-slate-900 dark:text-white'}`}>{value}</p>
+        {subtitle && (
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+            {subtitle}
+          </div>
+        )}
       </div>
       {change && changeType && (
         <div className={`hidden sm:flex items-center text-[10px] font-bold px-2 py-1 rounded-full ${isIncrease ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>

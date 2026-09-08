@@ -73,7 +73,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack, initialMode = 'l
     setOnboardingReason('');
     setShowVerification(false);
     setError('');
-  }, [initialMode, isLoginMode]);
+  }, [initialMode]);
 
   // Countdown effect for resending verification code
   useEffect(() => {

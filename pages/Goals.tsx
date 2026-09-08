@@ -357,7 +357,8 @@ export const Goals: React.FC<GoalsProps> = ({
             const percent = Math.min(100, Math.round(((goal.currentAmount || 0) / (goal.targetAmount || 1)) * 100));
             const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
             const isExpanded = expandedGoalId === goal.id;
-            const completedMilestones = (goal.milestones || []).filter(m => m.isCompleted).length;
+            const completedMilestones = (goal.milestones || []).filter(m => m.isCompleted || ((m.savedAmount || 0) >= m.targetAmount && m.targetAmount > 0)).length;
+            const partialMilestones = (goal.milestones || []).filter(m => !m.isCompleted && (m.savedAmount || 0) > 0 && (m.savedAmount || 0) < m.targetAmount).length;
             const totalMilestones = (goal.milestones || []).length;
             const remainingMonths = Math.max(0, totalMilestones - completedMilestones);
 
@@ -522,14 +523,23 @@ export const Goals: React.FC<GoalsProps> = ({
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-500 flex-wrap">
                         <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {completedMilestones} {isPT ? 'guardados' : 'saved'}
                         </span>
+                        {partialMilestones > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-extrabold">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                              {partialMilestones} {isPT ? 'parciais' : 'partial'}
+                            </span>
+                          </>
+                        )}
                         <span>•</span>
                         <span className="text-slate-400">
-                          {totalMilestones - completedMilestones} {isPT ? 'pendentes' : 'pending'}
+                          {totalMilestones - completedMilestones - partialMilestones} {isPT ? 'pendentes' : 'pending'}
                         </span>
                       </div>
                     </div>
@@ -537,14 +547,19 @@ export const Goals: React.FC<GoalsProps> = ({
                     {/* TABELA / GRADE INTERATIVA */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {(goal.milestones || []).map((m) => {
-                        const isDone = m.isCompleted || (m.savedAmount >= m.targetAmount);
+                        const target = Number(m.targetAmount) || 0;
+                        const saved = Number(m.savedAmount) || 0;
+                        const isDone = m.isCompleted || (saved >= target && target > 0);
+                        const remaining = Math.max(0, target - saved);
+                        const isPartial = saved > 0 && !isDone;
+                        const milestonePercent = target > 0 ? Math.min(100, Math.round((saved / target) * 100)) : 0;
 
                         return (
                           <div
                             key={m.id}
                             onClick={() => {
                               if (!isDone) {
-                                // Direct interactive click to save!
+                                // Direct interactive click to save (will suggest remaining if partial)!
                                 handleOpenDeposit(goal, m);
                               } else {
                                 // Toggle back if user wants
@@ -556,6 +571,8 @@ export const Goals: React.FC<GoalsProps> = ({
                             className={`p-4 rounded-2xl border transition-all cursor-pointer select-none group relative ${
                               isDone
                                 ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 shadow-sm'
+                                : isPartial
+                                ? 'bg-amber-50/70 dark:bg-amber-950/25 border-amber-300 dark:border-amber-700/70 shadow-sm hover:border-amber-400'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:shadow-md'
                             }`}
                           >
@@ -564,6 +581,8 @@ export const Goals: React.FC<GoalsProps> = ({
                                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
                                   isDone
                                     ? 'bg-emerald-600 text-white'
+                                    : isPartial
+                                    ? 'bg-amber-500 text-white'
                                     : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
                                 }`}>
                                   {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : m.monthNumber}
@@ -576,20 +595,36 @@ export const Goals: React.FC<GoalsProps> = ({
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase ${
                                 isDone
                                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                                  : isPartial
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                                   : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
                               }`}>
-                                {isDone ? (isPT ? 'Guardado' : 'Saved') : (isPT ? 'Pendente' : 'Pending')}
+                                {isDone 
+                                  ? (isPT ? 'Guardado' : 'Saved') 
+                                  : isPartial 
+                                  ? (isPT ? `Parcial (${milestonePercent}%)` : `Partial (${milestonePercent}%)`) 
+                                  : (isPT ? 'Pendente' : 'Pending')}
                               </span>
                             </div>
 
+                            {/* MINI BARRA DE PROGRESSO SE PARCIAL */}
+                            {isPartial && (
+                              <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 h-1.5 rounded-full overflow-hidden my-2">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-500 bg-amber-500"
+                                  style={{ width: `${milestonePercent}%` }}
+                                />
+                              </div>
+                            )}
+
                             {/* VALORES DO MÊS */}
-                            <div className="mt-3 flex items-baseline justify-between">
+                            <div className="mt-2.5 flex items-baseline justify-between gap-2">
                               <div>
                                 <span className="text-[10px] font-bold text-slate-400 block">
-                                  {isPT ? 'Meta do Mês' : 'Month Target'}
+                                  {isPT ? 'Meta da Parcela' : 'Installment Target'}
                                 </span>
-                                <span className="text-base font-black text-slate-900 dark:text-white">
-                                  {formatCurrency(m.targetAmount, goal.currency)}
+                                <span className="text-sm font-black text-slate-900 dark:text-white">
+                                  {formatCurrency(target, goal.currency)}
                                 </span>
                               </div>
 
@@ -599,30 +634,75 @@ export const Goals: React.FC<GoalsProps> = ({
                                     {isPT ? 'Guardado ✓' : 'Saved ✓'}
                                   </span>
                                   <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                    {formatCurrency(m.savedAmount || m.targetAmount, goal.currency)}
+                                    {formatCurrency(saved || target, goal.currency)}
+                                  </span>
+                                </div>
+                              ) : isPartial ? (
+                                <div className="text-right">
+                                  <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 block">
+                                    {isPT ? 'Falta Guardar:' : 'Left to Save:'}
+                                  </span>
+                                  <span className="text-sm font-black text-amber-700 dark:text-amber-300">
+                                    {formatCurrency(remaining, goal.currency)}
                                   </span>
                                 </div>
                               ) : (
+                                <div className="text-right">
+                                  <span className="text-[10px] font-bold text-slate-400 block">
+                                    {isPT ? 'A Guardar' : 'To Save'}
+                                  </span>
+                                  <span className="text-sm font-black text-slate-700 dark:text-slate-300">
+                                    {formatCurrency(target, goal.currency)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* INFORMAÇÕES EXTRAS E BOTÃO DE AÇÃO */}
+                            {isPartial && (
+                              <div className="mt-2.5 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-[11px] gap-2">
+                                <span className="text-slate-500 dark:text-slate-400 text-[10px]">
+                                  {isPT ? 'Já guardado: ' : 'Saved: '}
+                                  <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(saved, goal.currency)}</strong>
+                                </span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenDeposit(goal, m);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black shadow-sm group-hover:scale-105 transition-all flex items-center gap-1 active:scale-95"
+                                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black shadow-sm transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                >
+                                  <span>{isPT ? 'Guardar Restante' : 'Save Left'}</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+
+                            {!isDone && !isPartial && (
+                              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                                <span className="text-[10px] text-slate-400">
+                                  {isPT ? '👉 Clique p/ guardar' : '👉 Click to save'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDeposit(goal, m);
+                                  }}
+                                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black shadow-sm transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
                                 >
                                   <span>{isPT ? 'Guardar' : 'Save'}</span>
                                   <ArrowRight className="w-3 h-3" />
                                 </button>
-                              )}
-                            </div>
+                              </div>
+                            )}
 
-                            {/* HOVER HINT */}
-                            <div className="mt-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                              {isDone
-                                ? (isPT ? '✓ Parcela concluída (clique para reabrir)' : '✓ Completed (click to reopen)')
-                                : (isPT ? '👉 Clique para confirmar que guardou' : '👉 Click to confirm deposit')}
-                            </div>
+                            {isDone && (
+                              <div className="mt-2 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium text-right">
+                                {isPT ? '✓ Parcela concluída (clique p/ reabrir)' : '✓ Completed (click to reopen)'}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
