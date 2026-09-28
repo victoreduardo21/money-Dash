@@ -10,10 +10,10 @@ import { ArrowDownIcon } from '../components/icons/ArrowDownIcon';
 import { CreditCardIcon } from '../components/icons/CreditCardIcon';
 import { CalendarIcon } from '../components/icons/CalendarIcon';
 import { ChevronDownIcon } from '../components/icons/ChevronDownIcon';
-import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction, Subscription, User, Goal } from '../types';
+import { PersonalTransaction, TransactionType, Investment, Page, Currency, Language, CreditTransaction, Subscription, User, Goal, BankAccount } from '../types';
 import { SwitchHorizontalIcon } from '../components/icons/SwitchHorizontalIcon';
 import { useTranslation } from '../translations';
-import { Target, PiggyBank, ArrowRight, Sparkles } from 'lucide-react';
+import { Target, PiggyBank, ArrowRight, Sparkles, Building2, CheckCircle2 } from 'lucide-react';
 
 interface DashboardProps {
     transactions: PersonalTransaction[];
@@ -21,6 +21,7 @@ interface DashboardProps {
     investments: Investment[];
     subscriptions?: Subscription[];
     goals?: Goal[];
+    bankAccounts?: BankAccount[];
     setActivePage: (page: Page) => void;
     onEditTransaction: (transaction: PersonalTransaction) => void;
     onDeleteTransaction: (id: string) => void;
@@ -39,6 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     investments, 
     subscriptions = [],
     goals = [],
+    bankAccounts = [],
     setActivePage, 
     onEditTransaction, 
     onDeleteTransaction, 
@@ -105,14 +107,18 @@ const Dashboard: React.FC<DashboardProps> = ({
       const saldoTotal = txs.reduce((acc: number, t: PersonalTransaction) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
       
       const investidoAtivos = (investments || [])
-          .filter((i: Investment) => (i.currency || 'BRL') === selectedCurrency)
+          .filter((i: Investment) => (i.currency || 'BRL').toUpperCase() === selectedCurrency.toUpperCase())
           .reduce((acc: number, i: Investment) => acc + (Number(i.currentValue) || 0), 0);
           
       const investidoMetas = (goals || [])
-          .filter((g: Goal) => (g.currency || 'BRL') === selectedCurrency)
+          .filter((g: Goal) => (g.currency || 'BRL').toUpperCase() === selectedCurrency.toUpperCase())
           .reduce((acc: number, g: Goal) => acc + (Number(g.currentAmount) || 0), 0);
 
       const investidoTotal = investidoAtivos + investidoMetas;
+
+      const bankTotalBalance = (bankAccounts || [])
+          .filter(a => a.type === 'BANK')
+          .reduce((acc, a) => acc + (Number(a.balance) || 0), 0);
           
       return { 
         saldoMes: recMes - gastMes, 
@@ -120,11 +126,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         investido: investidoTotal, 
         investidoAtivos,
         investidoMetas,
+        bankTotalBalance,
         recMes, 
         gastMes, 
         patrimonio: saldoTotal + investidoTotal 
       };
-    }, [transactions, investments, goals, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
+    }, [transactions, investments, goals, bankAccounts, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
 
     const monthlyChartData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -148,7 +155,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           return {
               name,
-              // Graph logic: Matching Cards (Incomes: all, Expenses: real + pending credit + subscriptions)
               income: txs.filter((t: PersonalTransaction) => t.type === TransactionType.Receita).reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0),
               expense: txs.filter((t: PersonalTransaction) => t.type === TransactionType.Despesa && !isInternalTransfer(t.category)).reduce((acc: number, t: PersonalTransaction) => acc + (Number(t.amount) || 0), 0) +
                        ctxs.reduce((acc: number, c: CreditTransaction) => acc + (Number(c.amount) || 0), 0) +
@@ -194,27 +200,72 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* METRIC CARDS - RESPONSIVO (1, 2 ou 4 colunas) */}
-        <div id="tour-metrics-cards" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-8">
+        <div id="tour-metrics-cards" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-6">
             <MetricCard 
               title={t('balance')} 
               value={formatCurrency(totals.saldoTotal)} 
               icon={<CreditCardIcon className="h-7 w-7 text-blue-500" />} 
               valueClassName={totals.saldoTotal < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}
+              subtitle={
+                totals.bankTotalBalance > 0 ? (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    + {formatCurrency(totals.bankTotalBalance)} em bancos Open Finance
+                  </span>
+                ) : undefined
+              }
             />
             <MetricCard 
               title={t('totalInvested')} 
               value={formatCurrency(totals.investido)} 
               icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} 
               subtitle={
-                totals.investidoMetas > 0 ? (
-                  language === 'pt-BR'
-                    ? `Ativos: ${formatCurrency(totals.investidoAtivos)} • Metas: ${formatCurrency(totals.investidoMetas)}`
-                    : `Assets: ${formatCurrency(totals.investidoAtivos)} • Goals: ${formatCurrency(totals.investidoMetas)}`
-                ) : undefined
+                <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Ativos: <strong className="text-indigo-600 dark:text-indigo-400">{formatCurrency(totals.investidoAtivos)}</strong>
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Metas: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.investidoMetas)}</strong>
+                  </span>
+                </div>
               }
             />
             <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-7 w-7 text-green-500" />} />
             <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-7 w-7 text-red-500" />} />
+        </div>
+
+        {/* OPEN FINANCE WIDGET BANNER */}
+        <div className="bg-gradient-to-r from-indigo-900/10 via-purple-900/5 to-blue-900/10 dark:from-indigo-950/40 dark:via-purple-950/20 dark:to-blue-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-3xl p-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/25 shrink-0">
+                    <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-sm md:text-base font-black text-slate-900 dark:text-white">
+                          Open Finance Brasil (Pluggy API)
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                          Bancos Reais
+                        </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {bankAccounts.length > 0 
+                            ? `${bankAccounts.length} contas conectadas • Saldo Bancário: ${formatCurrency(totals.bankTotalBalance)}` 
+                            : 'Conecte Nubank, Itaú, Santander, BB ou Inter para sincronizar saldos e extratos automaticamente'}
+                    </p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                    type="button"
+                    onClick={() => setActivePage('Open Finance')}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all active:scale-98 cursor-pointer"
+                >
+                    <span>{bankAccounts.length > 0 ? 'Gerenciar Bancos Conectados' : 'Conectar Banco Agora'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                </button>
+            </div>
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
@@ -238,8 +289,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div id="tour-net-worth" className="bg-[#0a1122] p-6 md:p-8 rounded-[1.5rem] shadow-2xl text-white flex flex-col justify-between border border-white/5 relative overflow-hidden min-h-[260px]">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
             <div className="relative z-10">
-                <h4 className="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] mb-3">Total Net Worth</h4>
-                <p className="text-3xl md:text-4xl font-black tracking-tighter mb-3">{formatCurrency(totals.patrimonio)}</p>
+                <h4 className="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] mb-2">Total Net Worth</h4>
+                <p className="text-3xl md:text-4xl font-black tracking-tighter mb-2">{formatCurrency(totals.patrimonio)}</p>
+                <div className="flex flex-wrap gap-1.5 text-[9px] text-slate-300 font-medium mb-3">
+                  <span className="bg-white/10 px-2 py-0.5 rounded-md">Saldo: {formatCurrency(totals.saldoTotal)}</span>
+                  <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md">Ativos: {formatCurrency(totals.investidoAtivos)}</span>
+                  <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md">🎯 Metas: {formatCurrency(totals.investidoMetas)}</span>
+                </div>
                 <div className="h-1 w-12 bg-blue-600 rounded-full"></div>
             </div>
             <div className="mt-8 pt-6 border-t border-white/10 relative z-10">

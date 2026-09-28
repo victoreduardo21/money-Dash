@@ -15,10 +15,11 @@ import AIInsights from './pages/AIInsights';
 import Admin from './pages/Admin';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
+import { OpenFinance } from './pages/OpenFinance';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification, Goal } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification, Goal, BankConnection, BankAccount } from './types';
 import { api } from './services/api';
 import { auth, db, handleFirestoreError, OperationType } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -41,6 +42,8 @@ const App: React.FC = () => {
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [bankConnections, setBankConnections] = useState<BankConnection[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
   const [aiConversation, setAiConversation] = useState<AiConversation | null>(null);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
@@ -273,6 +276,32 @@ const App: React.FC = () => {
       handleFirestoreError(error, OperationType.GET, `ai_conversations/${token}`);
     });
 
+    const qBankAccs = query(collection(db, 'bank_accounts'), where('userId', '==', token));
+    const unsubBankAccs = onSnapshot(qBankAccs, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as BankAccount));
+      setBankAccounts(list);
+      if (token) localStorage.setItem(`cached_bank_accs_${token}`, JSON.stringify(list));
+    }, (err) => {
+      console.warn('Bank accounts snapshot warning:', err);
+      if (token) {
+        const cached = localStorage.getItem(`cached_bank_accs_${token}`);
+        if (cached) try { setBankAccounts(JSON.parse(cached)); } catch (e) {}
+      }
+    });
+
+    const qBankConns = query(collection(db, 'bank_connections'), where('userId', '==', token));
+    const unsubBankConns = onSnapshot(qBankConns, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as BankConnection));
+      setBankConnections(list);
+      if (token) localStorage.setItem(`cached_bank_conns_${token}`, JSON.stringify(list));
+    }, (err) => {
+      console.warn('Bank connections snapshot warning:', err);
+      if (token) {
+        const cached = localStorage.getItem(`cached_bank_conns_${token}`);
+        if (cached) try { setBankConnections(JSON.parse(cached)); } catch (e) {}
+      }
+    });
+
     return () => {
       unsubT();
       unsubI();
@@ -281,6 +310,8 @@ const App: React.FC = () => {
       unsubCT();
       unsubSub();
       unsubGoals();
+      unsubBankAccs();
+      unsubBankConns();
       unsubAI();
       unsubNotif();
     };
@@ -569,6 +600,29 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImportBankTransactions = async (txs: Omit<PersonalTransaction, 'id'>[]) => {
+    if (!token) return;
+    try {
+      for (const tx of txs) {
+        await api.createTransaction(tx, token);
+      }
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' 
+          ? `${txs.length} transações importadas com sucesso para o seu extrato!` 
+          : `${txs.length} transactions imported successfully!`,
+        type: 'success'
+      });
+    } catch (e) {
+      console.error(e);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao importar transações.' : 'Error importing transactions.',
+        type: 'error'
+      });
+    }
+  };
+
   if (!isAuthReady) return (
       <div className="flex items-center justify-center h-screen bg-slate-900">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -617,7 +671,7 @@ const App: React.FC = () => {
         />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto w-full p-4 md:p-6 lg:p-8 pb-28 md:pb-8 no-scrollbar max-w-full">
-            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} subscriptions={subscriptions} investments={investments} goals={goals} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
+            {activePage === 'Dashboard' && <Dashboard transactions={transactions} creditTransactions={creditTransactions} subscriptions={subscriptions} investments={investments} goals={goals} bankAccounts={bankAccounts} setActivePage={setActivePage} onEditTransaction={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} onNewTransaction={() => setIsTransactionModalOpen(true)} onOpenTransfer={() => setIsTransferModalOpen(true)} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
             {activePage === 'Transações' && <Transactions transactions={transactions} onOpenModal={(t) => { setEditingTransaction(t); setIsTransactionModalOpen(true); }} onDeleteTransaction={async (id) => { await api.deleteTransaction(id, token); }} searchQuery={searchQuery} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} currentUser={currentUser} />}
             {activePage === 'Metas' && (
                 <Goals 
@@ -701,6 +755,17 @@ const App: React.FC = () => {
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} creditCards={creditCards} creditTransactions={creditTransactions} currentUser={currentUser} aiConversation={aiConversation} token={token || ''} />}
             {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
             {activePage === 'Assinaturas' && <Subscriptions subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} token={token || ''} />}
+            {activePage === 'Open Finance' && (
+              <OpenFinance
+                userId={token || ''}
+                language={language}
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={setSelectedCurrency}
+                currentUser={currentUser}
+                onImportTransactionsToApp={handleImportBankTransactions}
+                showToast={(msg, type) => setToast({ id: Date.now().toString(), message: msg, type })}
+              />
+            )}
             {activePage === 'Configurações' && currentUser && (
               <Settings 
                 theme={theme} 

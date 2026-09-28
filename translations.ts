@@ -172,7 +172,18 @@ export const translations = {
     monthlyTarget: 'Meta Mensal',
     markAsSaved: 'Marcar como Guardado',
     savedSuccess: 'Valor guardado com sucesso!',
-    goalCompleted: 'Meta Concluída!'
+    goalCompleted: 'Meta Concluída!',
+    openFinance: 'Open Finance',
+    openFinanceDesc: 'Conecte seus bancos reais via API Pluggy para sincronizar contas, cartões e transações automaticamente.',
+    connectBank: 'Conectar Banco',
+    connectedBanks: 'Bancos Conectados',
+    syncAll: 'Sincronizar Tudo',
+    syncing: 'Sincronizando...',
+    lastSync: 'Última sincronização',
+    pluggySettings: 'Configurações Pluggy',
+    importTransactions: 'Importar Transações',
+    bankBalance: 'Saldo Bancário Total',
+    allBanks: 'Todos os Bancos'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -345,7 +356,18 @@ export const translations = {
     monthlyTarget: 'Monthly Target',
     markAsSaved: 'Mark as Saved',
     savedSuccess: 'Amount saved successfully!',
-    goalCompleted: 'Goal Completed!'
+    goalCompleted: 'Goal Completed!',
+    openFinance: 'Open Finance',
+    openFinanceDesc: 'Connect real banks via Pluggy API to sync accounts, cards, and transactions automatically.',
+    connectBank: 'Connect Bank',
+    connectedBanks: 'Connected Banks',
+    syncAll: 'Sync All',
+    syncing: 'Syncing...',
+    lastSync: 'Last sync',
+    pluggySettings: 'Pluggy Settings',
+    importTransactions: 'Import Transactions',
+    bankBalance: 'Total Bank Balance',
+    allBanks: 'All Banks'
   }
 };
 

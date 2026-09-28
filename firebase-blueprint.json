@@ -102,6 +102,49 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "message", "userId", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Financial goals and interactive savings milestones",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["BRL", "USD"] },
+        "targetMonths": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "targetAmount", "currentAmount", "currency", "targetMonths", "userId"]
+    },
+    "BankConnection": {
+      "title": "BankConnection",
+      "description": "Open Finance bank connection via Pluggy",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "status": { "type": "string" },
+        "lastUpdatedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "accountsCount": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["itemId", "status", "userId"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "Synchronized bank account from Open Finance",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string" },
+        "name": { "type": "string" },
+        "balance": { "type": "number" },
+        "currencyCode": { "type": "string", "enum": ["BRL", "USD"] },
+        "bankName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["itemId", "name", "balance", "bankName", "userId"]
     }
   },
   "firestore": {
@@ -136,6 +179,19 @@
     "/notifications/{notificationId}": {
       "schema": "SystemNotification",
       "description": "Announcements and direct messages from admin"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "User goals and targets"
+    },
+    "/bank_connections/{connId}": {
+      "schema": "BankConnection",
+      "description": "Open Finance connected bank items"
+    },
+    "/bank_accounts/{accId}": {
+      "schema": "BankAccount",
+      "description": "Open Finance bank accounts"
     }
   }
 }
+
