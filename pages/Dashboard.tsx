@@ -104,27 +104,19 @@ const Dashboard: React.FC<DashboardProps> = ({
       // "Available Balance" - Raw net sum of ALL transactions
       const saldoTotal = txs.reduce((acc: number, t: PersonalTransaction) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
       
-      const investidoAtivos = (investments || [])
+      const investidoCurrent = (investments || [])
           .filter((i: Investment) => (i.currency || 'BRL') === selectedCurrency)
           .reduce((acc: number, i: Investment) => acc + (Number(i.currentValue) || 0), 0);
-          
-      const investidoMetas = (goals || [])
-          .filter((g: Goal) => (g.currency || 'BRL') === selectedCurrency)
-          .reduce((acc: number, g: Goal) => acc + (Number(g.currentAmount) || 0), 0);
-
-      const investidoTotal = investidoAtivos + investidoMetas;
           
       return { 
         saldoMes: recMes - gastMes, 
         saldoTotal,
-        investido: investidoTotal, 
-        investidoAtivos,
-        investidoMetas,
+        investido: investidoCurrent, 
         recMes, 
         gastMes, 
-        patrimonio: saldoTotal + investidoTotal 
+        patrimonio: saldoTotal + investidoCurrent 
       };
-    }, [transactions, investments, goals, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
+    }, [transactions, investments, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
 
     const monthlyChartData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -201,18 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               icon={<CreditCardIcon className="h-7 w-7 text-blue-500" />} 
               valueClassName={totals.saldoTotal < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}
             />
-            <MetricCard 
-              title={t('totalInvested')} 
-              value={formatCurrency(totals.investido)} 
-              icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} 
-              subtitle={
-                totals.investidoMetas > 0 ? (
-                  language === 'pt-BR'
-                    ? `Ativos: ${formatCurrency(totals.investidoAtivos)} • Metas: ${formatCurrency(totals.investidoMetas)}`
-                    : `Assets: ${formatCurrency(totals.investidoAtivos)} • Goals: ${formatCurrency(totals.investidoMetas)}`
-                ) : undefined
-              }
-            />
+            <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} />
             <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-7 w-7 text-green-500" />} />
             <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-7 w-7 text-red-500" />} />
         </div>
