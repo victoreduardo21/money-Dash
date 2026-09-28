@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Metas' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas' | 'Open Finance';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Metas' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -22,8 +22,6 @@ export interface PersonalTransaction {
   category: string;
   userId?: string;
   createdAt?: string;
-  bankName?: string;
-  isBankImported?: boolean;
 }
 
 export interface Investment {
@@ -179,75 +177,4 @@ export interface Goal {
   createdAt: string;
   updatedAt?: string;
 }
-
-// ==========================================
-// Open Finance / Pluggy API Interfaces
-// ==========================================
-
-export interface PluggyConnector {
-  id: number;
-  name: string;
-  primaryColor: string;
-  institutionUrl?: string;
-  imageUrl?: string;
-  type: 'PERSONAL_BANK' | 'BUSINESS_BANK' | 'INVESTMENT';
-  country?: string;
-  supportsPayment?: boolean;
-  popular?: boolean;
-}
-
-export interface BankConnection {
-  id: string;
-  itemId: string; // ID assigned by Pluggy
-  connector: PluggyConnector;
-  status: 'UPDATED' | 'UPDATING' | 'WAITING_USER_INPUT' | 'LOGIN_ERROR' | 'OUTDATED';
-  executionStatus?: 'SUCCESS' | 'ERROR' | 'PENDING';
-  lastUpdatedAt: string;
-  createdAt: string;
-  accountsCount: number;
-  userId?: string;
-}
-
-export interface BankAccount {
-  id: string;
-  itemId: string;
-  type: 'BANK' | 'CREDIT' | 'INVESTMENT';
-  subtype: 'CHECKING_ACCOUNT' | 'SAVINGS_ACCOUNT' | 'CREDIT_CARD' | 'INVESTMENT_ACCOUNT';
-  name: string;
-  balance: number;
-  currencyCode: Currency;
-  bankName: string;
-  accountNumber: string;
-  agency?: string;
-  creditLimit?: number;
-  availableCreditLimit?: number;
-  userId?: string;
-  autoSyncTransactions?: boolean;
-  color?: string;
-  updatedAt?: string;
-}
-
-export interface BankTransaction {
-  id: string;
-  accountId: string;
-  itemId?: string;
-  bankName: string;
-  description: string;
-  amount: number;
-  date: string;
-  category: string;
-  type: 'CREDIT' | 'DEBIT'; // CREDIT = Receita, DEBIT = Despesa
-  status: 'POSTED' | 'PENDING';
-  imported: boolean;
-  userId?: string;
-}
-
-export interface PluggyConfig {
-  clientId: string;
-  clientSecret: string;
-  environment: 'sandbox' | 'production';
-  autoImportTransactions: boolean;
-  defaultSyncIntervalHours: number;
-}
-
 

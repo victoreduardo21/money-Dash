@@ -7,7 +7,7 @@ import { SwitchHorizontalIcon } from './icons/SwitchHorizontalIcon';
 import { TrendingUpIcon } from './icons/TrendingUpIcon';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { ChartPieIcon } from './icons/ChartPieIcon';
-import { Sparkles, CreditCard, RefreshCw, Smartphone, Download, MessageCircle, Target, Building2 } from 'lucide-react';
+import { Sparkles, CreditCard, RefreshCw, Smartphone, Download, MessageCircle, Target } from 'lucide-react';
 import { WhatsAppIcon } from './icons/WhatsAppIcon';
 import { Page, User, Language } from '../types';
 import { useTranslation } from '../translations';
@@ -104,7 +104,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <NavLink icon={<Target className="h-5 w-5" />} active={activePage === 'Metas'} onClick={() => handleNavClick('Metas')}>{t('goals')}</NavLink>
                         <NavLink icon={<CreditCard className="h-5 w-5" />} active={activePage === 'Créditos'} onClick={() => handleNavClick('Créditos')}>{t('credits')}</NavLink>
                         <NavLink icon={<RefreshCw className="h-5 w-5" />} active={activePage === 'Assinaturas'} onClick={() => handleNavClick('Assinaturas')}>{t('subscriptions')}</NavLink>
-                        <NavLink icon={<Building2 className="h-5 w-5" />} active={activePage === 'Open Finance'} onClick={() => handleNavClick('Open Finance')}>{t('openFinance')}</NavLink>
                         
                         {!isFreePlan && (
                             <>
