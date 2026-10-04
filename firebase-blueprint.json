@@ -44,7 +44,9 @@
         "currentValue": { "type": "number" },
         "yieldRate": { "type": "number" },
         "currency": { "type": "string", "enum": ["BRL", "USD"] },
-        "userId": { "type": "string" }
+        "userId": { "type": "string" },
+        "goalId": { "type": "string", "description": "Optional linked goal ID" },
+        "category": { "type": "string", "description": "Asset category" }
       },
       "required": ["name", "initialAmount", "currentValue", "currency", "userId"]
     },
@@ -102,6 +104,28 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["title", "message", "userId", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Financial savings goals and interactive monthly milestones",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "currency": { "type": "string", "enum": ["BRL", "USD"] },
+        "targetMonths": { "type": "number" },
+        "startDate": { "type": "string" },
+        "deadlineDate": { "type": "string" },
+        "distributionType": { "type": "string", "enum": ["EQUAL", "CUSTOM"] },
+        "status": { "type": "string", "enum": ["IN_PROGRESS", "COMPLETED"] },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "targetAmount", "currentAmount", "userId"]
     }
   },
   "firestore": {
@@ -136,6 +160,10 @@
     "/notifications/{notificationId}": {
       "schema": "SystemNotification",
       "description": "Announcements and direct messages from admin"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "Financial savings goals and objectives"
     }
   }
 }

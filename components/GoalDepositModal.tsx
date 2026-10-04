@@ -297,23 +297,26 @@ export const GoalDepositModal: React.FC<GoalDepositModalProps> = ({
             </div>
           </div>
 
-          {/* OPÇÃO DE DEBITAR DO SALDO DISPONÍVEL */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-start gap-3">
+          {/* OPÇÃO DE DEBITAR DO SALDO E ENVIAR PARA INVESTIMENTOS */}
+          <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 flex items-start gap-3">
             <input
               type="checkbox"
               id="deductBalance"
               checked={deductFromBalance}
               onChange={e => setDeductFromBalance(e.target.checked)}
-              className="mt-1 w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              className="mt-1 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
             />
             <label htmlFor="deductBalance" className="text-xs cursor-pointer">
-              <span className="font-black text-slate-900 dark:text-white block">
-                {isPT ? 'Registrar saída no Saldo / Transações' : 'Deduct from Available Balance'}
+              <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>{isPT ? 'Debitar da Conta & Enviar para Investimentos' : 'Deduct from Account & Send to Investments'}</span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                  {isPT ? 'Automático' : 'Auto'}
+                </span>
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
+              <span className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight block mt-1">
                 {isPT
-                  ? 'Cria automaticamente uma despesa/aporte de categoria "Investimento/Meta" para abater da sua conta e manter seu saldo sincronizado.'
-                  : 'Automatically records an investment/expense transaction so your balance stays in sync.'}
+                  ? `O valor sai do saldo da sua conta corrente e entra diretamente na sua carteira de Investimentos (Ativo: Meta: ${goal.title}) rendendo 100% CDI.`
+                  : `The amount exits your checking balance and enters your Investments portfolio earning 100% CDI.`}
               </span>
             </label>
           </div>

@@ -1,5 +1,5 @@
 
-export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Metas' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas';
+export type Page = 'Dashboard' | 'Transações' | 'Investimentos' | 'Metas' | 'Agenda' | 'Insights' | 'Configurações' | 'Relatórios' | 'Admin' | 'Créditos' | 'Assinaturas' | 'Open Finance';
 export type Theme = 'light' | 'dark';
 export type Plan = 'FREE' | 'PRO' | 'VIP';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
@@ -32,6 +32,8 @@ export interface Investment {
     yieldRate: number; // Percentage
     currency: Currency;
     userId?: string;
+    goalId?: string;
+    category?: string;
 }
 
 export interface CalendarEvent {
@@ -178,3 +180,69 @@ export interface Goal {
   updatedAt?: string;
 }
 
+export interface PluggyConfig {
+  clientId: string;
+  clientSecret: string;
+  environment: 'sandbox' | 'production';
+  autoSync?: boolean;
+  autoImportTransactions?: boolean;
+  defaultSyncIntervalHours?: number;
+  webhookUrl?: string;
+}
+
+export interface PluggyConnector {
+  id: number;
+  name: string;
+  primaryColor: string;
+  institutionUrl: string;
+  imageUrl: string;
+  type: string;
+  popular?: boolean;
+  supportsPayment?: boolean;
+}
+
+export interface BankAccount {
+  id: string;
+  itemId: string;
+  type: string;
+  subtype?: string;
+  name: string;
+  balance: number;
+  currencyCode?: Currency;
+  bankName: string;
+  accountNumber?: string;
+  agency?: string;
+  color?: string;
+  creditLimit?: number;
+  autoSyncTransactions?: boolean;
+  updatedAt?: string;
+  userId?: string;
+}
+
+export interface BankTransaction {
+  id: string;
+  accountId: string;
+  itemId?: string;
+  description: string;
+  amount: number;
+  type: 'CREDIT' | 'DEBIT';
+  category?: string;
+  date: string;
+  bankName?: string;
+  status?: string;
+  imported?: boolean;
+  userId?: string;
+  importedAt?: string;
+}
+
+export interface BankConnection {
+  id: string;
+  itemId: string;
+  connector: PluggyConnector;
+  status: string;
+  executionStatus: string;
+  lastUpdatedAt: string;
+  createdAt: string;
+  accountsCount: number;
+  userId: string;
+}

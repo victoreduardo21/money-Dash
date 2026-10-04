@@ -220,7 +220,62 @@ const App: React.FC = () => {
 
     const qGoals = query(collection(db, 'goals'), where('userId', '==', token));
     const unsubGoals = onSnapshot(qGoals, (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Goal));
+      const list = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          ...data,
+          id: d.id,
+          title: String(data.title || '').trim(),
+          description: String(data.description || ''),
+          category: String(data.category || 'Reserva'),
+          targetAmount: Number(data.targetAmount) || 0,
+          currentAmount: Number(data.currentAmount) || 0,
+          currency: ((data.currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL') as Currency,
+          targetMonths: Number(data.targetMonths) || 6,
+          startDate: String(data.startDate || ''),
+          deadlineDate: String(data.deadlineDate || ''),
+          distributionType: data.distributionType === 'CUSTOM' ? 'CUSTOM' : 'EQUAL',
+          status: (Number(data.currentAmount) || 0) >= (Number(data.targetAmount) || 1) ? 'COMPLETED' : (data.status || 'IN_PROGRESS'),
+          milestones: Array.isArray(data.milestones) ? data.milestones.map((m: any, idx: number) => ({
+            ...m,
+            id: String(m.id || `m_${idx + 1}`),
+            monthNumber: Number(m.monthNumber) || (idx + 1),
+            monthLabel: String(m.monthLabel || `Mês ${idx + 1}`),
+            targetAmount: Number(m.targetAmount) || 0,
+            savedAmount: Number(m.savedAmount) || 0,
+            isCompleted: Boolean(m.isCompleted || ((Number(m.savedAmount) || 0) >= (Number(m.targetAmount) || 1) && Number(m.targetAmount) > 0))
+          })) : [],
+          contributions: Array.isArray(data.contributions) ? data.contributions : []
+        } as Goal;
+      });
+
+      // Self-heal: If local cache had higher saved amounts that failed to reach Firestore earlier, heal them!
+      if (token) {
+        try {
+          const cachedRaw = localStorage.getItem(`cached_goals_${token}`);
+          if (cachedRaw) {
+            const cachedList: Goal[] = JSON.parse(cachedRaw);
+            for (const cg of cachedList) {
+              const matched = list.find(g => g.id === cg.id);
+              if (matched && Number(cg.currentAmount) > Number(matched.currentAmount)) {
+                matched.currentAmount = Number(cg.currentAmount);
+                matched.milestones = cg.milestones || matched.milestones;
+                matched.contributions = cg.contributions || matched.contributions;
+                matched.status = matched.currentAmount >= matched.targetAmount ? 'COMPLETED' : matched.status;
+                // Asynchronously update Firestore to heal the document
+                api.createGoal(matched, token);
+                api.syncGoalInvestment(matched, token);
+              } else if (!matched && cg.id && cg.id.startsWith('local_')) {
+                list.push(cg);
+                api.createGoal(cg, token);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Error reconciling cached goals:", e);
+        }
+      }
+
       setGoals(list);
       if (token) localStorage.setItem(`cached_goals_${token}`, JSON.stringify(list));
     }, (error) => {
@@ -346,12 +401,76 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveGoal = async (goalData: Omit<Goal, 'id'> & { id?: string }) => {
+  // Auto-sync all existing goals into the investments collection so historical/existing goals are registered as investments
+  useEffect(() => {
+    if (!token || !isAuthReady || goals.length === 0) return;
+
+    const syncExistingGoals = async () => {
+      for (const g of goals) {
+        const invId = `goal_inv_${g.id}`;
+        const existingInv = investments.find(
+          i => i.id === invId || i.goalId === g.id
+        );
+        const gAmount = Number(g.currentAmount) || 0;
+        if (!existingInv || Math.abs((existingInv.currentValue || 0) - gAmount) > 0.01) {
+          try {
+            const res = await api.syncGoalInvestment(g, token);
+            if (res && !res.error && res.investment) {
+              setInvestments(prev => {
+                const filtered = prev.filter(i => i.id !== res.investment.id && i.goalId !== g.id);
+                return [res.investment, ...filtered];
+              });
+            }
+          } catch (e) {
+            console.warn("Auto-sync goal warning:", e);
+          }
+        }
+      }
+    };
+
+    syncExistingGoals();
+  }, [token, isAuthReady, goals]);
+
+  const handleSaveGoal = async (goalData: Omit<Goal, 'id'> & { id?: string }, initialDeductFromBalance: boolean = false) => {
     try {
-      await api.createGoal(goalData, token || '');
+      const isNew = !goalData.id;
+      const res = await api.createGoal(goalData, token || '');
+      const savedGoalId = goalData.id || res?.id || ('local_goal_' + Date.now());
+      const fullGoal = (res?.goal || { ...goalData, id: savedGoalId }) as Goal;
+
+      // ATUALIZAÇÃO INSTANTÂNEA NO ESTADO DE METAS
+      setGoals(prev => {
+        const filtered = prev.filter(g => g.id !== savedGoalId);
+        return [fullGoal, ...filtered];
+      });
+
+      // Se tiver valor inicial guardado na criação da meta e o usuário optou por deduzir do saldo
+      const initAmount = Number(goalData.currentAmount) || 0;
+      if (isNew && initAmount > 0 && initialDeductFromBalance) {
+        await api.createTransaction({
+          description: `Aporte Inicial Meta: ${goalData.title}`,
+          amount: initAmount,
+          type: TransactionType.Despesa,
+          category: 'Investimento',
+          currency: goalData.currency || 'BRL',
+          date: new Date().toISOString().slice(0, 10),
+        }, token || '');
+      }
+
+      // Sincroniza e REGISTRA IMEDIATAMENTE como Investimento no Firestore e no estado local!
+      if (token && savedGoalId) {
+        const syncRes = await api.syncGoalInvestment(fullGoal, token);
+        if (syncRes && !syncRes.error && syncRes.investment) {
+          setInvestments(prev => {
+            const filtered = prev.filter(i => i.id !== syncRes.investment.id && i.goalId !== savedGoalId);
+            return [syncRes.investment, ...filtered];
+          });
+        }
+      }
+
       setToast({ 
         id: Date.now().toString(), 
-        message: language === 'pt-BR' ? 'Meta salva com sucesso!' : 'Goal saved successfully!', 
+        message: language === 'pt-BR' ? 'Meta salva e registrada em Investimentos!' : 'Goal saved and registered in Investments!', 
         type: 'success' 
       });
     } catch (err) {
@@ -365,10 +484,17 @@ const App: React.FC = () => {
 
   const handleDeleteGoal = async (id: string) => {
     try {
+      // Remove do estado local imediatamente
+      setGoals(prev => prev.filter(g => g.id !== id));
+      setInvestments(prev => prev.filter(i => i.goalId !== id && i.id !== `goal_inv_${id}`));
+
       await api.deleteGoal(id, token || '');
+      if (token) {
+        await api.deleteGoalInvestment(id, token);
+      }
       setToast({ 
         id: Date.now().toString(), 
-        message: language === 'pt-BR' ? 'Meta excluída com sucesso.' : 'Goal deleted.', 
+        message: language === 'pt-BR' ? 'Meta e investimento removidos com sucesso.' : 'Goal and investment deleted.', 
         type: 'info' 
       });
     } catch (err) {
@@ -395,20 +521,20 @@ const App: React.FC = () => {
       const numAmount = Number(amount) || 0;
       if (numAmount <= 0) return;
 
-      const newCurrent = (goal.currentAmount || 0) + numAmount;
+      const newCurrent = Number(((Number(goal.currentAmount) || 0) + numAmount).toFixed(2));
       
       let remainingToAllocate = numAmount;
-      const updatedMilestones = (goal.milestones || []).map(m => {
+      const updatedMilestones = (goal.milestones || []).map((m, idx) => {
         if (milestoneId) {
           if (m.id === milestoneId) {
             const currentSaved = Number(m.savedAmount) || 0;
-            const newSaved = currentSaved + numAmount;
+            const newSaved = Number((currentSaved + numAmount).toFixed(2));
             const isCompleted = newSaved >= m.targetAmount;
             return {
               ...m,
               savedAmount: newSaved,
               isCompleted,
-              completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : undefined
+              completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : ''
             };
           }
           return m;
@@ -421,13 +547,13 @@ const App: React.FC = () => {
 
           const alloc = Math.min(remainingToAllocate, needed > 0 ? needed : remainingToAllocate);
           remainingToAllocate -= alloc;
-          const newSaved = currentSaved + alloc;
+          const newSaved = Number((currentSaved + alloc).toFixed(2));
           const isCompleted = newSaved >= m.targetAmount;
           return {
             ...m,
             savedAmount: newSaved,
             isCompleted,
-            completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : undefined
+            completedAt: isCompleted ? (m.completedAt || new Date().toISOString()) : ''
           };
         }
       });
@@ -443,15 +569,32 @@ const App: React.FC = () => {
             id: 'c_' + Date.now(),
             amount: numAmount,
             date: date || new Date().toISOString().slice(0, 10),
-            milestoneId,
-            note,
-            deductFromBalance,
+            milestoneId: milestoneId || '',
+            note: note || '',
+            deductFromBalance: Boolean(deductFromBalance),
             createdAt: new Date().toISOString()
           }
         ]
       };
 
-      await api.createGoal(updatedGoal, token || '');
+      // ATUALIZAÇÃO INSTANTÂNEA NO ESTADO DE METAS
+      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g));
+
+      const res = await api.createGoal(updatedGoal, token || '');
+      const savedGoal = (res?.goal || updatedGoal) as Goal;
+      const actualGoalId = savedGoal.id || goalId;
+      setGoals(prev => prev.map(g => (g.id === goalId || g.id === actualGoalId) ? savedGoal : g));
+
+      // Sincroniza imediatamente o dinheiro guardado na meta para a carteira de Investimentos!
+      if (token) {
+        const syncRes = await api.syncGoalInvestment(savedGoal, token);
+        if (syncRes && syncRes.investment) {
+          setInvestments(prev => {
+            const filtered = prev.filter(i => i.id !== syncRes.investment.id && i.goalId !== actualGoalId);
+            return [syncRes.investment, ...filtered];
+          });
+        }
+      }
 
       if (deductFromBalance) {
         await api.createTransaction({
@@ -467,8 +610,8 @@ const App: React.FC = () => {
       setToast({ 
         id: Date.now().toString(), 
         message: newCurrent >= goal.targetAmount 
-          ? (language === 'pt-BR' ? '🎉 Parabéns! Você atingiu sua meta!' : '🎉 Congratulations! Goal reached!')
-          : (language === 'pt-BR' ? `Aporte de R$ ${numAmount.toFixed(2)} registrado com sucesso!` : `Deposit of $${numAmount.toFixed(2)} recorded!`), 
+          ? (language === 'pt-BR' ? '🎉 Parabéns! Você atingiu sua meta! Valor alocado em Investimentos.' : '🎉 Congratulations! Goal reached! Added to Investments.')
+          : (language === 'pt-BR' ? `Aporte de R$ ${numAmount.toFixed(2)} registrado e guardado na meta!` : `Deposit of $${numAmount.toFixed(2)} recorded and saved to goal!`), 
         type: 'success' 
       });
     } catch (err) {
@@ -488,13 +631,31 @@ const App: React.FC = () => {
     if (amountToWithdraw <= 0) return;
 
     try {
-      const newCurrent = Math.max(0, (goal.currentAmount || 0) - amountToWithdraw);
+      const newCurrent = Number(Math.max(0, (Number(goal.currentAmount) || 0) - amountToWithdraw).toFixed(2));
       const updatedGoal: Goal = {
         ...goal,
         currentAmount: newCurrent,
         status: newCurrent >= goal.targetAmount ? 'COMPLETED' : 'IN_PROGRESS'
       };
-      await api.createGoal(updatedGoal, token || '');
+
+      // ATUALIZAÇÃO INSTANTÂNEA NO ESTADO DE METAS
+      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g));
+
+      const res = await api.createGoal(updatedGoal, token || '');
+      const savedGoal = (res?.goal || updatedGoal) as Goal;
+      const actualGoalId = savedGoal.id || goalId;
+      setGoals(prev => prev.map(g => (g.id === goalId || g.id === actualGoalId) ? savedGoal : g));
+
+      // Atualiza o valor correspondente em Investimentos
+      if (token) {
+        const syncRes = await api.syncGoalInvestment(savedGoal, token);
+        if (syncRes && syncRes.investment) {
+          setInvestments(prev => {
+            const filtered = prev.filter(i => i.id !== syncRes.investment.id && i.goalId !== actualGoalId);
+            return [syncRes.investment, ...filtered];
+          });
+        }
+      }
 
       // Devolve o valor resgatado para o saldo da conta corrente
       await api.createTransaction({
@@ -509,16 +670,16 @@ const App: React.FC = () => {
       setToast({
         id: Date.now().toString(),
         message: language === 'pt-BR' 
-          ? `Resgate de R$ ${amountToWithdraw.toFixed(2)} realizado! Valor creditado no saldo.`
-          : `Withdrawal of $${amountToWithdraw.toFixed(2)} completed! Added to balance.`,
+          ? `Resgate de R$ ${amountToWithdraw.toFixed(2)} realizado! Valor creditado no saldo e atualizado em Investimentos.`
+          : `Withdrawal of $${amountToWithdraw.toFixed(2)} completed! Added to balance and updated in Investments.`,
         type: 'success'
       });
     } catch (err) {
       console.error(err);
-      setToast({
-        id: Date.now().toString(),
-        message: language === 'pt-BR' ? 'Erro ao realizar resgate da meta.' : 'Error withdrawing from goal.',
-        type: 'error'
+      setToast({ 
+        id: Date.now().toString(), 
+        message: language === 'pt-BR' ? 'Erro ao realizar resgate da meta.' : 'Error withdrawing from goal.', 
+        type: 'error' 
       });
     }
   };
@@ -535,7 +696,7 @@ const App: React.FC = () => {
       const willBeCompleted = !isCompleted;
       const currentSaved = Number(ms.savedAmount) || 0;
       const diff = willBeCompleted ? Math.max(0, ms.targetAmount - currentSaved) : -currentSaved;
-      const newCurrent = Math.max(0, (goal.currentAmount || 0) + diff);
+      const newCurrent = Number(Math.max(0, (Number(goal.currentAmount) || 0) + diff).toFixed(2));
 
       const updatedMilestones = goal.milestones.map(m => {
         if (m.id === milestoneId) {
@@ -543,7 +704,7 @@ const App: React.FC = () => {
             ...m,
             isCompleted: willBeCompleted,
             savedAmount: willBeCompleted ? m.targetAmount : 0,
-            completedAt: willBeCompleted ? new Date().toISOString() : undefined
+            completedAt: willBeCompleted ? new Date().toISOString() : ''
           };
         }
         return m;
@@ -556,12 +717,29 @@ const App: React.FC = () => {
         milestones: updatedMilestones
       };
 
-      await api.createGoal(updatedGoal, token || '');
+      // ATUALIZAÇÃO INSTANTÂNEA NO ESTADO DE METAS
+      setGoals(prev => prev.map(g => g.id === goalId ? updatedGoal : g));
+
+      const res = await api.createGoal(updatedGoal, token || '');
+      const savedGoal = (res?.goal || updatedGoal) as Goal;
+      const actualGoalId = savedGoal.id || goalId;
+      setGoals(prev => prev.map(g => (g.id === goalId || g.id === actualGoalId) ? savedGoal : g));
+
+      if (token) {
+        const syncRes = await api.syncGoalInvestment(savedGoal, token);
+        if (syncRes && syncRes.investment) {
+          setInvestments(prev => {
+            const filtered = prev.filter(i => i.id !== syncRes.investment.id && i.goalId !== actualGoalId);
+            return [syncRes.investment, ...filtered];
+          });
+        }
+      }
+
       setToast({ 
         id: Date.now().toString(), 
         message: willBeCompleted 
-          ? (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} marcada como guardada!` : `Installment marked as saved!`)
-          : (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} reaberta.` : `Installment reopened.`),
+          ? (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} guardada e sincronizada em Investimentos!` : `Installment marked as saved and synced to Investments!`)
+          : (language === 'pt-BR' ? `Parcela de ${ms.monthLabel} reaberta e atualizada em Investimentos.` : `Installment reopened and updated in Investments.`), 
         type: 'info' 
       });
     } catch (err) {
@@ -682,6 +860,8 @@ const App: React.FC = () => {
                 }} 
                 onDepositToGoal={handleDepositToGoal}
                 onWithdrawGoal={handleWithdrawGoal}
+                onSaveGoal={handleSaveGoal}
+                onDeleteGoal={handleDeleteGoal}
                 setActivePage={setActivePage}
                 language={language} 
             />}

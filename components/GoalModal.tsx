@@ -5,7 +5,7 @@ import { X, Target, Calendar, DollarSign, Sparkles, CheckCircle2, ChevronRight, 
 interface GoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (goal: Omit<Goal, 'id'> & { id?: string }) => void;
+  onSave: (goal: Omit<Goal, 'id'> & { id?: string }, initialDeductFromBalance?: boolean) => void;
   goal?: Goal | null;
   language: Language;
   defaultCurrency?: Currency;
@@ -43,6 +43,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   const [category, setCategory] = useState('Reserva');
   const [targetAmount, setTargetAmount] = useState('');
   const [initialAmount, setInitialAmount] = useState('0');
+  const [deductInitialFromBalance, setDeductInitialFromBalance] = useState(true);
   const [currency, setCurrency] = useState<Currency>(defaultCurrency);
   const [targetMonths, setTargetMonths] = useState<number>(6);
   const [startMonth, setStartMonth] = useState(() => {
@@ -184,19 +185,26 @@ export const GoalModal: React.FC<GoalModalProps> = ({
     const deadlineObj = new Date(y, m - 1 + targetMonths, 0);
     const deadlineDate = deadlineObj.toISOString().slice(0, 10);
 
+    const parsedInit = parseFloat(initialAmount);
+    const finalSavedAmount = !isNaN(parsedInit) && parsedInit >= 0 
+      ? parsedInit 
+      : (goal ? Number(goal.currentAmount || 0) : 0);
+
     // Build final milestones
     let finalMilestones = previewMilestones;
-    if (numInitial > 0 && (!goal || goal.currentAmount === 0)) {
-      // Allocate initial amount to early milestones if user has starting capital
-      let remainingInit = numInitial;
+    if (finalSavedAmount > 0) {
+      // Allocate initial amount to milestones
+      let remainingInit = finalSavedAmount;
       finalMilestones = finalMilestones.map(ms => {
-        if (remainingInit <= 0) return ms;
-        const toSave = Math.min(remainingInit, ms.targetAmount);
+        if (remainingInit <= 0) return { ...ms, savedAmount: 0, isCompleted: false, completedAt: '' };
+        const toSave = Number(Math.min(remainingInit, ms.targetAmount).toFixed(2));
         remainingInit -= toSave;
+        const isDone = toSave >= ms.targetAmount;
         return {
           ...ms,
           savedAmount: toSave,
-          isCompleted: toSave >= ms.targetAmount
+          isCompleted: isDone,
+          completedAt: isDone ? (ms.completedAt || new Date().toISOString()) : ''
         };
       });
     }
@@ -207,16 +215,17 @@ export const GoalModal: React.FC<GoalModalProps> = ({
       description: description.trim(),
       category,
       targetAmount: numTarget,
-      currentAmount: goal ? goal.currentAmount : numInitial,
+      currentAmount: finalSavedAmount,
       currency,
       targetMonths,
       startDate: startMonth,
       deadlineDate,
       distributionType,
-      status: (goal?.currentAmount || numInitial) >= numTarget ? 'COMPLETED' : 'IN_PROGRESS',
+      status: finalSavedAmount >= numTarget ? 'COMPLETED' : 'IN_PROGRESS',
       milestones: finalMilestones,
+      contributions: goal?.contributions || [],
       createdAt: goal?.createdAt || new Date().toISOString()
-    });
+    }, deductInitialFromBalance);
 
     onClose();
   };
@@ -386,6 +395,28 @@ export const GoalModal: React.FC<GoalModalProps> = ({
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
+
+              {parseFloat(initialAmount) > 0 && !goal && (
+                <div className="mt-2.5 p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="deductInitialBalance"
+                    checked={deductInitialFromBalance}
+                    onChange={e => setDeductInitialFromBalance(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                  />
+                  <label htmlFor="deductInitialBalance" className="text-xs cursor-pointer">
+                    <span className="font-black text-slate-900 dark:text-white block">
+                      {isPT ? 'Debitar da Conta & Enviar para Investimentos' : 'Deduct from Account & Send to Investments'}
+                    </span>
+                    <span className="text-[11px] text-slate-600 dark:text-slate-400 block mt-0.5">
+                      {isPT 
+                        ? 'Registra a saída da conta corrente e coloca o valor diretamente em Investimentos rendendo 100% CDI.' 
+                        : 'Deducts from checking balance and puts money into Investments earning 100% CDI.'}
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
 

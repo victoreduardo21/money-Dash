@@ -55,8 +55,11 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() < 255 &&
              data.initialAmount is number &&
              data.currentValue is number &&
-             data.currency in ['BRL', 'USD'] &&
-             data.userId == request.auth.uid;
+             (data.currency in ['BRL', 'USD', 'brl', 'usd'] || data.currency is string) &&
+             data.userId == request.auth.uid &&
+             (data.get('goalId', null) == null || data.get('goalId', null) is string || data.get('goalId', null) is number) &&
+             (data.get('category', null) == null || (data.get('category', null) is string && data.get('category', null).size() < 100)) &&
+             (data.get('yieldRate', null) == null || data.get('yieldRate', null) is number);
     }
     
     function isValidCalendarEvent(data) {
@@ -113,12 +116,10 @@ service cloud.firestore {
     }
 
     function isValidGoal(data) {
-      return data.keys().hasAll(['title', 'targetAmount', 'currentAmount', 'currency', 'targetMonths', 'userId']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.targetAmount is number && data.targetAmount > 0 &&
+      return data.keys().hasAll(['title', 'targetAmount', 'currentAmount', 'userId']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.targetAmount is number &&
              data.currentAmount is number &&
-             data.currency in ['BRL', 'USD'] &&
-             data.targetMonths is number && data.targetMonths > 0 &&
              data.userId == request.auth.uid;
     }
 
@@ -141,10 +142,10 @@ service cloud.firestore {
     }
     
     match /investments/{investmentId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidInvestment(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidInvestment(request.resource.data);
-      allow delete: if isAuthenticated() && isDocOwner();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin()) && isValidInvestment(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin());
     }
     
     match /calendar/{eventId} {
@@ -190,10 +191,10 @@ service cloud.firestore {
     }
 
     match /goals/{goalId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidGoal(request.resource.data);
-      allow update: if isAuthenticated() && isDocOwner() && isValidGoal(request.resource.data);
-      allow delete: if isAuthenticated() && isDocOwner();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin()) && isValidGoal(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin());
     }
   }
 }

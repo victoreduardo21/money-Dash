@@ -125,8 +125,11 @@ const Reports: React.FC<ReportsProps> = ({
             .filter(t => (t.currency || 'BRL') === selectedCurrency)
             .reduce((acc, t) => acc + (t.type === TransactionType.Receita ? Number(t.amount) : -Number(t.amount)), 0);
 
-        const patrimonioInvestimentos = (investments || [])
-            .filter(i => (i.currency || 'BRL') === selectedCurrency)
+        const traditionalInvestments = (investments || [])
+            .filter(i => !i.goalId && !i.name.startsWith('Meta: ') && !i.name.startsWith('🎯 Meta: '))
+            .filter(i => (i.currency || 'BRL') === selectedCurrency);
+
+        const patrimonioInvestimentos = traditionalInvestments
             .reduce((acc, inv) => acc + (Number(inv.currentValue) || 0), 0);
 
         const patrimonioMetas = (goals || [])

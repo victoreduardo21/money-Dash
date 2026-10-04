@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification, Goal } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification, Goal, Currency, BankAccount, BankConnection } from '../types';
 import { db, auth } from './firebase';
 import { 
     collection, 
@@ -37,6 +37,35 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter(item => item !== undefined)
+      .map(item => cleanFirestoreData(item)) as any;
+  }
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) continue;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) {
+        cleaned[key] = 0;
+      } else if (typeof value === 'object' && value !== null) {
+        cleaned[key] = cleanFirestoreData(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+    return cleaned as any;
+  }
+  if (typeof obj === 'number' && (isNaN(obj) || !isFinite(obj))) {
+    return 0 as any;
+  }
+  return obj;
 }
 
 export const api = {
@@ -187,6 +216,52 @@ export const api = {
         } catch (error) {
             handleFirestoreError(error, OperationType.DELETE, 'investments/' + id);
         }
+    },
+    syncGoalInvestment: async (goal: Goal, token: string, existingInvestments: Investment[] = []) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return { error: true, message: "Unauthorized" };
+        
+        const goalId = String(goal.id || '');
+        if (!goalId) return { error: true, message: "Goal ID missing" };
+
+        const invId = `goal_inv_${goalId}`;
+        const targetRef = doc(db, 'investments', invId);
+
+        const amount = Number(goal.currentAmount) || 0;
+        const currency = ((goal.currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL') as Currency;
+
+        const investmentData: Investment = {
+            id: invId,
+            name: `🎯 Meta: ${goal.title}`,
+            initialAmount: amount,
+            currentValue: amount,
+            yieldRate: 100, // 100% CDI
+            currency,
+            userId: uid,
+            goalId,
+            category: goal.category ? `Meta: ${goal.category}` : 'Meta & Reserva'
+        };
+
+        const cleanedInv = cleanFirestoreData(investmentData);
+
+        try {
+            await setDoc(targetRef, cleanedInv, { merge: true });
+            return { error: false, id: invId, investment: cleanedInv, amount };
+        } catch (error) {
+            console.warn("Aviso ao sincronizar meta com investimentos no Firestore:", error);
+            return { error: false, id: invId, investment: cleanedInv, amount };
+        }
+    },
+    deleteGoalInvestment: async (goalId: string, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return { error: true };
+        try {
+            const invId = `goal_inv_${goalId}`;
+            await deleteDoc(doc(db, 'investments', invId));
+        } catch (e) {
+            // Document may not exist, ignore
+        }
+        return { error: false };
     },
     getCalendarEvents: async (token: string) => {
         const uid = token || auth.currentUser?.uid;
@@ -443,36 +518,75 @@ export const api = {
         const uid = token || auth.currentUser?.uid;
         if (!uid) throw new Error("Unauthorized");
         const { id, ...data } = goal;
-        const payload = {
+
+        // Clean milestones to guarantee no undefined fields (e.g. completedAt)
+        const cleanMilestones = Array.isArray(data.milestones) ? data.milestones.map((m: any, idx: number) => ({
+            id: String(m.id || `m_${idx + 1}_${Date.now()}`),
+            monthNumber: Number(m.monthNumber) || (idx + 1),
+            monthLabel: String(m.monthLabel || `Mês ${idx + 1}`),
+            targetAmount: Number(m.targetAmount) || 0,
+            savedAmount: Number(m.savedAmount) || 0,
+            isCompleted: Boolean(m.isCompleted || ((Number(m.savedAmount) || 0) >= (Number(m.targetAmount) || 1) && Number(m.targetAmount) > 0)),
+            ...(m.completedAt ? { completedAt: String(m.completedAt) } : {})
+        })) : [];
+
+        // Clean contributions
+        const cleanContributions = Array.isArray(data.contributions) ? data.contributions.map((c: any) => ({
+            id: String(c.id || `c_${Date.now()}`),
+            amount: Number(c.amount) || 0,
+            date: String(c.date || new Date().toISOString().slice(0, 10)),
+            ...(c.milestoneId ? { milestoneId: String(c.milestoneId) } : {}),
+            ...(c.note ? { note: String(c.note) } : {}),
+            deductFromBalance: Boolean(c.deductFromBalance),
+            createdAt: String(c.createdAt || new Date().toISOString())
+        })) : [];
+
+        const payload: Record<string, any> = {
             ...data,
+            title: String(data.title || '').trim(),
+            description: String(data.description || '').trim(),
+            category: String(data.category || 'Reserva').trim(),
+            targetAmount: Number(data.targetAmount) || 0,
+            currentAmount: Number(data.currentAmount) || 0,
+            currency: ((data.currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL'),
+            targetMonths: Number(data.targetMonths) || 6,
+            startDate: String(data.startDate || new Date().toISOString().slice(0, 7)),
+            deadlineDate: String(data.deadlineDate || ''),
+            distributionType: data.distributionType === 'CUSTOM' ? 'CUSTOM' : 'EQUAL',
+            status: (Number(data.currentAmount) || 0) >= (Number(data.targetAmount) || 1) ? 'COMPLETED' : (data.status || 'IN_PROGRESS'),
+            milestones: cleanMilestones,
+            contributions: cleanContributions,
             userId: uid,
             updatedAt: new Date().toISOString()
         };
+
+        const cleanedPayload = cleanFirestoreData(payload);
+
         try {
             if (id && !id.startsWith('local_')) {
-                await updateDoc(doc(db, 'goals', id), payload);
+                await setDoc(doc(db, 'goals', id), cleanedPayload, { merge: true });
+                const updatedGoal = { ...cleanedPayload, id } as Goal;
                 const local = localStorage.getItem(`cached_goals_${uid}`);
                 if (local) {
                     const parsed: Goal[] = JSON.parse(local);
-                    const updated = parsed.map(g => g.id === id ? { ...g, ...payload, id } : g);
+                    const updated = parsed.map(g => g.id === id ? updatedGoal : g);
                     localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(updated));
                 }
-                return { error: false, id };
+                return { error: false, id, goal: updatedGoal };
             } else {
-                const docRef = await addDoc(collection(db, 'goals'), payload);
-                const newGoal = { ...payload, id: docRef.id };
+                const docRef = await addDoc(collection(db, 'goals'), cleanedPayload);
+                const newGoal = { ...cleanedPayload, id: docRef.id } as Goal;
                 const local = localStorage.getItem(`cached_goals_${uid}`);
                 const parsed: Goal[] = local ? JSON.parse(local) : [];
-                // remove old local version if replacing
                 const filtered = parsed.filter(g => g.id !== id);
-                filtered.unshift(newGoal as Goal);
+                filtered.unshift(newGoal);
                 localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(filtered));
-                return { error: false, id: docRef.id };
+                return { error: false, id: docRef.id, goal: newGoal };
             }
         } catch (error) {
-            console.warn('Firestore createGoal error, using localStorage persistence:', error);
+            console.error('Firestore createGoal error:', error);
             const goalId = id || ('local_goal_' + Date.now());
-            const localGoal = { ...payload, id: goalId } as Goal;
+            const localGoal = { ...cleanedPayload, id: goalId } as Goal;
             const local = localStorage.getItem(`cached_goals_${uid}`);
             const parsed: Goal[] = local ? JSON.parse(local) : [];
             const existingIndex = parsed.findIndex(g => g.id === goalId);
@@ -482,7 +596,7 @@ export const api = {
                 parsed.unshift(localGoal);
             }
             localStorage.setItem(`cached_goals_${uid}`, JSON.stringify(parsed));
-            return { error: false, id: goalId };
+            return { error: false, id: goalId, goal: localGoal };
         }
     },
     deleteGoal: async (id: string, token: string) => {
@@ -494,6 +608,11 @@ export const api = {
         } catch (error) {
             console.warn('Firestore deleteGoal error:', error);
         }
+        try {
+            const invId = `goal_inv_${id}`;
+            await deleteDoc(doc(db, 'investments', invId));
+        } catch (e) {}
+
         if (uid) {
             const local = localStorage.getItem(`cached_goals_${uid}`);
             if (local) {
@@ -503,5 +622,69 @@ export const api = {
             }
         }
         return { error: false };
+    },
+    getBankConnections: async (userId: string): Promise<BankConnection[]> => {
+        try {
+            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+    saveBankConnection: async (connection: BankConnection, userId: string) => {
+        try {
+            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
+            const list: BankConnection[] = raw ? JSON.parse(raw) : [];
+            const filtered = list.filter(c => c.itemId !== connection.itemId);
+            filtered.unshift(connection);
+            localStorage.setItem(`pluggy_connections_${userId}`, JSON.stringify(filtered));
+            return { error: false };
+        } catch (e) {
+            return { error: true };
+        }
+    },
+    deleteBankConnection: async (itemId: string, userId: string) => {
+        try {
+            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
+            if (raw) {
+                const list: BankConnection[] = JSON.parse(raw);
+                localStorage.setItem(`pluggy_connections_${userId}`, JSON.stringify(list.filter(c => c.itemId !== itemId)));
+            }
+            return { error: false };
+        } catch (e) {
+            return { error: true };
+        }
+    },
+    getBankAccounts: async (userId: string): Promise<BankAccount[]> => {
+        try {
+            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+    saveBankAccount: async (account: BankAccount, userId: string) => {
+        try {
+            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
+            const list: BankAccount[] = raw ? JSON.parse(raw) : [];
+            const filtered = list.filter(a => a.id !== account.id);
+            filtered.push(account);
+            localStorage.setItem(`pluggy_accounts_${userId}`, JSON.stringify(filtered));
+            return { error: false };
+        } catch (e) {
+            return { error: true };
+        }
+    },
+    deleteBankAccount: async (accountId: string, userId: string) => {
+        try {
+            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
+            if (raw) {
+                const list: BankAccount[] = JSON.parse(raw);
+                localStorage.setItem(`pluggy_accounts_${userId}`, JSON.stringify(list.filter(a => a.id !== accountId && a.itemId !== accountId)));
+            }
+            return { error: false };
+        } catch (e) {
+            return { error: true };
+        }
     }
 };

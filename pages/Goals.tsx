@@ -28,7 +28,7 @@ import { useTranslation } from '../translations';
 
 interface GoalsProps {
   goals: Goal[];
-  onSaveGoal: (goal: Omit<Goal, 'id'> & { id?: string }) => void;
+  onSaveGoal: (goal: Omit<Goal, 'id'> & { id?: string }, initialDeductFromBalance?: boolean) => void;
   onDeleteGoal: (id: string) => void;
   onDepositToGoal: (
     goalId: string, 
@@ -75,24 +75,32 @@ export const Goals: React.FC<GoalsProps> = ({
   // Filtered goals by currency and filter tabs
   const filteredGoals = useMemo(() => {
     return goals.filter(g => {
-      const matchCurrency = (g.currency || 'BRL') === selectedCurrency;
-      const matchSearch = searchQuery ? g.title.toLowerCase().includes(searchQuery.toLowerCase()) || g.category.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+      const gCurr = (g.currency || 'BRL').toUpperCase();
+      const selCurr = selectedCurrency.toUpperCase();
+      const matchCurrency = gCurr === selCurr;
+      const matchSearch = searchQuery 
+        ? g.title.toLowerCase().includes(searchQuery.toLowerCase()) || (g.category || '').toLowerCase().includes(searchQuery.toLowerCase()) 
+        : true;
+      const gCurrent = Number(g.currentAmount) || 0;
+      const gTarget = Number(g.targetAmount) || 0;
+      const isDone = g.status === 'COMPLETED' || (gCurrent >= gTarget && gTarget > 0);
       const matchStatus = statusFilter === 'ALL' 
         ? true 
         : statusFilter === 'COMPLETED' 
-          ? g.status === 'COMPLETED' || g.currentAmount >= g.targetAmount 
-          : g.status !== 'COMPLETED' && g.currentAmount < g.targetAmount;
+          ? isDone 
+          : !isDone;
       return matchCurrency && matchSearch && matchStatus;
     });
   }, [goals, selectedCurrency, searchQuery, statusFilter]);
 
   // Overall Statistics
   const stats = useMemo(() => {
-    const currencyGoals = goals.filter(g => (g.currency || 'BRL') === selectedCurrency);
+    const selCurr = selectedCurrency.toUpperCase();
+    const currencyGoals = goals.filter(g => (g.currency || 'BRL').toUpperCase() === selCurr);
     const totalTarget = currencyGoals.reduce((acc, g) => acc + (Number(g.targetAmount) || 0), 0);
     const totalSaved = currencyGoals.reduce((acc, g) => acc + (Number(g.currentAmount) || 0), 0);
     const totalRemaining = Math.max(0, totalTarget - totalSaved);
-    const completedCount = currencyGoals.filter(g => g.status === 'COMPLETED' || g.currentAmount >= g.targetAmount).length;
+    const completedCount = currencyGoals.filter(g => g.status === 'COMPLETED' || ((Number(g.currentAmount) || 0) >= (Number(g.targetAmount) || 1) && (Number(g.targetAmount) || 0) > 0)).length;
     const inProgressCount = currencyGoals.length - completedCount;
     const globalPercent = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
 

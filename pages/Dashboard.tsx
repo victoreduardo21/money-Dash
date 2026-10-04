@@ -104,19 +104,42 @@ const Dashboard: React.FC<DashboardProps> = ({
       // "Available Balance" - Raw net sum of ALL transactions
       const saldoTotal = txs.reduce((acc: number, t: PersonalTransaction) => acc + (t.type === TransactionType.Receita ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
       
-      const investidoCurrent = (investments || [])
-          .filter((i: Investment) => (i.currency || 'BRL') === selectedCurrency)
+      // Ativos tradicionais em carteira (exclui metas para não duplicar)
+      const traditionalInvestments = (investments || []).filter(
+          i => !i.goalId && !i.name.startsWith('Meta: ') && !i.name.startsWith('🎯 Meta: ')
+      );
+      const investidoAtivos = traditionalInvestments
+          .filter((i: Investment) => (i.currency || 'BRL').toUpperCase() === selectedCurrency.toUpperCase())
           .reduce((acc: number, i: Investment) => acc + (Number(i.currentValue) || 0), 0);
+
+      // Metas vinculadas e valores guardados em metas
+      const goalLinkedInvestments = (investments || []).filter(
+          i => Boolean(i.goalId) || i.name.startsWith('Meta: ') || i.name.startsWith('🎯 Meta: ')
+      );
+
+      const goalsDirect = (goals || []).filter(
+          (g: Goal) => (g.currency || 'BRL').toUpperCase() === selectedCurrency.toUpperCase()
+      );
+      const goalsDirectSum = goalsDirect.reduce((acc: number, g: Goal) => acc + (Number(g.currentAmount) || 0), 0);
+
+      const linkedInvSum = goalLinkedInvestments
+          .filter(i => (i.currency || 'BRL').toUpperCase() === selectedCurrency.toUpperCase() && (!i.goalId || !goalsDirect.some(g => g.id === i.goalId)))
+          .reduce((acc: number, i: Investment) => acc + (Number(i.currentValue) || 0), 0);
+
+      const investidoMetas = goalsDirectSum + linkedInvSum;
+      const totalInvestido = investidoAtivos + investidoMetas;
           
       return { 
         saldoMes: recMes - gastMes, 
         saldoTotal,
-        investido: investidoCurrent, 
+        investido: totalInvestido, 
+        investidoAtivos,
+        investidoMetas,
         recMes, 
         gastMes, 
-        patrimonio: saldoTotal + investidoCurrent 
+        patrimonio: saldoTotal + totalInvestido 
       };
-    }, [transactions, investments, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
+    }, [transactions, investments, goals, creditTransactions, subscriptions, selectedCurrency, selectedMonth]);
 
     const monthlyChartData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -193,7 +216,35 @@ const Dashboard: React.FC<DashboardProps> = ({
               icon={<CreditCardIcon className="h-7 w-7 text-blue-500" />} 
               valueClassName={totals.saldoTotal < 0 ? 'text-red-600' : 'text-slate-900 dark:text-white'}
             />
-            <MetricCard title={t('totalInvested')} value={formatCurrency(totals.investido)} icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} />
+            <MetricCard 
+              title={language === 'pt-BR' ? 'Investimentos & Metas' : 'Investments & Goals'} 
+              value={formatCurrency(totals.investido)} 
+              icon={<TrendingUpIcon className="h-7 w-7 text-indigo-500" />} 
+              onClick={() => setActivePage('Investimentos')}
+              subtitle={
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span 
+                    className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setActivePage('Investimentos'); }}
+                    title={language === 'pt-BR' ? 'Ver Ativos de Investimento' : 'View Investment Assets'}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block shrink-0" />
+                    <span className="text-[10px] text-slate-400 uppercase font-black">{language === 'pt-BR' ? 'Ativos:' : 'Assets:'}</span>
+                    <span className="font-black text-slate-700 dark:text-slate-200">{formatCurrency(totals.investidoAtivos)}</span>
+                  </span>
+
+                  <span 
+                    className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); setActivePage('Metas'); }}
+                    title={language === 'pt-BR' ? 'Ver Metas & Objetivos' : 'View Goals'}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block shrink-0" />
+                    <span className="text-[10px] text-slate-400 uppercase font-black">{language === 'pt-BR' ? 'Metas:' : 'Goals:'}</span>
+                    <span className="font-black text-blue-600 dark:text-blue-400">{formatCurrency(totals.investidoMetas)}</span>
+                  </span>
+                </div>
+              }
+            />
             <MetricCard title={t('monthlyIncome')} value={formatCurrency(totals.recMes)} icon={<ArrowUpIcon className="h-7 w-7 text-green-500" />} />
             <MetricCard title={t('monthlyExpenses')} value={formatCurrency(totals.gastMes)} icon={<ArrowDownIcon className="h-7 w-7 text-red-500" />} />
         </div>
