@@ -173,17 +173,8 @@ export const translations = {
     markAsSaved: 'Marcar como Guardado',
     savedSuccess: 'Valor guardado com sucesso!',
     goalCompleted: 'Meta Concluída!',
-    openFinance: 'Open Finance',
-    openFinanceDesc: 'Conecte seus bancos reais via API Pluggy para sincronizar contas, cartões e transações automaticamente.',
-    connectBank: 'Conectar Banco',
-    connectedBanks: 'Bancos Conectados',
-    syncAll: 'Sincronizar Tudo',
-    syncing: 'Sincronizando...',
-    lastSync: 'Última sincronização',
-    pluggySettings: 'Configurações Pluggy',
-    importTransactions: 'Importar Transações',
-    bankBalance: 'Saldo Bancário Total',
-    allBanks: 'Todos os Bancos'
+    wishlist: 'Lista de Desejos',
+    wishlistDesc: 'Anote o que você quer comprar no futuro, acompanhe o valor total do carrinho e marque como conquistado quando comprar.'
   },
   'en-US': {
     dashboard: 'Dashboard',
@@ -357,17 +348,8 @@ export const translations = {
     markAsSaved: 'Mark as Saved',
     savedSuccess: 'Amount saved successfully!',
     goalCompleted: 'Goal Completed!',
-    openFinance: 'Open Finance',
-    openFinanceDesc: 'Connect real banks via Pluggy API to sync accounts, cards, and transactions automatically.',
-    connectBank: 'Connect Bank',
-    connectedBanks: 'Connected Banks',
-    syncAll: 'Sync All',
-    syncing: 'Syncing...',
-    lastSync: 'Last sync',
-    pluggySettings: 'Pluggy Settings',
-    importTransactions: 'Import Transactions',
-    bankBalance: 'Total Bank Balance',
-    allBanks: 'All Banks'
+    wishlist: 'Shopping Wishlist',
+    wishlistDesc: 'Track future purchases like a shopping cart, see the total cost, and mark items as conquered once bought.'
   }
 };
 

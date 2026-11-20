@@ -1,10 +1,9 @@
 // Money Dashs Service Worker for PWA
-const CACHE_NAME = 'money-dashs-cache-v1';
+const CACHE_NAME = 'money-dashs-cache-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
   '/manifest.json',
-  '/logo.svg'
+  '/logo.svg',
+  '/favicon.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,6 +25,7 @@ self.addEventListener('activate', (event) => {
           if (key !== CACHE_NAME) {
             return caches.delete(key);
           }
+          return Promise.resolve(true);
         })
       );
     }).then(() => self.clients.claim())
@@ -33,15 +33,21 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignore non-GET requests or Firebase / API calls
+  // Ignore non-GET requests
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  
+
+  // Never intercept API calls, Firebase requests, or Vite dev/module requests
   if (
-    url.pathname.startsWith('/api/') || 
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('identitytoolkit.googleapis.com') ||
-    url.hostname.includes('firebaseinstallations.googleapis.com')
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/') ||
+    /\.(ts|tsx|jsx|mjs|map)$/i.test(url.pathname) ||
+    url.searchParams.has('v') ||
+    url.searchParams.has('t') ||
+    url.searchParams.has('import') ||
+    url.searchParams.has('direct')
   ) {
     return;
   }
@@ -51,7 +57,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (response.status === 200) {
+          if (response && response.status === 200) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
@@ -62,16 +68,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache first for static assets (fonts, images, scripts)
+  // Only cache static media/manifest/production hashed assets
+  const isCacheableStatic =
+    url.pathname.startsWith('/assets/') ||
+    /\.(png|jpg|jpeg|svg|webp|ico|woff2?|json)$/i.test(url.pathname);
+
+  if (!isCacheableStatic) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
+        fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+            }
+          })
+          .catch(() => {});
         return cachedResponse;
       }
 
@@ -84,8 +99,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch((err) => {
-        console.warn('Fetch failed for:', event.request.url, err);
       });
     })
   );

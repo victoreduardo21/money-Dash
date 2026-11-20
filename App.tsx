@@ -18,7 +18,7 @@ import LandingPage from './pages/LandingPage';
 import TransactionModal from './components/TransactionModal';
 import TransferModal from './components/TransferModal';
 import PlanSelectionModal from './components/PlanSelectionModal';
-import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification, Goal } from './types';
+import { PersonalTransaction, Investment, User, Page, Theme, CalendarEvent, Plan, BillingCycle, TransactionType, Language, Currency, CreditCard, CreditTransaction, AiConversation, Subscription, SystemNotification, Goal, WishlistItem } from './types';
 import { api } from './services/api';
 import { auth, db, handleFirestoreError, OperationType } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -30,6 +30,7 @@ import { CheckCircleIcon } from 'lucide-react';
 import { translations } from './translations';
 import Credits from './pages/Credits';
 import Subscriptions from './pages/Subscriptions';
+import Wishlist from './pages/Wishlist';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<SystemNotification[]>([]);
   const [aiConversation, setAiConversation] = useState<AiConversation | null>(null);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'light');
@@ -144,6 +146,7 @@ const App: React.FC = () => {
         setCreditCards([]);
         setCreditTransactions([]);
         setSubscriptions([]);
+        setWishlistItems([]);
         setSystemNotifications([]);
       }
       setIsAuthReady(true);
@@ -163,6 +166,7 @@ const App: React.FC = () => {
             setTasks([]);
             setCreditCards([]);
             setCreditTransactions([]);
+            setWishlistItems([]);
             setSystemNotifications([]);
         }
         return;
@@ -318,6 +322,20 @@ const App: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
     });
 
+    const qWishlist = query(collection(db, 'wishlist'), where('userId', '==', token));
+    const unsubWishlist = onSnapshot(qWishlist, (snap) => {
+      const list = snap.docs.map(d => ({
+        ...d.data(),
+        id: d.id,
+        price: Number(d.data().price) || 0,
+        currency: ((d.data().currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL') as Currency,
+        status: d.data().status === 'PURCHASED' ? 'PURCHASED' : 'PENDING',
+      } as WishlistItem));
+      setWishlistItems(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'wishlist');
+    });
+
     const unsubAI = onSnapshot(doc(db, 'ai_conversations', token), (snap) => {
       if (snap.exists()) {
         setAiConversation({ ...snap.data(), id: snap.id } as AiConversation);
@@ -336,6 +354,7 @@ const App: React.FC = () => {
       unsubCT();
       unsubSub();
       unsubGoals();
+      unsubWishlist();
       unsubAI();
       unsubNotif();
     };
@@ -747,6 +766,95 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveWishlistItem = async (itemData: Omit<WishlistItem, 'id'> & { id?: string }) => {
+    try {
+      await api.saveWishlistItem(itemData, token || '');
+      setToast({
+        id: Date.now().toString(),
+        message: itemData.id
+          ? (language === 'pt-BR' ? 'Item atualizado na sua lista!' : 'Item updated!')
+          : (language === 'pt-BR' ? 'Item adicionado ao seu carrinho de desejos!' : 'Item added to your wishlist!'),
+        type: 'success'
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao salvar item.' : 'Error saving item.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleDeleteWishlistItem = async (id: string) => {
+    try {
+      await api.deleteWishlistItem(id, token || '');
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Item removido do carrinho.' : 'Item removed.',
+        type: 'info'
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao excluir item.' : 'Error deleting item.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleToggleWishlistPurchased = async (item: WishlistItem) => {
+    const nextStatus = item.status === 'PURCHASED' ? 'PENDING' : 'PURCHASED';
+    const updatedItem: WishlistItem = {
+      ...item,
+      status: nextStatus,
+      purchasedAt: nextStatus === 'PURCHASED' ? new Date().toISOString() : ''
+    };
+    try {
+      await api.saveWishlistItem(updatedItem, token || '');
+      setToast({
+        id: Date.now().toString(),
+        message: nextStatus === 'PURCHASED'
+          ? (language === 'pt-BR' ? `🎉 Parabéns! "${item.name}" marcado como Conquistado!` : `🎉 "${item.name}" marked as Conquered!`)
+          : (language === 'pt-BR' ? `"${item.name}" voltou para o carrinho.` : `"${item.name}" returned to cart.`),
+        type: nextStatus === 'PURCHASED' ? 'success' : 'info'
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao atualizar status.' : 'Error updating status.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleRecordWishlistExpense = async (item: WishlistItem) => {
+    try {
+      await api.createTransaction({
+        description: `Compra Conquistada: ${item.name}`,
+        amount: Number(item.price) || 0,
+        type: TransactionType.Despesa,
+        category: item.category || 'Compras',
+        currency: item.currency || 'BRL',
+        date: new Date().toISOString().slice(0, 10)
+      }, token || '');
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? `Despesa "${item.name}" lançada no seu extrato!` : `Expense recorded in transactions!`,
+        type: 'success'
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        id: Date.now().toString(),
+        message: language === 'pt-BR' ? 'Erro ao lançar despesa.' : 'Error recording expense.',
+        type: 'error'
+      });
+    }
+  };
+
   if (!isAuthReady) return (
       <div className="flex items-center justify-center h-screen bg-slate-900">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -881,6 +989,21 @@ const App: React.FC = () => {
             {activePage === 'Insights' && <AIInsights transactions={transactions} investments={investments} creditCards={creditCards} creditTransactions={creditTransactions} currentUser={currentUser} aiConversation={aiConversation} token={token || ''} />}
             {activePage === 'Créditos' && <Credits creditCards={creditCards} creditTransactions={creditTransactions} language={language} selectedCurrency={selectedCurrency} onCurrencyChange={setSelectedCurrency} token={token || ''} currentUser={currentUser} />}
             {activePage === 'Assinaturas' && <Subscriptions subscriptions={subscriptions} language={language} selectedCurrency={selectedCurrency} token={token || ''} />}
+            {activePage === 'Lista de Desejos' && (
+              <Wishlist
+                items={wishlistItems}
+                transactions={transactions}
+                investments={investments}
+                goals={goals}
+                onSaveItem={handleSaveWishlistItem}
+                onDeleteItem={handleDeleteWishlistItem}
+                onTogglePurchased={handleToggleWishlistPurchased}
+                onRecordExpense={handleRecordWishlistExpense}
+                language={language}
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={setSelectedCurrency}
+              />
+            )}
             {activePage === 'Configurações' && currentUser && (
               <Settings 
                 theme={theme} 

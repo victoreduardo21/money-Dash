@@ -126,6 +126,26 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["title", "targetAmount", "currentAmount", "userId"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "Future purchase / shopping cart wishlist item",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string", "enum": ["BRL", "USD"] },
+        "category": { "type": "string" },
+        "priority": { "type": "string", "enum": ["ALTA", "MEDIA", "BAIXA"] },
+        "status": { "type": "string", "enum": ["PENDING", "PURCHASED"] },
+        "notes": { "type": "string" },
+        "targetDate": { "type": "string" },
+        "purchasedAt": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "price", "currency", "status", "userId"]
     }
   },
   "firestore": {
@@ -164,6 +184,10 @@
     "/goals/{goalId}": {
       "schema": "Goal",
       "description": "Financial savings goals and objectives"
+    },
+    "/wishlist/{itemId}": {
+      "schema": "WishlistItem",
+      "description": "Shopping wishlist items for future purchases"
     }
   }
 }

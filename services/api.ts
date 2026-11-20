@@ -1,5 +1,5 @@
 
-import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification, Goal, Currency, BankAccount, BankConnection } from '../types';
+import { User, PersonalTransaction, Investment, CalendarEvent, Plan, BillingCycle, Language, CreditCard, CreditTransaction, Subscription, SystemNotification, Goal, Currency, WishlistItem } from '../types';
 import { db, auth } from './firebase';
 import { 
     collection, 
@@ -623,67 +623,63 @@ export const api = {
         }
         return { error: false };
     },
-    getBankConnections: async (userId: string): Promise<BankConnection[]> => {
+    getWishlistItems: async (token: string): Promise<WishlistItem[]> => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) return [];
         try {
-            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
-            return raw ? JSON.parse(raw) : [];
-        } catch (e) {
+            const q = query(collection(db, 'wishlist'), where('userId', '==', uid));
+            const snap = await getDocs(q);
+            const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as WishlistItem));
+            localStorage.setItem(`cached_wishlist_${uid}`, JSON.stringify(list));
+            return list;
+        } catch (error) {
+            handleFirestoreError(error, OperationType.LIST, 'wishlist');
             return [];
         }
     },
-    saveBankConnection: async (connection: BankConnection, userId: string) => {
+    saveWishlistItem: async (item: Omit<WishlistItem, 'id'> & { id?: string }, token: string) => {
+        const uid = token || auth.currentUser?.uid;
+        if (!uid) throw new Error("Unauthorized");
+        const { id, ...data } = item;
+
+        const payload: Record<string, any> = cleanFirestoreData({
+            name: String(data.name || '').trim(),
+            price: Math.max(0, Number(data.price) || 0),
+            currency: ((data.currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL') as Currency,
+            category: String(data.category || 'Geral').trim(),
+            priority: data.priority === 'ALTA' || data.priority === 'BAIXA' ? data.priority : 'MEDIA',
+            status: data.status === 'PURCHASED' ? 'PURCHASED' : 'PENDING',
+            notes: String(data.notes || '').trim(),
+            targetDate: String(data.targetDate || '').trim(),
+            ...(data.purchasedAt ? { purchasedAt: String(data.purchasedAt) } : {}),
+            userId: uid,
+            createdAt: String(data.createdAt || new Date().toISOString()),
+            updatedAt: new Date().toISOString()
+        });
+
         try {
-            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
-            const list: BankConnection[] = raw ? JSON.parse(raw) : [];
-            const filtered = list.filter(c => c.itemId !== connection.itemId);
-            filtered.unshift(connection);
-            localStorage.setItem(`pluggy_connections_${userId}`, JSON.stringify(filtered));
-            return { error: false };
-        } catch (e) {
+            if (id && !id.startsWith('local_')) {
+                await setDoc(doc(db, 'wishlist', id), payload, { merge: true });
+                const updated = { ...payload, id } as WishlistItem;
+                return { error: false, id, item: updated };
+            } else {
+                const docRef = await addDoc(collection(db, 'wishlist'), payload);
+                const created = { ...payload, id: docRef.id } as WishlistItem;
+                return { error: false, id: docRef.id, item: created };
+            }
+        } catch (error) {
+            handleFirestoreError(error, id ? OperationType.UPDATE : OperationType.CREATE, id ? `wishlist/${id}` : 'wishlist');
             return { error: true };
         }
     },
-    deleteBankConnection: async (itemId: string, userId: string) => {
+    deleteWishlistItem: async (id: string, token: string) => {
         try {
-            const raw = localStorage.getItem(`pluggy_connections_${userId}`);
-            if (raw) {
-                const list: BankConnection[] = JSON.parse(raw);
-                localStorage.setItem(`pluggy_connections_${userId}`, JSON.stringify(list.filter(c => c.itemId !== itemId)));
+            if (!id.startsWith('local_')) {
+                await deleteDoc(doc(db, 'wishlist', id));
             }
             return { error: false };
-        } catch (e) {
-            return { error: true };
-        }
-    },
-    getBankAccounts: async (userId: string): Promise<BankAccount[]> => {
-        try {
-            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
-            return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            return [];
-        }
-    },
-    saveBankAccount: async (account: BankAccount, userId: string) => {
-        try {
-            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
-            const list: BankAccount[] = raw ? JSON.parse(raw) : [];
-            const filtered = list.filter(a => a.id !== account.id);
-            filtered.push(account);
-            localStorage.setItem(`pluggy_accounts_${userId}`, JSON.stringify(filtered));
-            return { error: false };
-        } catch (e) {
-            return { error: true };
-        }
-    },
-    deleteBankAccount: async (accountId: string, userId: string) => {
-        try {
-            const raw = localStorage.getItem(`pluggy_accounts_${userId}`);
-            if (raw) {
-                const list: BankAccount[] = JSON.parse(raw);
-                localStorage.setItem(`pluggy_accounts_${userId}`, JSON.stringify(list.filter(a => a.id !== accountId && a.itemId !== accountId)));
-            }
-            return { error: false };
-        } catch (e) {
+        } catch (error) {
+            handleFirestoreError(error, OperationType.DELETE, `wishlist/${id}`);
             return { error: true };
         }
     }

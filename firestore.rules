@@ -123,6 +123,15 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
+    function isValidWishlistItem(data) {
+      return data.keys().hasAll(['name', 'price', 'currency', 'status', 'userId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 255 &&
+             data.price is number && data.price >= 0 &&
+             data.currency in ['BRL', 'USD'] &&
+             data.status in ['PENDING', 'PURCHASED'] &&
+             data.userId == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -195,6 +204,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidGoal(request.resource.data);
       allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin()) && isValidGoal(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.userId == null || isAdmin());
+    }
+
+    match /wishlist/{itemId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidWishlistItem(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidWishlistItem(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
   }
 }
