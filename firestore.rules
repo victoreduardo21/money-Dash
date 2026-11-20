@@ -129,6 +129,7 @@ service cloud.firestore {
              data.price is number && data.price >= 0 &&
              data.currency in ['BRL', 'USD'] &&
              data.status in ['PENDING', 'PURCHASED'] &&
+             (data.get('link', null) == null || (data.get('link', null) is string && data.get('link', null).size() <= 2048)) &&
              data.userId == request.auth.uid;
     }
 

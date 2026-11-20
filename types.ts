@@ -189,6 +189,7 @@ export interface WishlistItem {
   category: string;
   priority: 'ALTA' | 'MEDIA' | 'BAIXA';
   status: 'PENDING' | 'PURCHASED';
+  link?: string;
   notes?: string;
   targetDate?: string;
   purchasedAt?: string;

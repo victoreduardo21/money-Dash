@@ -138,6 +138,7 @@
         "category": { "type": "string" },
         "priority": { "type": "string", "enum": ["ALTA", "MEDIA", "BAIXA"] },
         "status": { "type": "string", "enum": ["PENDING", "PURCHASED"] },
+        "link": { "type": "string", "maxLength": 2048, "description": "Optional store or product listing URL" },
         "notes": { "type": "string" },
         "targetDate": { "type": "string" },
         "purchasedAt": { "type": "string" },

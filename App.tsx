@@ -330,6 +330,7 @@ const App: React.FC = () => {
         price: Number(d.data().price) || 0,
         currency: ((d.data().currency || 'BRL').toUpperCase() === 'USD' ? 'USD' : 'BRL') as Currency,
         status: d.data().status === 'PURCHASED' ? 'PURCHASED' : 'PENDING',
+        link: typeof d.data().link === 'string' ? d.data().link : '',
       } as WishlistItem));
       setWishlistItems(list);
     }, (error) => {

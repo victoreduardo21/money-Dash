@@ -642,6 +642,20 @@ export const api = {
         if (!uid) throw new Error("Unauthorized");
         const { id, ...data } = item;
 
+        let cleanLink = '';
+        if (typeof data.link === 'string' && data.link.trim()) {
+            const raw = data.link.trim();
+            const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) ? raw : `https://${raw}`;
+            try {
+                const parsed = new URL(candidate);
+                if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                    cleanLink = parsed.href.slice(0, 2048);
+                }
+            } catch {
+                cleanLink = '';
+            }
+        }
+
         const payload: Record<string, any> = cleanFirestoreData({
             name: String(data.name || '').trim(),
             price: Math.max(0, Number(data.price) || 0),
@@ -649,6 +663,7 @@ export const api = {
             category: String(data.category || 'Geral').trim(),
             priority: data.priority === 'ALTA' || data.priority === 'BAIXA' ? data.priority : 'MEDIA',
             status: data.status === 'PURCHASED' ? 'PURCHASED' : 'PENDING',
+            link: cleanLink,
             notes: String(data.notes || '').trim(),
             targetDate: String(data.targetDate || '').trim(),
             ...(data.purchasedAt ? { purchasedAt: String(data.purchasedAt) } : {}),

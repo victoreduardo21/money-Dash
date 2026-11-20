@@ -16,7 +16,9 @@ import {
   ArrowUpDown,
   X,
   Receipt,
-  Check
+  Check,
+  Link2,
+  ExternalLink
 } from 'lucide-react';
 
 interface WishlistProps {
@@ -62,6 +64,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
   // Quick add state
   const [quickName, setQuickName] = useState('');
   const [quickPrice, setQuickPrice] = useState('');
+  const [quickLink, setQuickLink] = useState('');
   const [quickCategory, setQuickCategory] = useState('Casa & Móveis');
   const [quickPriority, setQuickPriority] = useState<'ALTA' | 'MEDIA' | 'BAIXA'>('MEDIA');
   const [isSubmittingQuick, setIsSubmittingQuick] = useState(false);
@@ -76,6 +79,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
   const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
   const [modalName, setModalName] = useState('');
   const [modalPrice, setModalPrice] = useState('');
+  const [modalLink, setModalLink] = useState('');
   const [modalCurrency, setModalCurrency] = useState<Currency>(selectedCurrency);
   const [modalCategory, setModalCategory] = useState('Casa & Móveis');
   const [modalPriority, setModalPriority] = useState<'ALTA' | 'MEDIA' | 'BAIXA'>('MEDIA');
@@ -83,6 +87,23 @@ export const Wishlist: React.FC<WishlistProps> = ({
   const [modalNotes, setModalNotes] = useState('');
   const [modalStatus, setModalStatus] = useState<'PENDING' | 'PURCHASED'>('PENDING');
   const [recordedExpenseIds, setRecordedExpenseIds] = useState<string[]>([]);
+
+  const getSafeLinkInfo = (rawUrl?: string): { href: string; host: string } | null => {
+    if (!rawUrl || typeof rawUrl !== 'string') return null;
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return null;
+    const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const parsed = new URL(candidate);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+      return {
+        href: parsed.href,
+        host: parsed.hostname.replace(/^www\./i, '')
+      };
+    } catch {
+      return null;
+    }
+  };
 
   const formatCurrency = (val: number, cur: Currency = selectedCurrency) => {
     const symbol = cur === 'BRL' ? 'R$ ' : '$ ';
@@ -163,7 +184,8 @@ export const Wishlist: React.FC<WishlistProps> = ({
         const matchSearch = q
           ? item.name.toLowerCase().includes(q) ||
             (item.category || '').toLowerCase().includes(q) ||
-            (item.notes || '').toLowerCase().includes(q)
+            (item.notes || '').toLowerCase().includes(q) ||
+            (item.link || '').toLowerCase().includes(q)
           : true;
         return matchStatus && matchSearch;
       })
@@ -185,6 +207,8 @@ export const Wishlist: React.FC<WishlistProps> = ({
     const numPrice = parseFloat(quickPrice.replace(',', '.'));
     if (!trimmedName || isNaN(numPrice) || numPrice < 0) return;
 
+    const linkInfo = getSafeLinkInfo(quickLink);
+
     setIsSubmittingQuick(true);
     try {
       await onSaveItem({
@@ -194,12 +218,14 @@ export const Wishlist: React.FC<WishlistProps> = ({
         category: quickCategory,
         priority: quickPriority,
         status: 'PENDING',
+        link: linkInfo ? linkInfo.href : '',
         notes: '',
         targetDate: '',
         createdAt: new Date().toISOString()
       });
       setQuickName('');
       setQuickPrice('');
+      setQuickLink('');
     } finally {
       setIsSubmittingQuick(false);
     }
@@ -210,6 +236,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
     if (item) {
       setModalName(item.name);
       setModalPrice(String(item.price));
+      setModalLink(item.link || '');
       setModalCurrency(item.currency || selectedCurrency);
       setModalCategory(item.category || 'Casa & Móveis');
       setModalPriority(item.priority || 'MEDIA');
@@ -219,6 +246,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
     } else {
       setModalName('');
       setModalPrice('');
+      setModalLink('');
       setModalCurrency(selectedCurrency);
       setModalCategory('Casa & Móveis');
       setModalPriority('MEDIA');
@@ -235,6 +263,8 @@ export const Wishlist: React.FC<WishlistProps> = ({
     const numPrice = parseFloat(modalPrice.replace(',', '.'));
     if (!trimmedName || isNaN(numPrice) || numPrice < 0) return;
 
+    const linkInfo = getSafeLinkInfo(modalLink);
+
     await onSaveItem({
       ...(editingItem?.id ? { id: editingItem.id } : {}),
       name: trimmedName,
@@ -243,6 +273,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
       category: modalCategory,
       priority: modalPriority,
       status: modalStatus,
+      link: linkInfo ? linkInfo.href : '',
       targetDate: modalTargetDate,
       notes: modalNotes.trim(),
       purchasedAt: modalStatus === 'PURCHASED' ? (editingItem?.purchasedAt || new Date().toISOString()) : '',
@@ -509,6 +540,17 @@ export const Wishlist: React.FC<WishlistProps> = ({
             </button>
           </div>
         </div>
+
+        <div className="mt-3 relative">
+          <Link2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={quickLink}
+            onChange={e => setQuickLink(e.target.value)}
+            placeholder={isPT ? 'Link de onde está vendo essa compra (opcional — ex: https://www.mercadolivre.com.br/...)' : 'Store or listing URL (optional)'}
+            className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </form>
 
       {/* FILTER BAR */}
@@ -609,6 +651,7 @@ export const Wishlist: React.FC<WishlistProps> = ({
               const price = Number(item.price) || 0;
               const canAffordNow = !isPurchased && financialTotals.availableBalance >= price && price > 0;
               const missingInBalance = Math.max(0, price - Math.max(0, financialTotals.availableBalance));
+              const linkInfo = getSafeLinkInfo(item.link);
 
               return (
                 <div
@@ -660,6 +703,19 @@ export const Wishlist: React.FC<WishlistProps> = ({
                         )}
 
                         <div className="flex items-center gap-3 flex-wrap mt-2 text-[11px] font-semibold text-slate-400">
+                          {linkInfo && (
+                            <a
+                              href={linkInfo.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-bold transition-colors"
+                              title={linkInfo.href}
+                            >
+                              <Link2 className="w-3 h-3" />
+                              <span className="max-w-[180px] truncate">{linkInfo.host}</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            </a>
+                          )}
                           {item.targetDate && (
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -808,14 +864,30 @@ export const Wishlist: React.FC<WishlistProps> = ({
                 {isPT ? 'Nenhum item pendente no momento.' : 'No pending items.'}
               </p>
             ) : (
-              stats.pendingItems.map(pi => (
-                <div key={pi.id} className="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-dashed border-slate-100 dark:border-slate-700/70">
-                  <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{pi.name}</span>
-                  <span className="font-black text-slate-900 dark:text-white shrink-0">
-                    {formatCurrency(pi.price, pi.currency)}
-                  </span>
-                </div>
-              ))
+              stats.pendingItems.map(pi => {
+                const piLink = getSafeLinkInfo(pi.link);
+                return (
+                  <div key={pi.id} className="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-dashed border-slate-100 dark:border-slate-700/70">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{pi.name}</span>
+                      {piLink && (
+                        <a
+                          href={piLink.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-600 shrink-0"
+                          title={piLink.href}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                    <span className="font-black text-slate-900 dark:text-white shrink-0">
+                      {formatCurrency(pi.price, pi.currency)}
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -1038,13 +1110,29 @@ export const Wishlist: React.FC<WishlistProps> = ({
 
               <div>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  {isPT ? 'Link do Anúncio / Loja (Opcional)' : 'Store / Listing Link (Optional)'}
+                </label>
+                <div className="relative">
+                  <Link2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={modalLink}
+                    onChange={e => setModalLink(e.target.value)}
+                    placeholder={isPT ? 'Ex: https://www.mercadolivre.com.br/... ou webmotors.com.br/...' : 'https://...'}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 block mb-1.5">
                   {isPT ? 'Observações (Opcional)' : 'Notes (Optional)'}
                 </label>
                 <textarea
                   rows={2}
                   value={modalNotes}
                   onChange={e => setModalNotes(e.target.value)}
-                  placeholder={isPT ? 'Ex: Modelo desejado, loja onde pesquisou, link...' : 'Store, model, or notes...'}
+                  placeholder={isPT ? 'Ex: Modelo desejado, cor, detalhes da loja...' : 'Store, model, or notes...'}
                   className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
